@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const config = { maxDuration: 60 };
 
-const MODEL = process.env.TEMPO_MODEL || "claude-opus-5-5";
+const MODEL = process.env.TEMPO_MODEL || "claude-sonnet-5-5";
 const MAX_PROMPT_CHARS = 60_000;
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = Math.max(1, Number(process.env.TEMPO_RATE_PER_MINUTE) || 6);
