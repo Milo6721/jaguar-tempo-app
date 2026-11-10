@@ -936,6 +936,27 @@ textarea.in { resize: vertical; min-height: 72px; }
   T.loadLocal = () => { try { const raw = localStorage.getItem(T.STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; } };
   T.saveLocal = (state) => { try { localStorage.setItem(T.STORAGE_KEY, JSON.stringify(state)); } catch { /* storage unavailable: in-memory only */ } };
 
+  /* ---------- remote planner (used when hosted outside Claude, e.g. Vercel) ----------
+     Same shape as the artifact `sample` capability so the UI does not care which one it has. */
+  T.CODE_KEY = "tempo-access-code";
+  T.remoteSample = {
+    async json(prompt, opts) {
+      opts = opts || {};
+      let code = ""; try { code = localStorage.getItem(T.CODE_KEY) || ""; } catch { code = ""; }
+      let res;
+      try {
+        res = await fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json", "x-tempo-code": code }, body: JSON.stringify({ prompt }), signal: opts.signal });
+      } catch (e) {
+        if (e && e.name === "AbortError") throw { code: "cancelled", message: "cancelled" };
+        throw { code: "upstream_error", message: String(e) };
+      }
+      let data = null; try { data = await res.json(); } catch { data = null; }
+      if (res.ok && data && data.plan) return data.plan;
+      const fallback = res.status === 404 || res.status === 405 ? "not_configured" : res.status === 401 ? "needs_code" : res.status === 429 ? "rate_limited" : "upstream_error";
+      throw { code: (data && data.code) || fallback, message: (data && data.message) || "HTTP " + res.status };
+    },
+  };
+
   /* ---------- speech (provider abstraction; browser-native first) ---------- */
   T.speech = {
     available() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); },
@@ -1220,7 +1241,17 @@ textarea.in { resize: vertical; min-height: 72px; }
     prompt_too_large: "Too much to read at once. Shorten the message or clear the conversation.",
     upstream_error: "Claude could not be reached. Try again in a moment.",
   };
-  const HIDE_CODES = new Set(["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"]);
+  SAMPLE_ERR.not_declared = "The AI planner is not available here. Tempo is using the built-in planner instead.";
+  SAMPLE_ERR.not_configured = "The AI planner is not set up on this server yet. Tempo is using the built-in planner instead.";
+  SAMPLE_ERR.needs_code = "This Tempo needs an access code before the AI planner answers.";
+  const HIDE_CODES = new Set(["not_granted", "sampling_disabled", "not_declared", "not_configured", "capability_disabled", "capability_removed"]);
+  function CodeForm({ onSubmit }) {
+    const [v, setV] = useState("");
+    return html`<form class="foot" onSubmit=${(e) => { e.preventDefault(); if (v.trim()) onSubmit(v.trim()); }}>
+      <input id="access-code" class="in" style=${{ maxWidth: 220 }} autocomplete="off" aria-label="Access code" placeholder="Access code" value=${v} onInput=${(e) => setV(e.target.value)} />
+      <button class="btn sm primary" type="submit">Unlock and retry</button>
+    </form>`;
+  }
 
   function AssistantView({ state, dispatch, nowMin, today, caps, toast }) {
     const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [rec, setRec] = useState(null); const [recNote, setRecNote] = useState("");
@@ -1246,6 +1277,7 @@ textarea.in { resize: vertical; min-height: 72px; }
         } catch (e) {
           const code = (e && e.code) || "upstream_error";
           if (code === "cancelled") { setBusy(false); dispatch({ type: "addMessage", message: { id: T.uid("m"), role: "assistant", text: "Stopped.", createdAt: Date.now(), engine: "claude" } }); return; }
+          if (code === "needs_code") { setBusy(false); dispatch({ type: "addMessage", message: { id: T.uid("m"), role: "assistant", text: SAMPLE_ERR.needs_code, createdAt: Date.now(), error: true, needsCode: true, retry: msg, engine: "claude" } }); return; }
           if (HIDE_CODES.has(code)) { caps.setSampleOff(true); note = SAMPLE_ERR[code] || SAMPLE_ERR.not_granted; plan = T.localPlan(req); }
           else { setBusy(false); dispatch({ type: "addMessage", message: { id: T.uid("m"), role: "assistant", text: SAMPLE_ERR[code] || SAMPLE_ERR.upstream_error, createdAt: Date.now(), error: true, retry: msg, engine: "claude" } }); return; }
         }
@@ -1285,7 +1317,7 @@ textarea.in { resize: vertical; min-height: 72px; }
       <header class="hero"><div><h1>Planning assistant</h1><p class="sub">Describe your day in plain words. Tempo turns it into a schedule and keeps it realistic.</p></div></header>
       <section class="card" aria-label="Conversation">
         <div class="card-head">
-          <div class="engine"><span class=${"dot " + (sampleOn ? "" : "off")}></span>${sampleOn ? html`Planner: <b>Claude</b> (your account)` : html`Planner: <b>built-in</b> (offline rules)`}</div>
+          <div class="engine"><span class=${"dot " + (sampleOn ? "" : "off")}></span>${sampleOn ? html`Planner: <b>Claude</b> ${caps.remote ? "(server)" : "(your account)"}` : html`Planner: <b>built-in</b> (offline rules)`}</div>
           <div style=${{ display: "flex", gap: 6 }}>
             ${caps.sample && !caps.sampleOff ? html`<button class="btn sm ghost" onClick=${() => setEngineForced(engineForced === "local" ? null : "local")}>${engineForced === "local" ? "Use Claude" : "Use built-in"}</button>` : null}
             ${state.messages.length ? html`<button class="btn sm ghost" onClick=${() => dispatch({ type: "clearMessages" })}>Clear</button>` : null}
@@ -1296,7 +1328,8 @@ textarea.in { resize: vertical; min-height: 72px; }
           ${state.messages.map((m) => html`<div key=${m.id} class=${"msg " + (m.role === "user" ? "user" : "ai")}>
             <div class=${"bub"}>${m.text}</div>
             ${m.warnings && m.warnings.length ? m.warnings.map((w, i) => html`<div class="warn" key=${i}>${w}</div>`) : null}
-            ${m.error ? html`<div class="foot"><button class="btn sm ghost" onClick=${() => plan(m.retry)}>Try again</button><button class="btn sm ghost" onClick=${() => { setEngineForced("local"); plan(m.retry); }}>Use built-in planner</button></div>` : null}
+            ${m.needsCode ? html`<${CodeForm} onSubmit=${(c) => { try { localStorage.setItem(T.CODE_KEY, c); } catch {} plan(m.retry); }} />` : null}
+            ${m.error && !m.needsCode ? html`<div class="foot"><button class="btn sm ghost" onClick=${() => plan(m.retry)}>Try again</button><button class="btn sm ghost" onClick=${() => { setEngineForced("local"); plan(m.retry); }}>Use built-in planner</button></div>` : null}
             ${m.role === "assistant" && !m.error ? html`<div class="foot">
               ${m.engine ? html`<span>${m.engine === "claude" ? "Claude" : "Built-in planner"}</span>` : null}
               ${m.nowOverride ? html`<span>· planned from ${T.fmtTime(T.parseHHMM(m.nowOverride), state.prefs.timeFormat)}</span>` : null}
@@ -1422,7 +1455,10 @@ textarea.in { resize: vertical; min-height: 72px; }
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        if (!window.claude || typeof window.claude.use !== "function") return;
+        if (!window.claude || typeof window.claude.use !== "function") {
+          if (!window.claude && /^https?:$/.test(location.protocol)) setCaps((c) => ({ ...c, sample: T.remoteSample, remote: true }));
+          return;
+        }
         const [db, user, sample] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("sample")]);
         if (cancelled) return;
         let uid = null; try { uid = user ? await user.id() : null; } catch { uid = null; }
