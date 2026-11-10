@@ -54,8 +54,12 @@ async function ask(client, prompt, withFallback) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    // Status only: no secrets. Lets the page show whether AI is really available.
+    return reply(res, 200, { ok: true, configured: Boolean(process.env.ANTHROPIC_API_KEY), needsCode: Boolean(process.env.TEMPO_ACCESS_CODE), model: MODEL });
+  }
   if (req.method !== "POST") {
-    res.setHeader("allow", "POST");
+    res.setHeader("allow", "GET, POST");
     return reply(res, 405, { code: "method_not_allowed", message: "Use POST." });
   }
   if (!process.env.ANTHROPIC_API_KEY) {

@@ -23,3 +23,14 @@ Zawartość folderu:
 - Gdy serwer nie ma klucza albo jest niedostępny, strona sama przełącza się na wbudowany planer.
 - Gdy ustawisz `TEMPO_ACCESS_CODE`, odbiorca wpisze kod raz w oknie czatu, a przeglądarka go zapamięta.
 - Limit: domyślnie 6 zapytań na minutę na osobę (`TEMPO_RATE_PER_MINUTE`).
+
+## Jak sprawdzić, czy AI działa
+
+Wejdź w zakładkę **Assistant**. Na górze karty czatu jest napis o planerze:
+
+- `Planner: Claude (server)` oznacza, że serwer ma klucz i AI odpowiada.
+- `Planner: built-in (AI server has no API key yet)` oznacza, że funkcja działa, ale brakuje `ANTHROPIC_API_KEY` albo nie zrobiłeś Redeploy po jego dodaniu.
+- `Planner: built-in (no AI server found at /api/plan)` oznacza, że folder `api` nie trafił do repo.
+- Jeśli ustawiłeś `TEMPO_ACCESS_CODE`, nad polem wiadomości pojawi się prośba o kod.
+
+Możesz też otworzyć `twoj-adres.vercel.app/api/plan` w przeglądarce. Powinieneś zobaczyć krótki JSON z polem `"configured": true`.
