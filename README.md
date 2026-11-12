@@ -1,4 +1,4 @@
-# Tempo (Jaguar Sprint) na Vercelu
+# Tempo na Vercelu
 
 Zawartość folderu:
 
@@ -36,5 +36,19 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 
 - Przesunięcie zadania w lewo usuwa je, w prawo oznacza jako zrobione. Po każdej akcji jest "Undo".
 - Kolorowy kafelek z ikoną to uchwyt: przeciągnij go w górę lub w dół, żeby zmienić kolejność. Godziny przeliczą się same.
-- Pole "Quick add" rozumie np. `Biology 40 min`, `Essay 1h tomorrow at 5pm !high`.
-- Menu "⋯" przy tytule harmonogramu ma "Delete all tasks" dla wybranego dnia.
+- Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
+- Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
+
+## Co doszło w wersji 3
+
+- **Suggestions for the day** i **Tempo Intelligence** na górze ekranu Today. Każda sugestia ma przycisk OK, który od razu ją wykonuje.
+- **Memory**: zakładka z tym, co Tempo zapamiętało z rozmów, z możliwością dodawania i usuwania.
+- **Weekly overview**: wykresy tygodnia, pasy dni z paskiem obciążenia, przeciąganie zadań między dniami, karta "You saved with Tempo" (to szacunek, opis jest na karcie).
+- **Icons**: własne ikony rysowane kształtami lub odręcznie, z tłem i opisem, kiedy AI ma ich używać.
+- **Focus mode**: pełnoekranowy timer z krokami i notatkami do zadania.
+- Zegar przy każdym zadaniu (zielony, żółty, czerwony), własne priorytety z kolorem, kolor wyróżnienia zadania, checklisty tylko dla dłuższych zadań.
+- Dźwięk przy otwarciu i przy ukończeniu zadania oraz dwie animacje z jaguarem. Jedno i drugie wyłączysz w Preferences.
+
+## Dla programisty
+
+Źródła są w `tempo/src` (części CSS i JS). `sh tempo/build.sh` składa je w `tempo-deploy/index.html`, a `sh tempo/tools/check.sh` dodatkowo sprawdza składnię i uruchamia testy silnika. Node nie jest potrzebny.
