@@ -35,9 +35,21 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 ## Gesty i skróty
 
 - Przesunięcie zadania w lewo usuwa je, w prawo oznacza jako zrobione. Po każdej akcji jest "Undo".
-- Kolorowy kafelek z ikoną to uchwyt: przeciągnij go w górę lub w dół, żeby zmienić kolejność. Godziny przeliczą się same.
+- Zmiana kolejności: na komputerze złap zadanie w dowolnym miejscu i przeciągnij w górę lub w dół. Na telefonie przytrzymaj zadanie chwilę, aż się uniesie, i wtedy przeciągnij (albo ciągnij od razu za kolorowy kafelek). W menu "⋯" zadania są też "Move up" i "Move down". Godziny przeliczą się same, a zadanie upuszczone pod stałym punktem dnia (np. kolacją) zostaje po nim.
 - Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
 - Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
+
+## Co doszło w wersji 4
+
+- **Timer na bieżącym zadaniu**: zadanie, które właśnie trwa, ma odliczanie co sekundę, pasek postępu i przycisk startu timera.
+- **Zielona pigułka na żywo**: "Done by ..." pokazuje, o której naprawdę skończysz. Przelicza się z zegara i z tego, co odhaczysz, i porównuje z Twoim celem.
+- **Automatyczne przesuwanie godzin**: odhaczysz wcześniej, to kolejne bloki podjeżdżają w górę. Przeciągniesz zadanie w czasie, to przesuwają się w dół. Wyłączysz to w Preferences ("Adjust times when I tick a task off").
+- **Asystent**: nowy wygląd czatu oraz polecenia grupowe, np. `delete the postponed stuff`, `move the postponed tasks to tomorrow`, `bring the postponed back`, `clear the completed ones`.
+- **Tempo Intelligence**: tempo dnia, oś dnia z prognozą końca, seria dni, czas skupienia, konkretna podpowiedź, a po "More detail" podział czasu na rodzaje pracy i Twoje najlepsze godziny.
+- **Today view w Preferences**: wybierasz, które karty widać na ekranie Today i czy harmonogram jest na górze.
+- **Konto i plany**: przycisk z Twoim imieniem w lewym dolnym rogu (na telefonie w "More") otwiera plany Free / Pro ($25) / Ultra ($60). Płatność jest w całości na niby: nic nie jest pobierane i żadne dane nie opuszczają przeglądarki. Plany niczego nie zmieniają poza jednym: Ultra odblokowuje **AI icon maker** w zakładce Icons (opisujesz ikonę, Claude ją rysuje).
+- **Animacje**: animacja po zadaniu gra zawsze na środku ekranu (także nad trybem Focus), a duża animacja dnia odpala się, gdy skończysz wszystkie zadania, nawet jeśli stałe punkty dnia (np. kolacja) nie są odhaczone. Asystent też ją uruchamia, gdy napiszesz mu, że coś skończyłeś.
+- "Hide completed" i "Show completed" to teraz jeden przełącznik, który działa w obie strony.
 
 ## Co doszło w wersji 3
 

@@ -662,6 +662,222 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .prirow { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 150px) auto; gap: 8px; align-items: center; }
 @media (max-width: 480px) { .prirow { grid-template-columns: auto minmax(0, 1fr) auto; } .prirow select { grid-column: 2 / 3; } }
 </style>
+<style>
+/* =====================================================================
+   Tempo styles, part 3 (v4): live timer on the current task, live finish
+   pill, Intelligence 3, Today-view preferences, account and plans, demo
+   checkout, AI icon maker, the assistant chat window, celebration stage.
+   ===================================================================== */
+.btn.xs { padding: 4px 9px; font-size: 12px; border-radius: 9px; gap: 5px; } .btn.xs svg { width: 13px; height: 13px; }
+.btn.wide { width: 100%; }
+.linkbtn { color: var(--accent-text); font-weight: 600; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; padding: 6px; }
+.spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- the current task: a countdown that ticks every second ---------- */
+.row.cur .row-inner { background: linear-gradient(90deg, var(--accent-softer), var(--card) 70%); border-radius: 16px; padding-left: 10px; padding-right: 10px; margin: 0 -10px; }
+.row.cur.hl .row-inner { background: linear-gradient(90deg, color-mix(in srgb, var(--hl) 9%, var(--card)), var(--card) 70%); }
+.nowtimer { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent-soft); }
+.nowtimer .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); animation: nowDot 1.6s ease-out infinite; flex-shrink: 0; }
+.nowtimer .big { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.01em; color: var(--accent-text); min-width: 58px; }
+.nowtimer .lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.nowtimer .barw { flex: 1 1 90px; height: 6px; border-radius: 99px; background: var(--accent-soft); overflow: hidden; min-width: 60px; }
+.nowtimer .barw i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width 1s linear; }
+.nowtimer.over { border-color: color-mix(in srgb, var(--bad) 35%, var(--card)); } .nowtimer.over .big { color: var(--bad); } .nowtimer.over .dot, .nowtimer.over .barw i { background: var(--bad); } .nowtimer.over .barw { background: var(--bad-soft); }
+@keyframes nowDot { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+
+/* ---------- dragging the whole row ---------- */
+.row-inner.can-drag { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.row.lift .row-inner, .row.dragging .row-inner { box-shadow: var(--shadow-pop); border-radius: 16px; background: var(--card); cursor: grabbing; }
+.row.lift { z-index: 40; }
+.row.shift { transition: transform .18s cubic-bezier(.2,.8,.2,1); }
+.donetoggle { margin-top: 10px; } .donetoggle svg { width: 15px; height: 15px; }
+
+/* ---------- the live "done by" pill ---------- */
+.pill.eta { gap: 7px; padding: 5px 12px; white-space: normal; text-align: left; line-height: 1.35; } .pill.eta b { font-weight: 800; } .pill.eta .sub { font-weight: 500; opacity: .85; }
+.pill.eta svg { width: 14px; height: 14px; }
+.livedot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; animation: liveBlink 1.6s ease-in-out infinite; }
+@keyframes liveBlink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+@media (max-width: 700px) { .sched-head .head-tools .pill.eta { display: none; } .finish-row { display: block; margin: 2px 0 10px; } .finish-row .pill.eta { display: inline-flex; } }
+@media (min-width: 701px) { .finish-row { display: none; } .sched-head .head-tools .pill.eta .sub { display: none; } }
+
+/* ---------- Tempo Intelligence 3 ---------- */
+.dayline { margin-top: 14px; }
+.dl-track { position: relative; height: 16px; border-radius: 99px; background: var(--surface); }
+.dl-b { position: absolute; top: 3px; bottom: 3px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 34%, var(--card)); min-width: 3px; }
+.dl-b.done { background: var(--accent); } .dl-b.brk { background: var(--line-2); } .dl-b.pin { background: color-mix(in srgb, var(--fg) 30%, var(--card)); }
+.dl-now { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--fg); transform: translateX(-1px); }
+.dl-now::after { content: ""; position: absolute; top: -4px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--fg); }
+.dl-mark { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2px dashed var(--good); transform: translateX(-1px); }
+.dl-mark.target { border-left-color: var(--muted); border-left-style: dotted; }
+.dl-mark.eta.late { border-left-color: var(--warn); }
+.dl-cap { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; margin-top: 7px; }
+.intel-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.itile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.itile .k { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.itile .v { font-family: var(--font-display); font-weight: 700; font-size: 15.5px; margin-top: 2px; line-height: 1.25; }
+.itile .s { color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.35; }
+.itile.tone-good .v { color: var(--good); } .itile.tone-warn .v { color: var(--warn); }
+@media (max-width: 560px) { .intel-tiles { grid-template-columns: 1fr; } .itile { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 10px; align-items: baseline; } .itile .s { grid-column: 2; } }
+.intel-tip { margin-top: 12px; display: flex; gap: 9px; align-items: flex-start; background: var(--accent-softer); border: 1px solid var(--accent-soft); border-radius: 14px; padding: 10px 12px; font-size: 14px; font-weight: 500; }
+.intel-tip svg { width: 16px; height: 16px; color: var(--accent-text); flex-shrink: 0; margin-top: 2px; }
+.intel-more { margin-top: 10px; } .intel-more svg { width: 14px; height: 14px; }
+.intel-sec { margin-top: 14px; } .intel-sec .sec-lbl { margin-bottom: 8px; }
+.mixbar { display: flex; gap: 2px; height: 12px; border-radius: 99px; overflow: hidden; background: var(--surface); }
+.mixbar i { display: block; height: 100%; min-width: 3px; }
+.mixkey { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; color: var(--fg-2); }
+.mixkey span { display: inline-flex; align-items: center; gap: 6px; } .mixkey i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.hourbars { display: flex; align-items: flex-end; gap: 3px; height: 74px; }
+.hb { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.hb i { display: block; width: 100%; max-width: 22px; border-radius: 5px 5px 2px 2px; background: color-mix(in srgb, var(--accent) 30%, var(--card)); }
+.hb.best i { background: var(--accent); }
+.hb span { font-size: 10px; color: var(--muted); height: 12px; white-space: nowrap; }
+
+/* ---------- Today view preferences ---------- */
+.dashprev { margin-top: 14px; display: flex; flex-direction: column; gap: 5px; max-width: 240px; padding: 10px; border-radius: 16px; background: var(--surface); }
+.dashprev span { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.dashprev span.on { border-color: var(--accent-soft); background: var(--accent-softer); color: var(--accent-text); padding-block: 14px; }
+
+/* ---------- account button and plans ---------- */
+.nav a.acct { display: none; }
+@media (min-width: 980px) {
+  .nav-inner { height: 100%; }
+  .nav a.acct { display: flex; margin-top: auto; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; color: var(--fg); }
+  .nav a.acct:hover:not(.on) { background: var(--surface); }
+  .nav a.acct.on { border-color: var(--accent-soft); }
+  .nav a.acct > svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+}
+.acct .av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 15px; flex-shrink: 0; }
+.acct .av svg { width: 17px; height: 17px; }
+.acct .who { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
+.acct .who b { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct .who small { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+@media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
+.plan { display: flex; flex-direction: column; gap: 8px; position: relative; }
+.plan.best { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.plan.cur { background: linear-gradient(180deg, var(--accent-softer), var(--card) 60%); }
+.plan-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px; } .plan-top h2 { font-size: 18px; }
+.plan-price { font-family: var(--font-display); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; line-height: 1.1; } .plan-price small { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.plan-tag { color: var(--muted); font-size: 13px; }
+.plan-pts { list-style: none; padding: 0; margin: 6px 0 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; font-size: 14px; }
+.plan-pts li { display: flex; gap: 8px; align-items: flex-start; } .plan-pts svg { color: var(--accent-text); flex-shrink: 0; margin-top: 2px; }
+
+/* ---------- demo checkout ---------- */
+.co-bg { z-index: 75; }
+.sheet.co { max-width: 440px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100dvh - 24px); overflow-y: auto; }
+.co-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.co-k { font-size: 12px; font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: .1em; }
+.co-price { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: -0.02em; } .co-price small { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: 0; }
+.co-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .co-steps i { height: 4px; border-radius: 99px; background: var(--line-2); transition: background .3s; } .co-steps i.on { background: var(--accent); }
+.co-demo { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; color: var(--muted); margin: 0; } .co-demo svg { flex-shrink: 0; margin-top: 1px; color: var(--good); }
+.co-form { display: flex; flex-direction: column; gap: 12px; }
+.co-lbl { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: -4px; }
+.co-methods { display: flex; flex-direction: column; gap: 6px; }
+.co-m { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 14px; text-align: left; transition: border-color .15s, background .15s; }
+.co-m.on { border-color: var(--accent); background: var(--accent-softer); box-shadow: 0 0 0 1px var(--accent); }
+.co-m .mi { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; flex-shrink: 0; }
+.co-m .mt { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; } .co-m .mt b { font-size: 14.5px; } .co-m .mt small { color: var(--muted); font-size: 12px; }
+.co-m .rd { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-2); flex-shrink: 0; } .co-m.on .rd { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 45%, transparent 50%); }
+.co-pay { padding-block: 13px; font-size: 15px; border-radius: 14px; }
+.cpt-box { display: flex; flex-direction: column; gap: 12px; }
+.cpt-head { display: flex; flex-direction: column; gap: 2px; } .cpt-head b { font-family: var(--font-display); font-size: 16px; } .cpt-head span { color: var(--muted); font-size: 13.5px; }
+.cpt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cpt-tile { aspect-ratio: 1.25; border-radius: 14px; background: var(--surface); color: var(--fg-2); display: grid; place-items: center; border: 2px solid transparent; transition: transform .12s, border-color .12s, background .12s; }
+.cpt-tile:active { transform: scale(.95); } .cpt-tile.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.cpt-err { color: var(--bad); font-size: 13px; font-weight: 600; margin: 0; }
+.auth-box { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0 4px; }
+.finger { position: relative; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; color: var(--accent-text); background: var(--accent-softer); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .15s; }
+.finger.holding { transform: scale(.96); color: var(--accent); }
+.finger .fgring { position: absolute; inset: 0; width: 100%; height: 100%; } .fgring .tr { stroke: var(--accent-soft); } .fgring .ar { stroke: var(--accent); }
+.auth-t { font-weight: 700; font-family: var(--font-display); margin: 0; }
+.pwform { width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: stretch; } .pwform .linkbtn { align-self: center; }
+.co-wait { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 0; color: var(--muted); font-weight: 600; }
+.co-done { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding-top: 6px; } .co-done h3 { font-size: 22px; } .co-done p { margin: 0; color: var(--fg-2); }
+.paycheck { width: 96px; height: 96px; }
+.pc-c { stroke: var(--accent); stroke-dasharray: 277; stroke-dashoffset: 277; transform-origin: 50% 50%; transform: rotate(-90deg); animation: pcCircle .55s cubic-bezier(.65,0,.35,1) forwards, pcPop .5s cubic-bezier(.2,1.6,.4,1) .5s; }
+.pc-t { stroke: var(--accent); stroke-dasharray: 60; stroke-dashoffset: 60; animation: pcTick .32s cubic-bezier(.65,0,.35,1) .5s forwards; }
+@keyframes pcCircle { to { stroke-dashoffset: 0; } }
+@keyframes pcTick { to { stroke-dashoffset: 0; } }
+@keyframes pcPop { 0% { transform: rotate(-90deg) scale(1); } 45% { transform: rotate(-90deg) scale(1.1); } 100% { transform: rotate(-90deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .pc-c, .pc-t { stroke-dashoffset: 0; } }
+.receipt { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px; margin: 6px 0 4px; font-size: 13.5px; }
+.receipt div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; text-align: right; } .receipt div + div { border-top: 1px solid var(--line); } .receipt span { color: var(--muted); text-align: left; }
+
+/* ---------- AI icon maker ---------- */
+.aimaker { background: linear-gradient(180deg, var(--accent-softer), var(--card) 75%); border-color: var(--accent-soft); }
+.aimaker.locked .quiet { margin-bottom: 12px; }
+.ai-wait { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: var(--muted); font-weight: 600; font-size: 14px; } .ai-wait .spin { width: 22px; height: 22px; }
+.ai-res { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; animation: rise .3s cubic-bezier(.2,.8,.2,1) backwards; }
+.tile.big { width: 92px; height: 92px; border-radius: 26px; }
+.ai-meta { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; } .ai-meta b { font-family: var(--font-display); font-size: 16px; } .ai-meta > span { color: var(--muted); font-size: 13px; }
+.ai-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 480px) { .ai-res { flex-direction: column; } }
+
+/* ---------- assistant: one chat window ---------- */
+.main.chatmain { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+.chatwin { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; height: calc(100dvh - 120px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px)); min-height: 420px; }
+@media (min-width: 980px) { .main.chatmain { padding-bottom: 28px; } .chatwin { height: calc(100dvh - 56px); max-height: 900px; } }
+.chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--accent-softer), var(--card)); flex-wrap: wrap; }
+.chat-head .ch-t { min-width: 0; flex: 1 1 180px; } .chat-head h1 { font-size: 18px; font-weight: 800; } .chat-head .engine { margin-top: 2px; }
+.chat-scroll { flex: 1; overflow-y: auto; padding: 16px; overscroll-behavior: contain; scroll-behavior: smooth; }
+.chat { gap: 14px; min-height: 0; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: #fff; background: linear-gradient(135deg, #A78BFA, var(--accent) 55%, var(--accent-deep)); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+.av svg { width: 16px; height: 16px; }
+.av.busy { animation: avPulse 1.4s ease-in-out infinite; }
+.av.xl { width: 64px; height: 64px; box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 40%, transparent); } .av.xl svg { width: 30px; height: 30px; }
+.chat-head .av, .pop-head .av { width: 38px; height: 38px; } .chat-head .av svg, .pop-head .av svg { width: 19px; height: 19px; }
+@keyframes avPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 60%, transparent); } }
+.msg { flex-direction: row; align-items: flex-start; gap: 9px; max-width: 100%; }
+.msg.user { align-self: stretch; justify-content: flex-end; }
+.msg .mcol { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: min(86%, 560px); }
+.msg.user .mcol { align-items: flex-end; }
+.msg.ai .av { margin-top: 5px; }
+.msg .bub { padding: 11px 15px; border-radius: 20px; font-size: 15px; }
+.msg.ai .bub { background: var(--card); border: 1px solid var(--line-2); border-bottom-left-radius: 7px; box-shadow: 0 1px 2px rgba(23, 23, 23, .05); }
+.msg.user .bub { background: linear-gradient(135deg, #8B5CF6, var(--accent) 50%, var(--accent-deep)); color: #fff; border-bottom-right-radius: 7px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
+.msg.err .bub { border-color: color-mix(in srgb, var(--bad) 40%, var(--card)); background: var(--bad-soft); color: var(--fg); }
+.msg .bub.think { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.msg .foot { font-size: 11.5px; gap: 6px; padding: 0 4px; } .msg .foot .btn.xs { margin-left: 2px; }
+.msg .warn { display: flex; gap: 8px; align-items: flex-start; border-radius: 14px; } .msg .warn svg { flex-shrink: 0; margin-top: 2px; }
+.msg .changes { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--fg-2); padding: 2px 4px; } .msg .changes span { display: flex; gap: 6px; align-items: flex-start; } .msg .changes svg { color: var(--good); flex-shrink: 0; margin-top: 3px; }
+.proposal { border-radius: 16px; background: var(--card); border: 1px solid var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-softer); }
+.proposal .pt { display: flex; align-items: center; gap: 6px; }
+.proposal.st-applied .pt { color: var(--good); } .proposal.st-discarded, .proposal.st-undone { opacity: .7; box-shadow: none; }
+.chat-empty { margin: auto; padding: 18px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 520px; }
+.chat-empty .big { font-family: var(--font-display); font-weight: 800; font-size: 22px; margin-top: 8px; letter-spacing: -0.01em; }
+.chat-empty p { color: var(--muted); margin: 0 0 8px; font-size: 14.5px; }
+.chat-scroll .chat { min-height: 100%; }
+.starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.starter { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); transition: transform .15s, border-color .15s, background .15s; min-width: 0; }
+.starter:hover { transform: translateY(-1px); border-color: var(--accent-soft); background: var(--accent-softer); }
+.starter .si { width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; flex-shrink: 0; }
+.starter .st2 { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; } .starter .st2 b { font-size: 13.5px; } .starter .st2 small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) { .starters { grid-template-columns: 1fr; } }
+.dock { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--card); }
+.dock .chip { background: var(--card); border: 1px solid var(--line); font-size: 12.5px; padding: 5px 11px; }
+.cbar { display: flex; align-items: flex-end; gap: 6px; padding: 6px; border-radius: 24px; background: var(--surface); border: 1.5px solid transparent; transition: border-color .15s, background .15s, box-shadow .15s; }
+.cbar:focus-within { border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 4px var(--accent-softer); }
+.cbar.rec { border-color: var(--bad); }
+.cbar textarea { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; resize: none; font: inherit; color: var(--fg); padding: 8px 6px; line-height: 1.45; max-height: 150px; font-size: 16px; }
+.cbar textarea::placeholder { color: var(--muted); }
+.cmic, .csend { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; transition: transform .12s, background .15s, opacity .15s; }
+.cmic { color: var(--fg-2); } .cmic:hover { background: var(--line-2); } .cmic svg { width: 19px; height: 19px; }
+.cmic.rec { background: var(--bad); color: #fff; animation: pulse 1.4s infinite; }
+.csend { background: var(--accent); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); } .csend svg { width: 18px; height: 18px; }
+.csend:hover:not(:disabled) { transform: scale(1.06); background: var(--accent-deep); } .csend:active:not(:disabled) { transform: scale(.94); }
+.csend:disabled { background: var(--line-2); color: var(--muted); box-shadow: none; }
+.dock-hint { font-size: 11.5px; color: var(--muted); text-align: center; }
+@media (max-width: 560px) { .dock-hint { display: none; } }
+.pop-foot.dock { border-top: 1px solid var(--line); }
+
+/* ---------- celebrations: a stage in the middle for one task, the whole screen for the day ---------- */
+.fx { inset: 0; z-index: 95; display: grid; place-items: center; cursor: pointer; overflow: hidden; }
+.fx-task { background: rgba(11, 4, 24, .58); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); border-radius: 0; box-shadow: none; animation: fade .2s ease-out; }
+.fx-task .fx-stage { border-radius: 26px; overflow: hidden; background: #150A2E; box-shadow: 0 30px 80px rgba(11, 4, 24, .6), 0 0 0 1px rgba(196, 181, 253, .3); animation: pop .28s cubic-bezier(.2,1.2,.4,1) backwards; }
+.fx-day .fx-stage { background: #0B0418; }
+.fx-skip { position: absolute; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(221, 214, 254, .7); font-size: 12px; font-weight: 600; letter-spacing: .04em; pointer-events: none; }
+</style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -1010,6 +1226,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       let dur = t.estimatedMinutes;
       if (running(t) && t.start != null && t.end != null) dur = Math.max(5, roundUp(t.end - Math.max(now, t.start), 5));
       let from = cursor;
+      if (opts.after && opts.after[t.id] != null) from = Math.max(from, opts.after[t.id]); // dropped below a commitment: stay below it
       if (buffer && last && last.category !== "break" && t.category !== "break" && last.category !== t.category && t.status !== "in_progress") from = cursor + buffer;
       const s = place(dur, from);
       if (s == null) { unscheduled.push({ task: t, reason: `does not fit before ${fmtTime(hardLimit, prefs.timeFormat)}` }); continue; }
@@ -1122,7 +1339,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* ---------- planner response contract ----------
      Both planners (Claude and the built-in one) return this shape; applyPlan turns it into tasks. */
-  T.PLAN_SHAPE = `{"kind":"plan","reply":"<what you did and any trade-offs, 1-4 sentences, concrete, with numbers when time is short>","dayTitle":"<short title or null>","targetFinish":"HH:MM or null","nowOverride":"HH:MM or null (only if the user stated the current time)","feasible":true,"needsConfirmation":false,"allowFixedChanges":false,"blocks":[{"taskId":"<existing task id, or null for a new task>","date":"YYYY-MM-DD (the day this block is on; today if omitted)","title":"...","category":"math|science|chemistry|business|reading|writing|coding|admin|work|break|meal|exercise|family|free|other","priority":"high|medium|low","start":"HH:MM","end":"HH:MM","bullets":["short actionable step"],"kind":"task|break|fixed|protected"}],"completedTaskIds":["ids the user explicitly said they finished"],"postponed":[{"taskId":"<id>","title":"...","toDate":"YYYY-MM-DD or null","reason":"..."}],"deletedTaskIds":["ids the user explicitly asked to delete"],"warnings":["anything that does not fit or had to be traded off"]}`;
+  T.PLAN_SHAPE = `{"kind":"plan","reply":"<what you did and any trade-offs, 1-4 sentences, concrete, with numbers when time is short>","dayTitle":"<short title or null>","targetFinish":"HH:MM or null","nowOverride":"HH:MM or null (only if the user stated the current time)","feasible":true,"needsConfirmation":false,"allowFixedChanges":false,"blocks":[{"taskId":"<existing task id, or null for a new task>","date":"YYYY-MM-DD (the day this block is on; today if omitted)","title":"...","category":"math|science|chemistry|business|reading|writing|coding|admin|work|break|meal|exercise|family|free|other","priority":"high|medium|low","start":"HH:MM","end":"HH:MM","bullets":["short actionable step"],"kind":"task|break|fixed|protected"}],"completedTaskIds":["ids the user explicitly said they finished"],"postponed":[{"taskId":"<id>","title":"...","toDate":"YYYY-MM-DD or null","reason":"..."}],"deletedTaskIds":["ids the user explicitly asked to delete"],"deleteCompleted":false,"warnings":["anything that does not fit or had to be traded off"]}`;
 
   T.normalizePlan = function (raw, today, opts) {
     const r = raw && typeof raw === "object" ? raw : {}; const okPri = (opts && opts.priorities) || ["high", "medium", "low"]; const okIcon = (opts && opts.icons) || null;
@@ -1147,7 +1364,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       })),
       completedTaskIds: arr(r.completedTaskIds).filter((x) => typeof x === "string"),
       postponed: arr(r.postponed).filter((p) => p && typeof p === "object").map((p) => ({ taskId: str(p.taskId, "") || null, title: str(p.title, "Task"), toDate: isDayKey(p.toDate) ? p.toDate : null, reason: str(p.reason, "") })),
-      deletedTaskIds: arr(r.deletedTaskIds).filter((x) => typeof x === "string"),
+      deletedTaskIds: arr(r.deletedTaskIds).filter((x) => typeof x === "string"), deleteCompleted: r.deleteCompleted === true,
       warnings: arr(r.warnings).filter((x) => typeof x === "string"),
       remember: arr(r.remember).filter((x) => typeof x === "string" && x.trim().length > 3).map((x) => x.trim().slice(0, 160)).slice(0, 3),
     };
@@ -1210,7 +1427,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         summary.moved.push({ title: t.title, from: t.date, to: p.toDate }); touched.add(p.toDate);
       } else { map.set(t.id, { ...t, status: "postponed", start: undefined, end: undefined, updatedAt: ts }); summary.parked.push(t.title); }
     }
-    for (const id of deleted) { const t = map.get(id); if (!t || t.status === "completed") continue; map.delete(id); summary.removed.push(t.title); touched.add(t.date); }
+    for (const id of deleted) { const t = map.get(id); if (!t || (t.status === "completed" && !plan.deleteCompleted)) continue; map.delete(id); summary.removed.push(t.title); touched.add(t.date); }
     if (replansToday) {
       for (const orig of allTasks) {
         if (orig.date !== today || referenced.has(orig.id)) continue; const t = map.get(orig.id); if (!t || t.date !== today || t.status === "completed") continue;
@@ -1327,10 +1544,39 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const priRe = /\b(?:make|set|mark|change)\s+([^,.;]+?)\s+(?:as\s+|to\s+)?(?:a\s+)?(high|medium|low|top|urgent)(?:\s+priority)?\b|\b([^,.;]+?)\s+is\s+(urgent|important|top priority|not urgent|low priority)/gi;
     while ((m = priRe.exec(text))) { const t = find(m[1] || m[3]); const w = (m[2] || m[4] || "").toLowerCase(); if (t) { t.priority = /low|not urgent/.test(w) ? "low" : /medium/.test(w) ? "medium" : "high"; notes.push(`“${t.title}” is now ${t.priority} priority.`); if (t.date === today) changedToday = true; } }
 
+    // group commands: "delete the postponed stuff", "clear completed", "move the postponed to tomorrow", "bring the postponed back"
+    const GROUP_WORD = /^(?:all\s+)?(?:of\s+)?(?:the\s+|my\s+)?(?:postponed|parked|moved|completed|done|finished|breaks?|everything|all)\b/i;
+    const groupOf = (w) => {
+      w = w.toLowerCase();
+      if (/postponed|parked|moved/.test(w)) return { label: "postponed", list: all().filter((t) => t.status === "postponed" || (t.postponedFrom && t.date > today && t.status !== "completed")) };
+      if (/completed|done|finished/.test(w)) return { label: "completed", list: todays().filter((t) => t.status === "completed") };
+      if (/break/.test(w)) return { label: "break", list: liveToday().filter((t) => t.category === "break") };
+      return { label: "", list: todays().filter((t) => t.status !== "completed") };
+    };
+    const gDel = /\b(?:delete|remove|clear|cancel|drop|get rid of|wipe)\s+(?:all\s+)?(?:of\s+)?(?:the\s+|my\s+)?(postponed|parked|moved|completed|done|finished|breaks?|everything|all)(?:\s+(?:tasks?|stuff|things?|ones?|items?|work))?\b/gi;
+    while ((m = gDel.exec(text))) {
+      const g = groupOf(m[1]); const what = g.label ? g.label + " " : "";
+      if (!g.list.length) { notes.push(`There are no ${what}tasks to delete.`); continue; }
+      for (const t of g.list) { if (!plan.deletedTaskIds.includes(t.id)) plan.deletedTaskIds.push(t.id); work.delete(t.id); if (t.date === today && isActive(t)) changedToday = true; }
+      if (g.label === "completed") plan.deleteCompleted = true;
+      plan.needsConfirmation = true; notes.push(`This deletes ${g.list.length} ${what}task${g.list.length > 1 ? "s" : ""}: ${g.list.slice(0, 6).map((t) => `“${t.title}”`).join(", ")}${g.list.length > 6 ? " and more" : ""}.`);
+    }
+    const gMove = /\b(?:move|push|schedule|put|bring|restore|reschedule)\s+(?:all\s+)?(?:of\s+)?(?:the\s+|my\s+)?(?:postponed|parked|moved)(?:\s+(?:tasks?|stuff|things?|ones?|items?|work))?\s*(?:back\s*)?(?:(?:to|for|into|on|until)\s+([^,.;!?]+))?/gi;
+    while ((m = gMove.exec(text))) {
+      const g = groupOf("postponed"); if (!g.list.length) { notes.push("Nothing is postponed right now."); continue; }
+      const d = m[1] ? T.parseDateExpr(m[1], today) : null; const to = d ? d.date : today;
+      for (const t of g.list) {
+        if (to === today) { if (t.date !== today) t.postponedFrom = t.date; t.date = today; t.status = "upcoming"; t.start = undefined; t.end = undefined; changedToday = true; }
+        else { if (t.date === today) changedToday = true; t.postponedFrom = t.date; t.date = to; t.status = "upcoming"; t.start = undefined; t.end = undefined; otherDayBlocks.push(t); }
+      }
+      notes.push(`${to === today ? "Brought" : "Moved"} ${g.list.length} postponed task${g.list.length > 1 ? "s" : ""} ${to === today ? "back into today" : "to " + dayPhrase(to, today)}: ${g.list.slice(0, 6).map((t) => `“${t.title}”`).join(", ")}.`);
+    }
+
     // moves: to another day, to a time, or after/before another task
-    const mvRe = /\b(?:move|push|postpone|shift|defer|reschedule|bump)\s+(.+?)\s+(?:(?:from\s+(.+?)\s+)?(?:to|until|till|for|on)\s+(.+?)|(tomorrow|next week))(?=[.;!?]|$)/gi;
+    const mvRe =/\b(?:move|push|postpone|shift|defer|reschedule|bump)\s+(.+?)\s+(?:(?:from\s+(.+?)\s+)?(?:to|until|till|for|on)\s+(.+?)|(tomorrow|next week))(?=[.;!?]|$)/gi;
     while ((m = mvRe.exec(text))) {
       const fromD = m[2] ? T.parseDateExpr(m[2], today) : null; const target = (m[3] || m[4] || "").trim();
+      if (GROUP_WORD.test(m[1].trim())) continue; // handled as a group above
       const rel = /^(after|before)\s+(.+)$/i.exec(target); const t = find(m[1], fromD ? fromD.date : null);
       if (!t) { notes.push(`I could not find a task matching “${clean(m[1])}”.`); continue; }
       if (t.status === "completed") { notes.push(`“${t.title}” is already completed, so I left it alone.`); continue; }
@@ -1361,7 +1607,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
     // delete (always confirmed)
     const delRe = /\b(?:delete|remove|cancel|drop)\s+([^,.;]+?)(?=[.;!?,]|$)/gi;
-    while ((m = delRe.exec(text))) { if (/\ball\b|\beverything\b/i.test(m[1])) continue; const t = find(m[1]); if (t && t.status !== "completed") { plan.deletedTaskIds.push(t.id); work.delete(t.id); plan.needsConfirmation = true; notes.push(`This deletes “${t.title}”.`); if (t.date === today) changedToday = true; } }
+    while ((m = delRe.exec(text))) { if (/\ball\b|\beverything\b/i.test(m[1]) || GROUP_WORD.test(m[1].trim())) continue; const t = find(m[1]); if (t && t.status !== "completed") { plan.deletedTaskIds.push(t.id); work.delete(t.id); plan.needsConfirmation = true; notes.push(`This deletes “${t.title}”.`); if (t.date === today) changedToday = true; } }
 
     // break request
     let breakMinutes = null;
@@ -1481,6 +1727,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const line = (t) => JSON.stringify({ id: t.id, date: t.date, title: t.title, category: t.category, priority: t.priority, minutes: t.estimatedMinutes, start: t.start != null ? toHHMM(t.start) : null, end: t.end != null ? toHHMM(t.end) : null, status: t.status, fixed: !!t.fixed, dueBy: t.dueBy != null ? toHHMM(t.dueBy) : undefined, bullets: t.bullets });
     const todays = allTasks.filter((t) => t.date === today).sort((a, b) => (a.start ?? 1e9) - (b.start ?? 1e9));
     const others = allTasks.filter((t) => t.date > today && t.date <= addDays(today, 28) && t.status !== "completed").sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? 1e9) - (b.start ?? 1e9)).slice(0, 60);
+    const earlier = allTasks.filter((t) => t.date < today && t.date >= addDays(today, -14) && t.status !== "completed" && t.status !== "protected" && t.category !== "break").sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
     const learned = prefs.learnFromHistory === false ? [] : T.insights(intel);
     const an = T.analyzeDay(todays, { now: nowMinutes, day, prefs, intel, isToday: true });
     const cal = []; for (let i = 0; i < 8; i++) { const k = addDays(today, i); cal.push(`${k} = ${parseDay(k).toLocaleDateString("en-US", { weekday: "long" })}${i === 0 ? " (today)" : i === 1 ? " (tomorrow)" : ""}`); }
@@ -1503,6 +1750,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       "13. Bullets are 1-3 short concrete steps; keep the existing bullets of existing tasks. Titles stay short. Delete a task only when the user explicitly asks (deletedTaskIds).",
       "14. If essential information is missing, return kind 'clarification' with one question and no blocks. For a greeting or a question, return kind 'message' and no blocks.",
       "15. Reply in the user's language, in 1-4 concrete sentences. Explain significant changes.",
+      "16. Group requests act on EVERY matching task, by id. 'Delete the postponed stuff' = put the id of every task with status 'postponed' (and every task listed under EARLIER DAYS, if the user means those) into deletedTaskIds. 'Clear the completed ones' = their ids in deletedTaskIds AND deleteCompleted=true (the only case where completed tasks may be removed). 'Move the postponed to Friday' = each one in 'postponed' with that toDate, or as a timed block on that date. 'Bring the postponed back' = return each as a block dated today. A task with status 'postponed' has no time: giving it a block with a date and time is how you put it back on the schedule. Never answer that you cannot move or delete a task that is listed below: do it and say what you did.",
       "",
       "CALENDAR: " + cal.join("; ") + ".",
       "NOW: " + today + " " + toHHMM(nowMinutes) + ". If the user states a different current time, use theirs and return it in nowOverride." + (focusDate && focusDate !== today ? " The user is currently looking at " + focusDate + " on their dashboard." : ""),
@@ -1517,6 +1765,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       "TASKS ON OTHER DAYS:",
       others.length ? others.map(line).join("\n") : "(none)",
       "",
+      earlier.length ? "UNFINISHED TASKS LEFT ON EARLIER DAYS (can be moved to today or later, or deleted):\n" + earlier.map(line).join("\n") + "\n" : "",
       history && history.length ? "RECENT CONVERSATION:\n" + history.map((h) => (h.role === "user" ? "User: " : "Tempo: ") + h.text).join("\n") + "\n" : "",
       "USER SAYS NOW:",
       message,
@@ -1582,6 +1831,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* ---------- more icons, so tasks are not all the same ---------- */
   Object.assign(T.ICONS, {
+    up: '<path d="M12 19V5M5 12l7-7 7 7"/>', down: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.600 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+    eyeoff: '<path d="M9.900 4.200A10.900 10.900 0 0 1 12 4c6.400 0 10 7 10 7a17.600 17.600 0 0 1-2.200 3.100M6.600 6.600C3.700 8.500 2 12 2 12s3.600 7 10 7a10.700 10.700 0 0 0 5.400-1.600M9.900 9.900a3 3 0 0 0 4.200 4.200M3 3l18 18"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-2 11H5z"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
+    fingerprint: '<path d="M12 11v3a8 8 0 0 1-1.200 4.200M8 11a4 4 0 0 1 8 0v2a12 12 0 0 1-.800 4.300M5.500 16.500A9 9 0 0 0 6 13v-2a6 6 0 0 1 9.600-4.800M18 11v1a14 14 0 0 1-.300 2.900M12 21a10 10 0 0 0 1-1.800M3.500 9.500A9 9 0 0 1 12 3a9 9 0 0 1 8.500 6"/>',
+    wand: '<path d="M15 4V2M15 10V8M11 6H9M21 6h-2M17.800 3.200l-1 1M17.800 8.800l-1-1M3 21l11-11M12.500 8.500l3 3"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-2.640-6.360M21 3v6h-6"/>',
     phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
     video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/>',
     mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
@@ -1721,7 +1979,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     { id: "low", label: "Low", color: "#2563EB", rank: 2 },
   ];
   Object.assign(T.DEFAULT_PREFS, {
-    priorities: T.DEFAULT_PRIORITIES, sound: true, volume: 0.6, animations: true, confirmAI: "major", autoStartNext: false, hideCompleted: false,
+    priorities: T.DEFAULT_PRIORITIES, sound: true, volume: 0.6, animations: true, confirmAI: "major", autoStartNext: false, hideCompleted: false, autoAdjust: true, plan: "free", dash: { quick: true, suggestions: true, intel: true, progress: true }, dashOrder: "cards",
     compact: false, weekStart: 1, defaultMinutes: 30, stepsMinMinutes: 15, memoryEnabled: true, suggestProtect: true, protectFrom: 20 * 60, protectMinutes: 90,
   });
   T.priorityOf = (prefs, id) => (prefs.priorities || T.DEFAULT_PRIORITIES).find((p) => p.id === id) || { id, label: cap(String(id || "medium")), color: "", rank: 1 };
@@ -1870,6 +2128,141 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     return lines.join("\n");
   };
 
+  /* ---------- live finish estimate ----------
+     Where the day will really end, recomputed from the clock and from what has been ticked off:
+     remaining minutes of every open task (time already spent on the running one is subtracted),
+     today's own pace (actual vs planned on what is already done), and commitments that are in the way. */
+  T.liveEta = function (dayTasks, opts) {
+    const { now, isToday, day, prefs } = opts; const list = dayTasks.filter((t) => t.status !== "postponed");
+    const open = list.filter((t) => isActive(t) && t.status !== "protected" && !t.fixed).sort((a, b) => (b.status === "in_progress") - (a.status === "in_progress") || (a.start ?? 1e9) - (b.start ?? 1e9) || a.createdAt - b.createdAt);
+    const doneT = list.filter((t) => t.status === "completed" && isWork(t));
+    const target = day && day.targetFinish != null ? day.targetFinish : null;
+    if (!open.some(isWork)) return { eta: null, target, open: 0, done: doneT.length, remaining: 0, pace: 1, delta: null, finishedAt: doneT.length ? Math.max(...doneT.map((t) => (t.completedAt ? T.minutesOf(t.completedAt) : t.end || 0))) : null };
+    // today's pace: how long finished work really took compared with its estimate
+    let est = 0, act = 0, n = 0; for (const t of doneT) if (t.actualMinutes > 0 && t.estimatedMinutes > 0) { est += t.estimatedMinutes; act += t.actualMinutes; n++; }
+    const pace = n ? Math.max(0.85, Math.min(1.4, (act / est * n + 3) / (n + 3))) : 1; // one fast task does not rewrite the day
+    const spent = (t) => ((t.spentMs || 0) + (t.startedAt ? Date.now() - t.startedAt : 0)) / 60000;
+    const started = list.some((t) => t.status === "in_progress" || t.status === "completed" || (t.spentMs || 0) > 0);
+    const first = open.find((t) => t.start != null);
+    let cur = isToday ? (started || !first ? now : Math.max(now, first.start)) : first ? first.start : prefs.workdayStart;
+    const pins = list.filter((t) => isPinned(t) && t.status !== "completed" && t.status !== "protected" && t.end > cur).sort((a, b) => a.start - b.start);
+    let remaining = 0, lastWork = cur;
+    for (const t of open) {
+      const live = t.status === "in_progress" || (t.spentMs || 0) > 0;
+      // a running timer knows exactly what is left; a block the clock is inside is assumed to be going to plan;
+      // a block that ran out without being ticked is assumed to be nearly done
+      const inBlock = isToday && t.start != null && t.end != null && now >= t.start && now < t.end; const ranOut = isToday && t.end != null && t.end <= now;
+      let need = live ? Math.max(1, t.estimatedMinutes - spent(t)) : inBlock ? Math.max(1, t.end - now) : ranOut && isWork(t) ? Math.min(t.estimatedMinutes, Math.max(5, Math.round(t.estimatedMinutes * 0.25))) : t.estimatedMinutes * (isWork(t) ? pace : 1);
+      // a break that is already behind us on the clock is not waited for again
+      if (!isWork(t) && isToday && t.end != null && t.end <= now) continue;
+      for (const p of pins) if (p.start < cur + need && p.end > cur) cur = Math.max(cur, p.end); // work resumes after the commitment
+      cur += need; remaining += need; if (isWork(t)) lastWork = cur;
+    }
+    const eta = Math.round(lastWork);
+    return { eta, target, open: open.filter(isWork).length, done: doneT.length, remaining: Math.round(remaining), pace, delta: target != null ? eta - target : null, overnight: eta >= 1440 };
+  };
+  T.minutesOf = (ts) => { const d = new Date(ts); return d.getHours() * 60 + d.getMinutes(); };
+
+  /* After a task is ticked off, slide the chain of flexible blocks that follows it: earlier when you finished
+     early, later when you overran. It stops at the first real gap, and never moves commitments. */
+  T.shiftAfter = function (dayTasks, done, now) {
+    const none = { tasks: dayTasks, moved: 0, delta: 0 };
+    if (!done || done.start == null || done.end == null || now < done.start || Math.abs(now - done.end) < 3) return none;
+    const pins = dayTasks.filter((t) => isPinned(t) && t.status !== "completed" && t.id !== done.id).sort((a, b) => a.start - b.start);
+    const chain = dayTasks.filter((t) => t.id !== done.id && isActive(t) && !isPinned(t) && t.start != null && t.end != null && t.start >= done.start).sort((a, b) => a.start - b.start);
+    const early = now < done.end; let cursor = now, prevEnd = done.end, moved = 0, delta = 0; const out = new Map();
+    for (const f of chain) {
+      const dur = f.end - f.start; const gap = f.start - prevEnd; let ns;
+      if (early) { if (gap > 15) break; ns = cursor + Math.max(0, gap); } else ns = cursor;
+      for (const p of pins) if (p.start < ns + dur && p.end > ns) ns = p.end;
+      if (early ? ns >= f.start : ns <= f.start) break;
+      if (!moved) delta = ns - f.start;
+      out.set(f.id, { ...f, start: ns, end: ns + dur, updatedAt: Date.now() }); prevEnd = f.end; cursor = ns + dur; moved++;
+    }
+    return moved ? { tasks: dayTasks.map((t) => out.get(t.id) || t), moved, delta } : none;
+  };
+
+  /* ---------- Tempo Intelligence 3: one report for the dashboard card ----------
+     Everything here is computed from the user's own tasks and history, nothing is invented. */
+  T.intelReport = function (ctx) {
+    const { all, tasks, eta, intel, prefs, today, date, now, isToday } = ctx; const fmt = prefs.timeFormat;
+    const work = tasks.filter((t) => isWork(t) && t.status !== "postponed"); const done = work.filter((t) => t.status === "completed"); const open = work.filter(isActive);
+    // pace: real minutes against planned minutes on what is finished
+    const measured = done.filter((t) => t.actualMinutes > 0 && t.estimatedMinutes > 0); const est = measured.reduce((a, t) => a + t.estimatedMinutes, 0), act = measured.reduce((a, t) => a + t.actualMinutes, 0);
+    const ratio = est ? act / est : null;
+    const pace = ratio == null ? { tone: "idle", label: "No pace yet", sub: "Tick off a timed task and Tempo starts measuring." }
+      : ratio > 1.12 ? { tone: "warn", label: `${Math.round((ratio - 1) * 100)}% slower than planned`, sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` }
+      : ratio < 0.88 ? { tone: "good", label: `${Math.round((1 - ratio) * 100)}% faster than planned`, sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` }
+      : { tone: "good", label: "Right on your estimates", sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` };
+    // the line of the day: where it started, where the clock is, where it will end
+    const timed = tasks.filter((t) => t.start != null && t.end != null && t.status !== "postponed" && t.status !== "protected");
+    let line = null;
+    if (timed.length) {
+      const start = Math.min(...timed.map((t) => t.start)); const lastEnd = Math.max(...timed.map((t) => t.end)); const target = eta && eta.target != null ? eta.target : null;
+      const end = Math.max(lastEnd, eta && eta.eta != null ? eta.eta : 0, target || 0, start + 30); const span = end - start; const pos = (m) => Math.max(0, Math.min(100, ((m - start) / span) * 100));
+      line = { start, end, now: isToday ? pos(now) : null, eta: eta && eta.eta != null ? pos(eta.eta) : null, target: target != null ? pos(target) : null,
+        blocks: timed.map((t) => ({ id: t.id, left: pos(t.start), width: Math.max(0.8, pos(t.end) - pos(t.start)), done: t.status === "completed", brk: t.category === "break", fixed: !!t.fixed })) };
+    }
+    // how the planned minutes split between kinds of work
+    const byCat = {}; for (const t of work) byCat[t.category] = (byCat[t.category] || 0) + t.estimatedMinutes;
+    const total = Object.values(byCat).reduce((a, b) => a + b, 0);
+    const mix = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([cat, minutes]) => ({ cat, label: (T.CAT[cat] && T.CAT[cat].label) || cap(cat), minutes, pct: total ? (minutes / total) * 100 : 0 }));
+    // hours of the day when tasks get finished
+    const hrs = (intel && intel.completionsByHour) || []; const totalDone = hrs.reduce((a, b) => a + b, 0); let lo = 24, hi = 0; hrs.forEach((n, h) => { if (n) { lo = Math.min(lo, h); hi = Math.max(hi, h); } });
+    const from = Math.max(0, Math.min(lo, 8) - 0), to = Math.min(23, Math.max(hi, 20)); const peak = Math.max(1, ...hrs); const best = totalDone ? hrs.indexOf(Math.max(...hrs)) : null;
+    const hours = totalDone >= 3 ? Array.from({ length: to - from + 1 }, (_, i) => ({ h: from + i, n: hrs[from + i] || 0, pct: ((hrs[from + i] || 0) / peak) * 100, best: from + i === best })) : [];
+    // streak of days with at least one finished task, focused minutes, estimate accuracy
+    const doneDays = new Set(all.filter((t) => t.status === "completed" && isWork(t)).map((t) => t.date)); let streak = 0; let k = doneDays.has(today) ? today : addDays(today, -1); while (doneDays.has(k)) { streak++; k = addDays(k, -1); }
+    const focused = Math.round(tasks.reduce((a, t) => a + (t.spentMs || 0) + (t.status === "in_progress" && t.startedAt ? Date.now() - t.startedAt : 0), 0) / 60000);
+    const recent = all.filter((t) => t.status === "completed" && isWork(t) && t.actualMinutes > 0 && t.estimatedMinutes > 0 && t.date >= addDays(today, -14));
+    const accuracy = recent.length >= 2 ? Math.round((recent.reduce((a, t) => a + (1 - Math.min(1, Math.abs(t.actualMinutes - t.estimatedMinutes) / t.estimatedMinutes)), 0) / recent.length) * 100) : null;
+    // one concrete piece of advice
+    const rank = (t) => T.rankOf(prefs, t.priority); const flex = open.filter((t) => !t.fixed); let tip = null;
+    const overdue = isToday ? flex.filter((t) => t.end != null && t.end <= now && t.status !== "in_progress").sort((a, b) => a.end - b.end)[0] : null;
+    const running = open.find((t) => t.status === "in_progress");
+    if (overdue) tip = `“${overdue.title}” ran past ${fmtTime(overdue.end, fmt)}. Tick it off if it is done, and the rest of the day moves up or back by itself.`;
+    else if (eta && eta.delta != null && eta.delta > 5 && flex.length > 1) { const drop = flex.slice().sort((a, b) => rank(b) - rank(a) || b.estimatedMinutes - a.estimatedMinutes)[0]; tip = `You are heading ${fmtDur(eta.delta)} past your target. Moving “${drop.title}” (${fmtDur(drop.estimatedMinutes)}) to tomorrow gets most of it back.`; }
+    else if (running && running.estimatedMinutes >= 50) tip = `You are in a long block. A ${prefs.defaultBreakMinutes}-minute break after “${running.title}” keeps the next one sharp.`;
+    else if (flex.length > 1 && best != null && isToday && Math.abs(best * 60 - now) <= 90) { const top = flex.slice().sort((a, b) => rank(a) - rank(b) || b.estimatedMinutes - a.estimatedMinutes)[0]; tip = `This is usually your strongest hour. A good moment for “${top.title}”.`; }
+    else if (flex.length > 1) { const top = flex.slice().sort((a, b) => rank(a) - rank(b) || (a.dueBy ?? 1e9) - (b.dueBy ?? 1e9))[0]; const first = flex.slice().sort((a, b) => (a.start ?? 1e9) - (b.start ?? 1e9))[0]; if (top.id !== first.id && rank(top) < rank(first)) tip = `“${top.title}” is your most important open task but it is not first. Drag it up, and the times recalculate.`; }
+    return { pace, ratio, line, mix, hours, best, totalDone, streak, focused, accuracy, tip, doneCount: done.length, openCount: open.length };
+  };
+
+  /* ---------- AI icon maker: local fallback and sanitising of generated shapes ---------- */
+  T.iconFromDescription = function (desc) {
+    const text = String(desc || "").toLowerCase(); let best = null;
+    for (const [id, label, re] of T.ICON_INFO) { if (re && re.test(text)) { best = { id, label }; break; } if (!best && text && label && text.includes(String(label).toLowerCase())) best = { id, label }; }
+    const h = T.hash(text || "icon"); const fg = T.HIGHLIGHTS[h % T.HIGHLIGHTS.length];
+    if (best && T.ICONS[best.id]) return { markup: T.ICONS[best.id], fg, name: cap(String(desc).trim().slice(0, 28)) || best.label, source: "library" };
+    // nothing matched: a small deterministic emblem so the result is still unique to the description
+    const n = 3 + (h % 4); const r = 7.5; const pts = []; for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; pts.push((12 + Math.cos(a) * r).toFixed(1) + "," + (12 + Math.sin(a) * r).toFixed(1)); }
+    const inner = (h >> 3) % 3 === 0 ? '<circle cx="12" cy="12" r="2.6"/>' : (h >> 3) % 3 === 1 ? '<path d="M12 8.5v7M8.5 12h7"/>' : '<path d="M9 12.5l2 2 4-4.5"/>';
+    return { markup: `<polygon points="${pts.join(" ")}"/>${inner}`, fg, name: cap(String(desc).trim().slice(0, 28)) || "Emblem", source: "emblem" };
+  };
+  /* Turns the model's list of primitives into safe SVG markup. Anything unknown is dropped. */
+  T.shapesToMarkup = function (shapes) {
+    const num = (v, lo = 0, hi = 24) => { const x = Number(v); return Number.isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : null; };
+    const out = [];
+    for (const s of Array.isArray(shapes) ? shapes.slice(0, 14) : []) {
+      if (!s || typeof s !== "object") continue; const fill = s.fill === true ? ' fill="currentColor" stroke="none"' : "";
+      if (s.type === "line") { const a = [num(s.x1), num(s.y1), num(s.x2), num(s.y2)]; if (a.every((x) => x != null)) out.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${a[2]}" y2="${a[3]}"/>`); }
+      else if (s.type === "circle") { const a = [num(s.cx), num(s.cy), num(s.r, 0.3, 12)]; if (a.every((x) => x != null)) out.push(`<circle cx="${a[0]}" cy="${a[1]}" r="${a[2]}"${fill}/>`); }
+      else if (s.type === "rect") { const a = [num(s.x), num(s.y), num(s.w, 0.5, 24), num(s.h, 0.5, 24)]; const rx = num(s.rx, 0, 12) || 0; if (a.every((x) => x != null)) out.push(`<rect x="${a[0]}" y="${a[1]}" width="${a[2]}" height="${a[3]}" rx="${rx}"${fill}/>`); }
+      else if (s.type === "ellipse") { const a = [num(s.cx), num(s.cy), num(s.rx, 0.3, 12), num(s.ry, 0.3, 12)]; if (a.every((x) => x != null)) out.push(`<ellipse cx="${a[0]}" cy="${a[1]}" rx="${a[2]}" ry="${a[3]}"${fill}/>`); }
+      else if (s.type === "polyline" || s.type === "polygon") { const pts = (Array.isArray(s.points) ? s.points : []).slice(0, 24).map((p) => (Array.isArray(p) ? [num(p[0]), num(p[1])] : [null, null])).filter((p) => p[0] != null && p[1] != null); if (pts.length >= 2) out.push(`<${s.type} points="${pts.map((p) => p.join(",")).join(" ")}"${fill}/>`); }
+      else if (s.type === "path" && typeof s.d === "string" && s.d.length <= 400 && /^[MmLlHhVvCcSsQqTtAaZz0-9\s,.\-]+$/.test(s.d)) out.push(`<path d="${s.d.trim()}"${fill}/>`);
+    }
+    return out.join("");
+  };
+  T.iconPrompt = (desc) => [
+    "You design one small line icon for a planning app. The icon is drawn on a 24 by 24 grid with a 2 unit round stroke, in the plain outline style of Lucide or Feather icons.",
+    "Describe the icon ONLY as a JSON object with simple shapes. No prose, no markdown, no SVG text.",
+    'Shape: {"name":"<2-3 word name>","hint":"<when a planner should use this icon, one short phrase>","shapes":[ ... ]}',
+    'Allowed shapes (coordinates are numbers from 2 to 22): {"type":"line","x1":0,"y1":0,"x2":0,"y2":0} {"type":"circle","cx":0,"cy":0,"r":0} {"type":"rect","x":0,"y":0,"w":0,"h":0,"rx":0} {"type":"ellipse","cx":0,"cy":0,"rx":0,"ry":0} {"type":"polyline","points":[[x,y],[x,y]]} {"type":"polygon","points":[[x,y],[x,y],[x,y]]} {"type":"path","d":"M.. (only M L H V C S Q T A Z commands)"}',
+    'Add "fill":true to a shape only for small solid details such as dots. Use 3 to 9 shapes. Keep it centred, bold and readable at 20 pixels. One clear object, no text or letters.',
+    "The icon to draw: " + String(desc || "").slice(0, 200),
+  ].join("\n");
+
   /* ---------- sound: two short, soft cues made with Web Audio (no files) ---------- */
   T.sound = (() => {
     let ctx = null, out = null, queued = null;
@@ -1881,6 +2274,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const SCORES = {
       load: [[392, 0, 0.9, "sine", 0.05], [587.33, 0.13, 0.9, "sine", 0.05], [783.99, 0.27, 1.2, "sine", 0.045]],
       done: [[659.25, 0, 0.22, "triangle", 0.08], [783.99, 0.075, 0.22, "triangle", 0.08], [1046.5, 0.15, 0.5, "triangle", 0.08], [2093, 0.15, 0.35, "sine", 0.02]],
+      pay: [[1318.5, 0, 0.16, "sine", 0.07], [1975.5, 0.11, 0.55, "sine", 0.075], [3951, 0.11, 0.3, "sine", 0.012], [987.77, 0.11, 0.5, "triangle", 0.02]],
+      tap: [[880, 0, 0.07, "sine", 0.03]],
       all: [[523.25, 0, 0.5, "triangle", 0.07], [659.25, 0.09, 0.5, "triangle", 0.07], [783.99, 0.18, 0.5, "triangle", 0.07], [1046.5, 0.27, 0.9, "triangle", 0.08], [1318.5, 0.36, 1.1, "sine", 0.05], [130.81, 0.27, 1.0, "sine", 0.06]],
     };
     const run = (kind, volume) => { const c = ctx; const t0 = c.currentTime + 0.02; const v = Math.max(0, Math.min(1, volume ?? 0.6)); if (v <= 0) return; for (const [f, at, dur, type, gain] of SCORES[kind] || []) tone(c, f, t0 + at, dur, type, gain * v * 1.6); };
@@ -1905,7 +2300,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 (function () {
   "use strict";
   const T = window.Tempo; const UI = (window.TempoUI = { customIcons: [] });
-  const { useState, useEffect, useRef, useCallback } = React;
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
   const html = htm.bind(React.createElement);
   const { isActive, isPinned, isWork } = T;
 
@@ -1948,7 +2343,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           else if (prev.start != null && prev.date === T.dayKey() && nm > prev.start) actual = Math.min(nm - prev.start, prev.estimatedMinutes * 3);
           if (actual > 0) { next.actualMinutes = actual; if (s.prefs.learnFromHistory !== false && prev.category !== "break") intel = T.recordCompletion(s.intel, prev, actual, new Date(now)); }
         } else { next.completedAt = undefined; next.actualMinutes = undefined; }
-        tasks[a.id] = next; return touch({ ...s, tasks, intel });
+        tasks[a.id] = next;
+        if (a.status === "completed" && a.adjust && prev.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(tasks).filter((t) => t.date === prev.date), prev, T.minutesNow()); if (sh.moved) for (const t of sh.tasks) tasks[t.id] = t; }
+        return touch({ ...s, tasks, intel });
       }
       case "toggleBullet": {
         const prev = s.tasks[a.id]; if (!prev) return s; const cur = prev.doneBullets || [];
@@ -2063,43 +2460,70 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* ---------- task row: swipe left = delete, swipe right = complete, tile = drag handle ---------- */
-  function TaskRow({ task, prefs, nowMin, isToday, onStatus, onEdit, onPostpone, onPark, onDelete, onMove, onToggleBullet, onFocus, onDuplicate, grab, dragStyle, dragClass }) {
+  function TaskRow({ task, prefs, nowMin, isToday, onStatus, onEdit, onPostpone, onPark, onDelete, onMove, onToggleBullet, onFocus, onDuplicate, grab, dragStyle, dragClass, current, onNudge }) {
     const [open, setOpen] = useState(false); const ref = useRef(null); const [up, setUp] = useState(false); const [leaving, setLeaving] = useState("");
     const [dx, setDx] = useState(0); const sw = useRef(null); const dxRef = useRef(0);
     useOutside(ref, useCallback(() => setOpen(false), []));
-    const tick = useTick(task.status === "in_progress" && !!task.startedAt); const tm = timerOf(task, tick);
-    const leave = (fn, dir) => { setLeaving(dir || "r"); setTimeout(fn, 250); };
     const sched = task.start != null && task.end != null; const done = task.status === "completed";
     const live = isToday && sched && isActive(task) && nowMin >= task.start && nowMin < task.end;
+    const cur = !done && task.status !== "postponed" && (task.status === "in_progress" || live || !!current); // the task you are on right now
+    const tick = useTick(cur || (task.status === "in_progress" && !!task.startedAt)); const tm = timerOf(task, tick);
+    const leave = (fn, dir) => { setLeaving(dir || "r"); setTimeout(fn, 250); };
+    // live countdown for the current task: the focus timer if it is running, otherwise the time left in its block
+    let nt = null;
+    if (cur) {
+      if (tm.running || tm.elapsed > 0) nt = { ms: tm.left, pct: tm.pct, lbl: tm.running ? "left on the focus timer" : "left, timer paused" };
+      else if (sched && isToday) { const d = new Date(tick); const nowMs = d.getHours() * 3600000 + d.getMinutes() * 60000 + d.getSeconds() * 1000; const a = task.start * 60000, b = task.end * 60000; nt = { ms: b - nowMs, pct: Math.max(0, Math.min(100, ((nowMs - a) / Math.max(1, b - a)) * 100)), lbl: "left in this block" }; }
+    }
+    const liRef = useRef(null); const rowDrag = useRef(false); const hold = useRef(null); const [lift, setLift] = useState(false);
+    useEffect(() => { const el = liRef.current; if (!el) return; const stop = (e) => { if (rowDrag.current) e.preventDefault(); }; el.addEventListener("touchmove", stop, { passive: false }); return () => { el.removeEventListener("touchmove", stop); clearTimeout(hold.current); }; }, []);
     const bullets = task.bullets || []; const doneB = task.doneBullets || []; const steps = T.showSteps(task, prefs); const ticked = bullets.filter((b) => doneB.includes(b)).length;
     const pr = T.priorityOf(prefs, task.priority); const hl = task.color || (pr.id !== "medium" && pr.color && !done ? pr.color : null);
     const cls = ["row", done ? "done" : "", live ? "live" : "", task.status === "postponed" ? "postponed" : "", open ? "menu-open" : "", leaving ? "leaving " + leaving : "", dx ? "swiping" : "", hl ? "hl" : "", dragClass || ""].join(" ");
     const [label, pk] = STATUS[task.status]; const showStatus = task.status !== "upcoming" || live; const look = iconLook(task);
     const setX = (v) => { dxRef.current = v; setDx(v); };
-    const onPD = (e) => { if (e.button != null && e.button !== 0) return; if (e.target.closest("button, a, input, .menu, .tile.grab")) return; sw.current = { x: e.clientX, y: e.clientY, id: e.pointerId, active: false }; };
+    /* The whole row can be dragged up or down: with a mouse just drag, on a touch screen press and hold first. */
+    const startRowDrag = (s, el) => { if (!grab || rowDrag.current) return; clearTimeout(hold.current); sw.current = null; rowDrag.current = true; setLift(true); grab.down({ button: 0, clientY: s.y, pointerId: s.id, currentTarget: el }, task); };
+    const onPD = (e) => {
+      if (e.button != null && e.button !== 0) return; if (e.target.closest("button, a, input, textarea, .menu, .tile.grab")) return;
+      const s = { x: e.clientX, y: e.clientY, id: e.pointerId, active: false, type: e.pointerType || "mouse" }; sw.current = s; const el = e.currentTarget;
+      clearTimeout(hold.current);
+      if (grab && s.type !== "mouse") hold.current = setTimeout(() => { if (sw.current === s && !s.active) { startRowDrag(s, el); try { navigator.vibrate && navigator.vibrate(12); } catch {} } }, 380);
+    };
     const onPM = (e) => {
+      if (rowDrag.current) { grab.move(e); return; }
       const s = sw.current; if (!s) return; const ddx = e.clientX - s.x, ddy = e.clientY - s.y;
-      if (!s.active) { if (Math.abs(ddx) > 12 && Math.abs(ddx) > Math.abs(ddy) * 1.4) { s.active = true; try { e.currentTarget.setPointerCapture(s.id); } catch {} } else { if (Math.abs(ddy) > 14) sw.current = null; return; } }
+      if (!s.active) {
+        if (Math.abs(ddx) > 12 && Math.abs(ddx) > Math.abs(ddy) * 1.4) { clearTimeout(hold.current); s.active = true; try { e.currentTarget.setPointerCapture(s.id); } catch {} }
+        else if (grab && s.type === "mouse" && Math.abs(ddy) > 7 && Math.abs(ddy) > Math.abs(ddx)) { startRowDrag(s, e.currentTarget); grab.move(e); return; }
+        else { if (Math.abs(ddy) > 10 || Math.abs(ddx) > 10) { clearTimeout(hold.current); if (s.type !== "mouse" && Math.abs(ddy) > 14) sw.current = null; } return; }
+      }
       setX(Math.max(-170, Math.min(170, ddx)));
     };
     const onPU = () => {
+      clearTimeout(hold.current);
+      if (rowDrag.current) { rowDrag.current = false; setLift(false); grab.up(); return; }
       const s = sw.current; sw.current = null; if (!s || !s.active) return; const d = dxRef.current; setX(0);
       if (d <= -90) leave(() => onDelete(task.id), "l"); else if (d >= 90) onStatus(task.id, done ? "upcoming" : "completed");
     };
     const grabProps = grab ? { onPointerDown: (e) => grab.down(e, task), onPointerMove: grab.move, onPointerUp: grab.up, onPointerCancel: grab.up, title: "Drag to reorder" } : {};
     const showMeta = showStatus || task.fixed || task.postponedFrom || (pr.id !== "medium" && !done) || task.dueBy != null;
     const item = (icon, text, fn, danger) => html`<button role="menuitem" class=${danger ? "danger" : ""} onClick=${() => { setOpen(false); fn(); }}><${Icon} name=${icon} />${text}</button>`;
-    return html`<li class=${cls} style=${{ ...(dragStyle || {}), ...(hl ? { "--hl": hl } : {}) }} data-id=${task.id}>
+    return html`<li ref=${liRef} class=${cls + (cur ? " cur" : "") + (lift ? " lift" : "")} style=${{ ...(dragStyle || {}), ...(hl ? { "--hl": hl } : {}) }} data-id=${task.id} onContextMenu=${(e) => { if (rowDrag.current || lift) e.preventDefault(); }}>
       ${dx > 0 ? html`<div class="swipe-bg ok"><${Icon} name="check" />${done ? "Not done" : "Complete"}</div>` : null}
       ${dx < 0 ? html`<div class="swipe-bg del">Delete<${Icon} name="trash" /></div>` : null}
-      <div class="row-inner" style=${dx ? { transform: `translateX(${dx}px)`, userSelect: "none" } : null} onPointerDown=${onPD} onPointerMove=${onPM} onPointerUp=${onPU} onPointerCancel=${onPU}>
+      <div class=${"row-inner" + (grab ? " can-drag" : "")} style=${dx ? { transform: `translateX(${dx}px)`, userSelect: "none" } : null} onPointerDown=${onPD} onPointerMove=${onPM} onPointerUp=${onPU} onPointerCancel=${onPU}>
         <div class=${"tile" + (grab ? " grab" : "")} style=${look.style} ...${grabProps}><${Glyph} markup=${look.markup} /></div>
         <div class="body">
           <div class="title">${sched ? html`<span class="range num">${T.fmtRange(task.start, task.end, prefs.timeFormat)}</span> — ` : null}${task.title}</div>
           <div class="dur">${T.fmtDur(task.estimatedMinutes)}${steps ? ` · ${ticked}/${bullets.length} steps` : ""}${task.actualMinutes ? ` · took ${task.actualMinutes} min` : ""}${!sched && task.status !== "postponed" ? " · no time yet" : ""}${task.notes ? " · has notes" : ""}</div>
           ${steps ? html`<div class="checks">${bullets.map((b, i) => { const on = doneB.includes(b); return html`<div class=${"ck " + (on ? "on" : "")} key=${i}><button class="box" role="checkbox" aria-checked=${on} aria-label=${b} onClick=${() => onToggleBullet(task.id, b)}><${Icon} name="check" /></button><span class="tx">${b}</span></div>`; })}</div>`
             : bullets.length ? html`<div class="note-line">${bullets[0]}</div>` : null}
-          ${!done && (tm.running || tm.elapsed > 0) ? html`<div class=${"timer " + (tm.left < 0 ? "over" : "")}><span class="barw"><i style=${{ width: tm.pct + "%" }}></i></span>${tm.running ? html`<span>focus timer running</span>` : html`<span>timer paused</span>`}</div>` : null}
+          ${nt ? html`<div class=${"nowtimer" + (nt.ms < 0 ? " over" : "")} role="timer" aria-label="Time left on the current task">
+            <span class="dot" aria-hidden="true"></span><span class="big num">${nt.ms < 0 ? "+" : ""}${T.fmtClock(Math.abs(nt.ms) / 1000)}</span><span class="lbl">${nt.ms < 0 ? "over the planned time" : nt.lbl}</span>
+            <span class="barw"><i style=${{ width: nt.pct + "%" }}></i></span>
+            ${tm.running ? html`<button class="btn xs ghost" onClick=${() => onStatus(task.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />${tm.elapsed > 0 ? "Resume" : "Start timer"}</button>`}
+          </div>` : !done && (tm.running || tm.elapsed > 0) ? html`<div class=${"timer " + (tm.left < 0 ? "over" : "")}><span class="barw"><i style=${{ width: tm.pct + "%" }}></i></span>${tm.running ? html`<span>focus timer running</span>` : html`<span>timer paused</span>`}</div>` : null}
           ${showMeta ? html`<div class="meta">
             ${showStatus ? html`<${Pill} kind=${live && task.status === "upcoming" ? "accent" : pk}>${live && task.status === "upcoming" ? "Now" : label}</${Pill}>` : null}
             ${pr.id !== "medium" && !done ? html`<${Pill} icon="flag" style=${pr.color ? { background: tint(pr.color, 14), color: pr.color } : null}>${pr.label}</${Pill}>` : null}
@@ -2122,6 +2546,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
               ${!done ? item("forward", "Move to tomorrow", () => leave(() => onPostpone(task.id))) : null}
               ${!done && task.status !== "postponed" ? item("clock", "Postpone (no time)", () => leave(() => onPark(task.id))) : null}
               ${item("calendar", "Move to another day", () => onMove(task))}
+              ${grab && onNudge ? item("up", "Move up", () => onNudge(task.id, -1)) : null}
+              ${grab && onNudge ? item("down", "Move down", () => onNudge(task.id, 1)) : null}
               <hr />
               ${item("trash", "Delete", () => leave(() => onDelete(task.id), "l"), true)}
             </div>` : null}
@@ -2188,10 +2614,18 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* ---------- schedule card: Jaguar Sprint list or timeline, protected time below ---------- */
-  function ScheduleCard({ title, tasks, day, prefs, nowMin, isToday, actions, onAdd, onReorder, onDayAction, canUndo, undoLabel, view, onView, emptyHint }) {
-    const [showDone, setShowDone] = useState(false);
-    const all = tasks.filter((t) => t.status !== "protected"); const hidden = prefs.hideCompleted && !showDone ? all.filter((t) => t.status === "completed").length : 0;
+  function ScheduleCard({ title, tasks, day, prefs, nowMin, isToday, actions, onAdd, onReorder, onDayAction, canUndo, undoLabel, view, onView, emptyHint, eta, onHideDone }) {
+    const [localHide, setLocalHide] = useState(null); useEffect(() => { setLocalHide(null); }, [prefs.hideCompleted]);
+    const hideDone = localHide != null ? localHide : !!prefs.hideCompleted; // one switch, both directions
+    const toggleDone = () => { const v = !hideDone; setLocalHide(v); if (onHideDone) onHideDone(v); };
+    const all = tasks.filter((t) => t.status !== "protected"); const doneCount = all.filter((t) => t.status === "completed").length; const hidden = hideDone ? doneCount : 0;
     const sprint = hidden ? all.filter((t) => t.status !== "completed") : all; const prots = tasks.filter((t) => t.status === "protected");
+    // the task you are on now: the running timer, the block the clock is in, or the oldest block that ran out without being ticked
+    const openW = all.filter((t) => isActive(t) && t.start != null && t.end != null);
+    const hasLive = isToday && (openW.some((t) => t.status === "in_progress") || openW.some((t) => nowMin >= t.start && nowMin < t.end));
+    const overdue = isToday && !hasLive ? openW.filter((t) => isWork(t) && !t.fixed && t.end <= nowMin).sort((a, b) => b.end - a.end)[0] : null;
+    const movable = (t) => t.status !== "completed" && !t.fixed;
+    const nudge = (id, dir) => { const ids = sprint.map((t) => t.id); const i = ids.indexOf(id); let j = i + dir; while (j >= 0 && j < sprint.length && !movable(sprint[j])) j += dir; if (i < 0 || j < 0 || j >= sprint.length) return; const [x] = ids.splice(i, 1); ids.splice(j, 0, x); onReorder(ids, id); };
     const finish = day && day.targetFinish != null ? day.targetFinish : null;
     const [menu, setMenu] = useState(false); const [confirm, setConfirm] = useState(false); const mref = useRef(null); useOutside(mref, useCallback(() => setMenu(false), []));
     const listRef = useRef(null); const dragRef = useRef(null); const [drag, setDrag] = useState(null);
@@ -2209,18 +2643,26 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       },
       up: () => {
         const d = dragRef.current; dragRef.current = null; setDrag(null); if (!d || !d.moved || d.to === d.from) return;
-        const ids = sprint.map((t) => t.id); const [x] = ids.splice(d.from, 1); ids.splice(d.to, 0, x); onReorder(ids);
+        const ids = sprint.map((t) => t.id); const [x] = ids.splice(d.from, 1); ids.splice(d.to, 0, x); onReorder(ids, d.id);
       },
     };
     const styleFor = (i) => { if (!drag) return null; if (i === drag.from) return { transform: `translateY(${drag.dy}px)` }; if (drag.from < drag.to && i > drag.from && i <= drag.to) return { transform: `translateY(${-drag.h}px)` }; if (drag.to < drag.from && i >= drag.to && i < drag.from) return { transform: `translateY(${drag.h}px)` }; return { transform: "none" }; };
     const count = tasks.length; const act = (kind) => { setMenu(false); onDayAction(kind); };
+    /* The green pill is live: it shows when the day will really end, from the clock and from what is ticked off. */
+    const fmtT = (m) => T.fmtTime(((Math.round(m) % 1440) + 1440) % 1440, prefs.timeFormat);
+    let etaPill = null;
+    if (eta && eta.eta != null) {
+      const late = finish != null && eta.eta > finish + 1; const spare = finish != null ? finish - eta.eta : null;
+      etaPill = html`<span class=${"pill eta " + (late ? "warn" : "good")} title=${"Live estimate: " + T.fmtDur(Math.max(1, eta.remaining)) + " of work left" + (eta.pace > 1.05 ? ", and today things are taking a little longer than planned" : eta.pace < 0.95 ? ", and today you are faster than planned" : "") + "."}><i class="livedot" aria-hidden="true"></i>${isToday ? "Done by " : "Ends "}<b class="num">${fmtT(eta.eta)}</b>${eta.overnight ? " (after midnight)" : ""}${finish != null ? html`<span class="sub"> · ${late ? T.fmtShortDur(-spare) + " past your " + fmtT(finish) + " target" : spare >= 1 ? T.fmtShortDur(spare) + " before " + fmtT(finish) : "right on " + fmtT(finish)}</span>` : null}</span>`;
+    } else if (eta && eta.done && eta.finishedAt != null && isToday) etaPill = html`<span class="pill eta good"><${Icon} name="check" />All done at <b class="num">${fmtT(eta.finishedAt)}</b></span>`;
+    else if (finish != null) etaPill = html`<${Pill} kind="good">Finish by ${T.fmtTime(finish, prefs.timeFormat)}</${Pill}>`;
     const hasDone = all.some((t) => t.status === "completed"); const hasBreaks = all.some((t) => t.category === "break" && isActive(t)); const hasOpen = all.some((t) => isActive(t) && isWork(t) && !t.fixed);
     const mi = (icon, text, kind, danger) => html`<button role="menuitem" class=${danger ? "danger" : ""} onClick=${() => (kind === "deleteAll" ? (setMenu(false), setConfirm(true)) : act(kind))}><${Icon} name=${icon} />${text}</button>`;
     return html`<section class="card" aria-label="Schedule">
       <div class="card-head sched-head">
         <h2>${title}</h2>
         <div class="head-tools">
-          ${finish != null ? html`<${Pill} kind="good">Finish by ${T.fmtTime(finish, prefs.timeFormat)}</${Pill}>` : null}
+          ${etaPill}
           ${onView ? html`<div class="seg" role="tablist" aria-label="Schedule view"><button role="tab" aria-selected=${view !== "timeline"} class=${view !== "timeline" ? "on" : ""} onClick=${() => onView("list")} aria-label="List view"><${Icon} name="list" /><span class="tx">List</span></button><button role="tab" aria-selected=${view === "timeline"} class=${view === "timeline" ? "on" : ""} onClick=${() => onView("timeline")} aria-label="Timeline view"><${Icon} name="timeline" /><span class="tx">Timeline</span></button></div>` : null}
           ${onDayAction ? html`<button class="ibtn" aria-label=${canUndo ? "Undo " + undoLabel : "Nothing to undo"} title=${canUndo ? "Undo " + undoLabel : "Nothing to undo"} disabled=${!canUndo} onClick=${() => onDayAction("undo")}><${Icon} name="undo" /></button>` : null}
           ${onDayAction ? html`<div class="menu-wrap" ref=${mref}><button class="ibtn" aria-label="Schedule options" aria-expanded=${menu} onClick=${() => setMenu((m) => !m)}><${Icon} name="more" /></button>
@@ -2238,14 +2680,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
             </div>` : null}</div>` : null}
         </div>
       </div>
-      ${finish != null ? html`<div class="finish-row"><${Pill} kind="good">Finish by ${T.fmtTime(finish, prefs.timeFormat)}</${Pill}></div>` : null}
+      ${etaPill ? html`<div class="finish-row">${etaPill}</div>` : null}
       ${confirm ? html`<div class="note warn" style=${{ margin: "4px 0 10px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}><span style=${{ flex: "1 1 200px" }}>Delete all ${count} items on this day, including completed ones and protected time?</span><button class="btn sm solid-danger" onClick=${() => { setConfirm(false); onDayAction("deleteAll"); }}>Delete all</button><button class="btn sm ghost" onClick=${() => setConfirm(false)}>Cancel</button></div>` : null}
       ${!count ? html`<div class="empty"><${Icon} name="sparkles" size=${28} /><div class="big">Nothing planned yet</div><p>${emptyHint || "Tell the assistant what your day looks like, or add a task by hand."}</p></div>` : null}
       ${count && view === "timeline" ? html`<${Timeline} tasks=${tasks} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} onEdit=${actions.onEdit} />` : null}
       ${count && view !== "timeline" ? html`<div>
         ${sprint.length ? html`<div class="sec-lbl">Jaguar Sprint</div><ul class="rows" ref=${listRef}>${sprint.map((t, i) => html`<${TaskRow} key=${t.id} task=${t} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} ...${actions}
-          grab=${onReorder && t.status !== "completed" && !t.fixed ? grab : null} dragStyle=${styleFor(i)} dragClass=${drag ? (drag.from === i ? "dragging" : "shift") : ""} />`)}</ul>` : null}
-        ${hidden ? html`<button class="btn sm ghost" style=${{ marginTop: 10 }} onClick=${() => setShowDone(true)}>Show ${hidden} completed</button>` : null}
+          grab=${onReorder && movable(t) ? grab : null} onNudge=${onReorder ? nudge : null} current=${!!overdue && overdue.id === t.id} dragStyle=${styleFor(i)} dragClass=${drag ? (drag.from === i ? "dragging" : "shift") : ""} />`)}</ul>` : null}
+        ${doneCount ? html`<button class="btn sm ghost donetoggle" aria-pressed=${hideDone} onClick=${toggleDone}><${Icon} name=${hideDone ? "eye" : "eyeoff"} />${hideDone ? `Show ${doneCount} completed` : "Hide completed"}</button>` : null}
         ${prots.length ? html`<div class="sec-lbl prot-lbl">Protected time</div><div class="prots">${prots.map((t) => html`<${ProtectedCard} key=${t.id} task=${t} prefs=${prefs} onEdit=${actions.onEdit} onDelete=${actions.onDelete} />`)}</div>` : null}
       </div>` : null}
       ${onAdd ? html`<div style=${{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}><button class="btn sm ghost" onClick=${() => onAdd()}><${Icon} name="plus" />Add task</button><button class="btn sm ghost" onClick=${() => onAdd({ status: "protected", category: "free", title: "Free time", fixed: true, estimatedMinutes: 60 })}><${Icon} name="moon" />Protect time</button></div>` : null}
@@ -2301,19 +2743,22 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </section>`;
   }
 
-  /* ---------- Tempo Intelligence: is the day on track, and what Tempo has learned ---------- */
-  function IntelCard({ an, intel, prefs, memoryCount }) {
-    const fmt = prefs.timeFormat; const lim = T.fmtTime(an.limit, fmt);
+  /* ---------- Tempo Intelligence: is the day on track, where it will end, and what Tempo has learned ---------- */
+  function IntelCard({ an, intel, prefs, memoryCount, tasks, all, eta, nowMin, isToday, today, date }) {
+    const fmt = prefs.timeFormat; const lim = T.fmtTime(an.limit, fmt); const [more, setMore] = useState(false);
     const ST = { empty: ["Nothing planned", ""], done: ["All done", "good"], ontrack: ["On track", "good"], tight: ["Tight", "warn"], unplanned: ["Needs times", "accent"], behind: ["Behind", "warn"], over: ["Over capacity", "bad"] }[an.status];
+    const rep = useMemo(() => T.intelReport({ all: all || tasks || [], tasks: tasks || [], eta, intel, prefs, today, date, now: nowMin, isToday }), [all, tasks, eta && eta.eta, eta && eta.target, intel, prefs, today, date, nowMin, isToday]);
+    const ft = (m) => T.fmtTime(((Math.round(m) % 1440) + 1440) % 1440, fmt);
     let line = "Add a few tasks and Tempo will tell you whether they fit.";
     if (an.status === "done") line = "Everything planned is finished.";
     else if (an.status === "over") line = `About ${T.fmtDur(-an.slack)} of work does not fit before ${lim}.`;
     else if (an.status === "behind") line = an.overdue.length ? `“${an.overdue[0].title}” was due to end at ${T.fmtTime(an.overdue[0].end, fmt)} and is not marked done.` : "Two blocks overlap.";
     else if (an.status === "unplanned") line = `${an.unscheduled.length} task${an.unscheduled.length > 1 ? "s have" : " has"} no time yet, and ${an.unscheduled.length > 1 ? "they fit" : "it fits"} before ${lim}.`;
+    else if (eta && eta.eta != null && isToday) line = eta.delta == null ? `At this pace you are done by ${ft(eta.eta)}, with ${T.fmtDur(Math.max(1, eta.remaining))} of work left.` : eta.delta > 1 ? `At this pace you finish at ${ft(eta.eta)}, ${T.fmtDur(eta.delta)} after your ${ft(eta.target)} target.` : `At this pace you finish at ${ft(eta.eta)}, ${T.fmtDur(Math.max(0, -eta.delta))} before your ${ft(eta.target)} target.`;
     else if (an.status === "tight") line = `It fits, with ${T.fmtDur(Math.max(0, an.slack))} to spare before ${lim}.`;
-    else if (an.status === "ontrack") line = `You are on schedule and finish about ${T.fmtDur(an.slack)} before ${lim}.`;
+    else if (an.status === "ontrack") line = `The plan fits and ends about ${T.fmtDur(an.slack)} before ${lim}.`;
     const learned = prefs.learnFromHistory === false ? [] : T.insights(intel).slice(0, 3); const samples = Object.values(intel.byCategory).reduce((a, s) => a + s.samples, 0);
-    const pct = an.workCount ? Math.round((an.doneCount / an.workCount) * 100) : 0;
+    const pct = an.workCount ? Math.round((an.doneCount / an.workCount) * 100) : 0; const L = rep.line;
     return html`<section class="card intel" aria-label="Tempo Intelligence">
       <div class="intel-head"><div class="orb"><${Icon} name="brain" /></div><h2>Tempo Intelligence</h2><span class="st"><${Pill} kind=${ST[1]}>${ST[0]}</${Pill}></span></div>
       <p class="intel-line">${line}</p>
@@ -2321,9 +2766,32 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="mini"><div class="v num">${T.fmtShortDur(an.available)}</div><div class="k">Free until ${lim}</div></div>
         <div class="mini"><div class="v num">${T.fmtShortDur(an.needed + an.breaks)}</div><div class="k">Work + breaks</div></div>
         <div class="mini"><div class="v num" style=${{ color: an.slack < 0 ? "var(--bad)" : "inherit" }}>${an.slack < 0 ? "−" : "+"}${T.fmtShortDur(Math.abs(an.slack))}</div><div class="k">${an.slack < 0 ? "Over" : "Spare"}</div></div>
-      </div>
-      <div class="sprintbar" role="img" aria-label=${"Sprint progress " + pct + "%"}><i style=${{ width: pct + "%" }}></i></div>
-      <div class="sprintcap"><span>${an.doneCount} of ${an.workCount} sprint tasks done</span><span class="num">${an.remainingCount && an.lastEnd ? "last block ends " + T.fmtTime(an.lastEnd, fmt) : ""}</span></div>` : null}
+      </div>` : null}
+      ${L ? html`<div class="dayline" role="img" aria-label=${"Day from " + ft(L.start) + " to " + ft(L.end) + (eta && eta.eta != null ? ", expected finish " + ft(eta.eta) : "")}>
+        <div class="dl-track">
+          ${L.blocks.map((b) => html`<i key=${b.id} class=${"dl-b" + (b.done ? " done" : "") + (b.brk ? " brk" : "") + (b.fixed ? " pin" : "")} style=${{ left: b.left + "%", width: b.width + "%" }}></i>`)}
+          ${L.target != null ? html`<span class="dl-mark target" style=${{ left: L.target + "%" }} title=${"Your target: " + ft(eta.target)}></span>` : null}
+          ${L.eta != null ? html`<span class=${"dl-mark eta" + (eta.delta > 1 ? " late" : "")} style=${{ left: L.eta + "%" }} title=${"Expected finish: " + ft(eta.eta)}></span>` : null}
+          ${L.now != null ? html`<span class="dl-now" style=${{ left: L.now + "%" }}></span>` : null}
+        </div>
+        <div class="dl-cap"><span class="num">${ft(L.start)}</span><span>${an.doneCount} of ${an.workCount} done · ${pct}%</span><span class="num">${eta && eta.eta != null ? "ends " + ft(eta.eta) : ft(L.end)}</span></div>
+      </div>` : null}
+      ${an.status !== "empty" ? html`<div class="intel-tiles">
+        <div class=${"itile tone-" + rep.pace.tone}><div class="k">Pace today</div><div class="v">${rep.pace.label}</div><div class="s">${rep.pace.sub}</div></div>
+        <div class="itile"><div class="k">Streak</div><div class="v num">${rep.streak} day${rep.streak === 1 ? "" : "s"}</div><div class="s">${rep.streak ? "in a row with something finished" : "Finish one task to start a streak."}</div></div>
+        <div class="itile"><div class="k">Focused today</div><div class="v num">${T.fmtShortDur(rep.focused)}</div><div class="s">${rep.accuracy != null ? "Estimates are " + rep.accuracy + "% accurate lately." : "on the focus timer"}</div></div>
+      </div>` : null}
+      ${rep.tip ? html`<div class="intel-tip"><${Icon} name="zap" /><span>${rep.tip}</span></div>` : null}
+      ${an.status !== "empty" ? html`<button class="btn sm ghost intel-more" aria-expanded=${more} onClick=${() => setMore((m) => !m)}><${Icon} name=${more ? "up" : "down"} />${more ? "Less detail" : "More detail"}</button>` : null}
+      ${more && rep.mix.length ? html`<div class="intel-sec"><div class="sec-lbl">Where the planned time goes</div>
+        <div class="mixbar" role="img" aria-label=${rep.mix.map((m) => m.label + " " + Math.round(m.pct) + "%").join(", ")}>${rep.mix.map((m) => html`<i key=${m.cat} style=${{ width: m.pct + "%", background: `var(--t-${m.cat}-fg)` }} title=${m.label + ": " + T.fmtDur(m.minutes)}></i>`)}</div>
+        <div class="mixkey">${rep.mix.slice(0, 5).map((m) => html`<span key=${m.cat}><i style=${{ background: `var(--t-${m.cat}-fg)` }}></i>${m.label} <b class="num">${T.fmtShortDur(m.minutes)}</b></span>`)}</div>
+      </div>` : null}
+      ${more ? html`<div class="intel-sec"><div class="sec-lbl">When you get things done</div>
+        ${rep.hours.length ? html`<div class="hourbars" role="img" aria-label=${"Completed tasks by hour. Most around " + T.fmtTime(rep.best * 60, fmt)}>${rep.hours.map((x) => html`<div key=${x.h} class=${"hb" + (x.best ? " best" : "")} title=${T.fmtTime(x.h * 60, fmt) + ": " + x.n + " finished"}><i style=${{ height: Math.max(4, x.pct) + "%" }}></i><span class="num">${x.h % 3 === 0 ? T.fmtTime(x.h * 60, fmt).replace(":00", "").replace(" ", "") : ""}</span></div>`)}</div>
+          <p class="quiet">You finish the most around ${T.fmtTime(rep.best * 60, fmt)} (${rep.totalDone} tasks counted).</p>`
+          : html`<p class="quiet">After a few finished tasks, Tempo shows your strongest hours here.</p>`}
+      </div>` : null}
       <div class="learn">${learned.length ? learned.map((s, i) => html`<div key=${i}><${Icon} name="bulb" /><span>${s}</span></div>`)
         : html`<div><${Icon} name="bulb" /><span>${prefs.learnFromHistory === false ? "Learning from completed tasks is switched off in Preferences." : samples ? "Still learning: a couple more completed tasks per kind of work and estimates start adapting." : "Tempo learns how long each kind of work really takes you. Use the focus timer and estimates start adapting."}</span></div>`}
         <div><${Icon} name="brain" /><span>${memoryCount ? `Tempo remembers ${memoryCount} thing${memoryCount > 1 ? "s" : ""} about you. ` : "Nothing remembered yet. "}<a href="#memory">Open memory</a></span></div>
@@ -2440,7 +2908,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   /* Scene A (one task done): the task's letters grow into a jungle and the jaguar runs through it and leaps. */
   function taskScene(W, H, title) {
     const R = rng(T.hash(title) || 7); const ground = H - 24; const text = String(title || "Done").slice(0, 46); let letters = null;
-    const font = `700 ${Math.min(19, Math.max(14, H * 0.11))}px "Plus Jakarta Sans", system-ui, sans-serif`; const sc = clamp(H / 150, 0.9, 1.4);
+    const font = `700 ${Math.round(clamp(H * 0.085, 15, 26))}px "Plus Jakarta Sans", system-ui, sans-serif`; const sc = clamp(Math.min(H / 150, W / 300), 0.9, 2);
     const span = W * 2.6; const wrap = (v) => ((v % span) + span) % span - W * 0.3;
     const farTrees = Array.from({ length: 11 }, (_, i) => ({ x: (i / 11) * span + R() * 40, h: H * (0.7 + R() * 0.35), kind: R() > 0.72 ? 1 : 0, p: R() * TAU }));
     const midTrees = Array.from({ length: 8 }, (_, i) => ({ x: (i / 8) * span + R() * 60, h: H * (0.95 + R() * 0.4), kind: R() > 0.6 ? 1 : 0, p: R() * TAU }));
@@ -2469,12 +2937,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       { const lx = logX - cm; if (lx > -120 && lx < W + 120) { A(j); c.fillStyle = V.ink; c.beginPath(); c.moveTo(lx - 46 * sc, ground + 6); c.quadraticCurveTo(lx - 40 * sc, ground - 15 * sc, lx, ground - 16 * sc); c.quadraticCurveTo(lx + 40 * sc, ground - 15 * sc, lx + 48 * sc, ground + 6); c.fill(); c.strokeStyle = V.ink; c.lineWidth = 4 * sc; c.lineCap = "round"; c.beginPath(); c.moveTo(lx + 14 * sc, ground - 14 * sc); c.lineTo(lx + 30 * sc, ground - 34 * sc); c.moveTo(lx - 20 * sc, ground - 14 * sc); c.lineTo(lx - 28 * sc, ground - 27 * sc); c.stroke(); A(j * 0.5); c.strokeStyle = V.core; c.lineWidth = 1; c.beginPath(); c.moveTo(lx - 38 * sc, ground - 12 * sc); c.quadraticCurveTo(lx, ground - 18.5 * sc, lx + 40 * sc, ground - 12 * sc); c.stroke(); } }
       // the letters of the task turn into plants
       c.font = font; c.textBaseline = "alphabetic";
-      if (!letters) { letters = []; let x = 18; for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
+      if (!letters) { letters = []; let x = Math.max(18, (W - c.measureText(text).width) / 2); for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
       const baseY = Math.min(ground - 8, H * 0.46);
       letters.forEach((L, i) => {
         const grow = easeBack((t - 0.12 - i * 0.022) / 0.75); const la = 1 - ease((t - i * 0.02) / 0.55);
         if (L.ch.trim() && grow > 0) { const y0 = lerp(baseY, ground + 6, ease((t - 0.1) / 0.8)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3) , y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
-        if (la > 0) { A(la); c.fillStyle = la > 0.6 ? "#171717" : V.vivid; c.fillText(L.ch, L.x, baseY); }
+        if (la > 0) { A(la); c.fillStyle = la > 0.6 ? V.glow : V.pale; c.fillText(L.ch, L.x, baseY); }
       });
       A(1);
       // the jaguar
@@ -2491,7 +2959,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       // foreground: dark leaves rushing past
       A(j); for (const f of front) plant(c, wrap(f.x - cm * 1.7), H + 6, f.h * 1.6 * sc, f.k, Math.sin(t * 2.6 + f.p) * 0.12, V.ink);
       for (const m of motes) { A(j * (0.35 + 0.4 * Math.sin(t * 3 + m.p))); ell(c, ((m.x - cm * 0.3 + Math.sin(t + m.p) * 8) % W + W) % W, m.y + Math.cos(t * 0.8 + m.p) * 6, m.r, m.r, V.mist); }
-      if (t > T_LAND + 0.25) { const u = easeOut((t - T_LAND - 0.25) / 0.45); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14; c.font = `800 ${Math.round(clamp(H * 0.17, 18, 30))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, H * 0.42 + (1 - u) * 8); c.font = `600 ${Math.round(clamp(H * 0.09, 12, 15))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(text, W / 2, H * 0.42 + 22); c.shadowBlur = 0; c.textAlign = "start"; }
+      if (t > T_LAND + 0.25) { const u = easeOut((t - T_LAND - 0.25) / 0.45); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14; const fs = Math.round(clamp(H * 0.16, 22, 46)); c.font = `800 ${fs}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, H * 0.4 + (1 - u) * 8); c.font = `600 ${Math.round(clamp(H * 0.065, 13, 18))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(text, W / 2, H * 0.4 + fs * 0.72); c.shadowBlur = 0; c.textAlign = "start"; }
       c.globalAlpha = 1;
     } };
   }
@@ -2521,13 +2989,35 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const run = t * (post > 0 ? 0.15 : 0.5); const order = trees.map((tr) => ({ tr, d: (tr.d + run) % 1 })).sort((a, b) => a.d - b.d);
       for (const { tr, d } of order) { const px = cx + tr.side * (W * 0.07 + d * d * W * 0.66); const baseY = cy - H * 0.03 + d * d * H * 0.62; const th = H * (0.2 + d * 1.25); A(0.35 + d * 0.65); tree(c, px, baseY, th, d > 0.7 ? V.ink : d > 0.4 ? V.night : V.deep, Math.sin(t * 1.3 + tr.p) * 0.4, tr.kind); }
       for (const m of motes) { A(0.3 + 0.4 * Math.sin(t * 3 + m.p)); ell(c, m.x + Math.sin(t + m.p) * 12, m.y + Math.cos(t * 0.7 + m.p) * 8, m.r, m.r, V.mist); }
-      // the jaguar: the same sleek runner as in the task scene, coming out of the distance and leaping at the glass
-      const LEAP = IMPACT - 0.5; const k0 = Math.min(W, H) / 400; let jx, jy, js, tilt = 0, lp = 0;
-      if (t < LEAP) { const k = easeIn(t / LEAP); js = k0 * lerp(0.28, 1.7, k); jx = lerp(W * 0.2, W * 0.4, t / LEAP); jy = lerp(cy + H * 0.01, cy + H * 0.28, k); }
-      else if (t < IMPACT) { const k = (t - LEAP) / (IMPACT - LEAP); js = k0 * lerp(1.7, 6.4, easeIn(k)); const hx = lerp(W * 0.4 + 66 * k0 * 1.7, ix, ease(k)); const hy = lerp(cy + H * 0.28 - 52 * k0 * 1.7, iy, ease(k)) - Math.sin(k * Math.PI) * H * 0.13; jx = hx - 66 * js; jy = hy + 52 * js; lp = 1; tilt = lerp(-0.32, 0.04, k); }
-      else { js = k0 * 6.4 * (1 + Math.exp(-post * 5) * 0.04); jx = ix - 66 * js + post * W * 0.04; jy = iy + 52 * js + easeIn(post / 1.4) * H * 1.5; lp = 1; tilt = 0.04 + post * 0.1; }
-      A(1); drawJaguar(c, { x: jx, y: jy, s: js, phase: t * 2.8, leap: lp, tilt });
-      if (t < LEAP) { A(0.45); for (let i = 0; i < 4; i++) { const k = (t * 2.8 + i * 0.25) % 1; ell(c, jx - (40 + k * 46) * js, jy - 2 - k * 9 * js, (3 + k * 9) * js, (2 + k * 5) * js, `rgba(196,181,253,${0.4 * (1 - k)})`); } }
+      // the jaguar: the same sleek runner, charging out of the forest and smashing the glass paw-first.
+      // Depth comes from exponential growth, motion ghosts, converging speed lines, a slow-motion hang
+      // and a final snap into the glass, so the crack is clearly ITS doing.
+      const LEAP = IMPACT - 0.55; const k0 = Math.min(W, H) / 400;
+      const e1 = { s: k0 * 1.5 }; const PAWX = 62, PAWY = 18; /* the leading front paw, relative to the ground point */ e1.x = cx - 12 * e1.s; e1.y = cy + H * 0.27;
+      const pose = (tt) => {
+        if (tt < LEAP) { const k = easeIn(tt / LEAP); const s = k0 * lerp(0.26, 1.5, k); return { s, x: lerp(cx - W * 0.06, e1.x, tt / LEAP) + Math.sin(tt * 2.1) * W * 0.045 * (1 - k), y: lerp(cy + H * 0.005, e1.y, k), tilt: Math.sin(tt * 6.2) * 0.02, lp: 0, gp: tt * 3.1 };
+        }
+        const u = clamp((tt - LEAP) / (IMPACT - LEAP), 0, 1); const k = u < 0.8 ? easeOut(u / 0.8) * 0.93 : 0.93 + 0.07 * (u - 0.8) / 0.2; // hang, then the snap
+        const s = k0 * lerp(1.5, 2.7, k); const hx = lerp(e1.x + PAWX * e1.s, ix, k); const hy = lerp(e1.y - PAWY * e1.s, iy, k) - Math.sin(u * Math.PI) * H * 0.1;
+        return { s, x: hx - PAWX * s, y: hy + PAWY * s, tilt: lerp(-0.3, 0, k), lp: 1, gp: 0 }; // the paw, not the nose, is what reaches the glass
+      };
+      let P0;
+      if (post >= 0) { const b = pose(IMPACT); P0 = { ...b, x: b.x - easeIn(post / 1.1) * W * 0.22, y: b.y + easeIn(post / 1.1) * H * 1.6, tilt: post * 0.3 }; }
+      else P0 = pose(t);
+      // converging speed lines while it charges
+      if (t > 0.9 && post < 0) { const k = ease((t - 0.9) / (LEAP - 0.9)); A(0.22 * k); c.strokeStyle = V.pale; c.lineCap = "round"; for (let i = 0; i < 10; i++) { const a2 = (i / 10) * TAU + 0.3; const R1 = Math.max(W, H) * (0.78 - ((t * 1.7 + i * 0.17) % 1) * 0.36); c.lineWidth = 1 + (i % 3); c.beginPath(); c.moveTo(cx + Math.cos(a2) * R1, cy + Math.sin(a2) * R1 * 0.8); c.lineTo(cx + Math.cos(a2) * (R1 + 70 + 50 * k), cy + Math.sin(a2) * (R1 + 70 + 50 * k) * 0.8); c.stroke(); } }
+      // motion ghosts through the leap, then the jaguar itself
+      if (t >= LEAP + 0.04 && t < IMPACT) for (let g2 = 3; g2 >= 1; g2--) { const p = pose(Math.max(LEAP, t - g2 * 0.045)); A(0.12 / g2 + 0.02); drawJaguar(c, { x: p.x, y: p.y, s: p.s, phase: p.gp, leap: p.lp, tilt: p.tilt }); }
+      A(1); if (post < 1.3) drawJaguar(c, { x: P0.x, y: P0.y, s: P0.s, phase: P0.gp, leap: P0.lp, tilt: P0.tilt });
+      if (t < LEAP) { A(0.45); for (let i = 0; i < 4; i++) { const k = (t * 2.8 + i * 0.25) % 1; ell(c, P0.x - (40 + k * 46) * P0.s, P0.y - 2 - k * 9 * P0.s, (3 + k * 9) * P0.s, (2 + k * 5) * P0.s, `rgba(196,181,253,${0.4 * (1 - k)})`); } }
+      if (post >= 0) {
+        // the paw that did it, pressed flat on the glass, and the shock running out of it
+        const pw = Math.min(W, H) * 0.15; const pa = clamp(1 - post / 0.55, 0, 1);
+        if (pa > 0) { A(pa * 0.95); c.save(); c.translate(ix, iy); c.rotate(-0.1); const pg = c.createRadialGradient(0, 0, pw * 0.2, 0, 0, pw * 1.5); pg.addColorStop(0, V.plum); pg.addColorStop(1, V.deep);
+          ell(c, 0, pw * 0.3, pw, pw * 0.82, pg); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.27, pw * 0.31, pg);
+          A(pa * 0.85); ell(c, 0, pw * 0.3, pw * 0.52, pw * 0.4, V.soft); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.13, pw * 0.15, V.soft); c.restore(); }
+        for (const d of [0, 0.14]) { const w = post - d; if (w > 0 && w < 0.55) { A((1 - w / 0.55) * 0.6); c.strokeStyle = V.glow; c.lineWidth = Math.max(1, 4 - w * 6); c.beginPath(); c.arc(ix, iy, easeOut(w / 0.55) * Math.min(W, H) * (0.5 + d * 1.6), 0, TAU); c.stroke(); } }
+      }
       // leaves torn loose by the charge
       if (t > 0.6 && post < 0.6) for (const l of leaves) { const k = ((t * 0.9 + l.d) % 1); const px = cx + Math.cos(l.a) * k * k * W * 0.6, py = cy + Math.sin(l.a) * k * k * H * 0.6; A(k * (1 - k) * 2.6); c.save(); c.translate(px, py); c.rotate(t * l.sp); ell(c, 0, 0, l.r * (0.5 + k), l.r * 0.4 * (0.5 + k), V.soft); c.restore(); }
       // glass
@@ -2547,21 +3037,30 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
-  function Celebration({ kind, title, rect, onDone }) {
+  function Celebration({ kind, title, onDone }) {
+    /* The big one fills the screen. The task one plays on a stage in the middle of the screen, above everything
+       (also above Focus mode), so it looks the same wherever the task was ticked off. */
     const ref = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
-    const box = kind === "day" ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
-      : (() => { const r = rect || { left: 16, top: window.innerHeight * 0.35, width: Math.min(680, window.innerWidth - 32), height: 110 }; const h = Math.max(160, Math.min(220, r.height + 60)); const w = Math.max(280, r.width + 16); return { left: Math.max(8, Math.min(window.innerWidth - w - 8, r.left - 8)), top: Math.max(8, Math.min(window.innerHeight - h - 8, r.top + r.height / 2 - h / 2)), width: Math.min(w, window.innerWidth - 16), height: h }; })();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const box = kind === "day" ? { width: vw, height: vh } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
     useEffect(() => {
-      const cv = ref.current; const dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
-      const c = cv.getContext("2d"); c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const cv = ref.current; if (!cv) return;
+      let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
+      cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
+      const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
       const scene = kind === "day" ? dayScene(box.width, box.height, title) : taskScene(box.width, box.height, title);
-      let raf, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
-      const loop = (now) => { const t = (now - t0) / 1000; try { c.setTransform(dpr, 0, 0, dpr, 0, 0); scene.draw(c, t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
+      let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
+      const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
+      const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
+      try { frame(0); } catch (e) { /* the loop reports it */ }
       raf = requestAnimationFrame(loop); const guard = setTimeout(finish, scene.duration * 1000 + 1500); // tabs in the background get no frames
       return () => { finished = true; cancelAnimationFrame(raf); clearTimeout(guard); };
     }, []);
     useEscape(useCallback(() => doneRef.current(), []));
-    return html`<div class=${"fx fx-" + kind} style=${{ left: box.left + "px", top: box.top + "px", width: box.width + "px", height: box.height + "px" }} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : "Task done. Celebration animation."} title="Click to skip"><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>`;
+    return html`<div class=${"fx fx-" + kind} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : "Task done. Celebration animation."}>
+      <div class="fx-stage" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
+      <span class="fx-skip">Tap anywhere to skip</span>
+    </div>`;
   }
 
   /* ---------- Focus mode: one task, a big timer, its steps and your notes ---------- */
@@ -2801,13 +3300,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       </div>
     </section>`;
   }
-  function IconsView({ state, dispatch, toast }) {
+  function IconsView({ state, dispatch, toast, caps }) {
     const [editing, setEditing] = useState(null);
     const save = (icon) => { dispatch({ type: "saveIcon", icon }); setEditing(null); toast("Icon saved. Tempo will use it for matching tasks."); };
     const del = (id) => { dispatch({ type: "deleteIcon", id }); setEditing(null); toast("Icon deleted"); };
     return html`<${React.Fragment}>
       <header class="hero"><div><h1>Icons</h1><p class="sub">Make your own task icons and tell Tempo when to use them.</p></div>${editing ? null : html`<button class="btn primary" onClick=${() => setEditing({})}><${Icon} name="plus" />New icon</button>`}</header>
       ${editing ? html`<${IconEditor} key=${editing.id || editing.seed || "new"} icon=${editing} onSave=${save} onCancel=${() => setEditing(null)} onDelete=${del} />` : null}
+      ${editing ? null : html`<${UI.AiIconMaker} state=${state} dispatch=${dispatch} toast=${toast} caps=${caps} onEdit=${(seed) => { setEditing(seed); window.scrollTo({ top: 0, behavior: "smooth" }); }} />`}
       <section class="card" aria-label="Your icons"><div class="card-head"><h2>Your icons</h2><${Pill}>${state.icons.length}</${Pill}></div>
         ${state.icons.length ? html`<div class="icongrid">${state.icons.map((c) => { const look = customLook(c); return html`<button key=${c.id} class="iconcell" onClick=${() => setEditing(c)} title=${"Edit " + c.name}><div class="tile" style=${look.style}><${Glyph} markup=${T.safeMarkup(look.markup)} /></div><b>${c.name}</b><span>${c.hint || "No rule yet"}</span></button>`; })}</div>`
           : html`<div class="empty"><${Icon} name="shapes" size=${28} /><div class="big">No custom icons yet</div><p>Draw one with shapes or freehand, pick a background, and describe when it fits. Tempo and the assistant will use it in your schedule.</p><button class="btn primary" onClick=${() => setEditing({})}><${Icon} name="plus" />New icon</button></div>`}
@@ -2846,8 +3346,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </${React.Fragment}>`;
   }
 
-  function MoreView() {
-    const items = [["calendar", "Calendar", "calendar", "Plan ahead, day by day"], ["memory", "Memory", "brain", "What Tempo knows about you"], ["icons", "Icons", "shapes", "Make your own task icons"], ["preferences", "Preferences", "sliders", "Sound, priorities, hours and more"]];
+  function MoreView({ prefs }) {
+    const plan = UI.planOf ? UI.planOf(prefs || {}) : { name: "Free" }; const who = ((prefs && prefs.name) || "").trim();
+    const items = [["plan", who ? who + " · " + plan.name + " plan" : "Plan and billing", "user", "Free, Pro and Ultra"], ["calendar", "Calendar", "calendar", "Plan ahead, day by day"], ["memory", "Memory", "brain", "What Tempo knows about you"], ["icons", "Icons", "shapes", "Make your own task icons"], ["preferences", "Preferences", "sliders", "Sound, priorities, hours and more"]];
     return html`<${React.Fragment}>
       <header class="hero"><div><h1>More</h1><p class="sub">Everything else in Tempo.</p></div></header>
       <section class="card"><div class="morelist">${items.map(([r, label, icon, sub]) => html`<a key=${r} href=${"#" + r}><div class="orb"><${Icon} name=${icon} /></div><div><b>${label}</b><span>${sub}</span></div><${Icon} name="right" size=${18} /></a>`)}</div></section>
@@ -2855,6 +3356,186 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   Object.assign(UI, { WeeklyView, IconsView, MemoryView, MoreView, useWidth });
+})();
+</script>
+<script>
+/* =====================================================================
+   Tempo UI, account: the name button in the corner, the plans page, a
+   DEMO checkout (nothing is charged, nothing leaves the browser) and the
+   AI icon maker that the Ultra plan unlocks.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const T = window.Tempo; const UI = window.TempoUI;
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+  const { html, Icon, Glyph, Pill, useEscape } = UI;
+
+  const PLANS = [
+    { id: "free", name: "Free", price: 0, tag: "Where everyone starts", points: ["Basic limits", "Assistant with a limit of 10 requests", "Some new features are not available", "Memory with basic capacity"] },
+    { id: "pro", name: "Pro", price: 25, tag: "Most popular", points: ["Higher limits", "High-knowledge Tempo Intelligence", "New Tempo Intelligence features", "Up to 5 times fewer limits"] },
+    { id: "ultra", name: "Ultra", price: 60, tag: "Everything Tempo has", points: ["No limits", "High quality features", "New tabs and open features", "AI icon maker: describe an icon and Tempo draws it"] },
+  ];
+  const planOf = (prefs) => PLANS.find((p) => p.id === (prefs && prefs.plan)) || PLANS[0];
+  const METHODS = [["tempopay", "Tempo Pay", "zap", "One tap from your Tempo wallet"], ["credit", "Tempo Credit", "card", "Pay later, in one go"], ["blik", "BLIK", "phone", "Confirm in your banking app"]];
+  const money = (n) => "$" + n.toFixed(2);
+
+  /* ---------- the button with your name, bottom-left of the sidebar ---------- */
+  function AccountButton({ prefs, active }) {
+    const plan = planOf(prefs); const name = (prefs.name || "").trim() || "Your account"; const initial = (prefs.name || "").trim().charAt(0).toUpperCase();
+    return html`<a class=${"acct d-only" + (active ? " on" : "")} href="#plan" aria-label=${name + ", " + plan.name + " plan. Open plans."}>
+      <span class="av">${initial || html`<${Icon} name="user" />`}</span>
+      <span class="who"><b>${name}</b><small>${plan.name} plan</small></span>
+      <${Icon} name="right" size=${16} />
+    </a>`;
+  }
+
+  /* ---------- demo checkout ---------- */
+  const CAPTCHA_ICONS = ["paw", "leaf", "book", "coffee", "paw", "moon", "bike", "paw", "music"];
+  function Captcha({ onPass }) {
+    const order = useMemo(() => { const a = CAPTCHA_ICONS.map((icon, i) => ({ icon, i })); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }, []);
+    const [sel, setSel] = useState([]); const [bad, setBad] = useState(false);
+    const toggle = (i) => { setBad(false); setSel((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i])); };
+    const verify = () => { const want = order.filter((o) => o.icon === "paw").map((o) => o.i).sort().join(); if (sel.slice().sort().join() === want) onPass(); else { setBad(true); setSel([]); } };
+    return html`<div class="cpt-box">
+      <div class="cpt-head"><b>Quick check</b><span>Select every tile with a jaguar paw.</span></div>
+      <div class="cpt-grid" role="group" aria-label="Select every tile with a paw">${order.map((o) => html`<button key=${o.i} type="button" class=${"cpt-tile" + (sel.includes(o.i) ? " on" : "")} aria-pressed=${sel.includes(o.i)} aria-label=${o.icon === "paw" ? "Paw" : "Not a paw"} onClick=${() => toggle(o.i)}><${Icon} name=${o.icon} size=${26} /></button>`)}</div>
+      ${bad ? html`<p class="cpt-err" role="alert">Not quite. Pick all three paws and try again.</p>` : null}
+      <button type="button" class="btn primary wide" disabled=${!sel.length} onClick=${verify}>Verify</button>
+    </div>`;
+  }
+  function AuthStep({ onPass }) {
+    const [mode, setMode] = useState("finger"); const [prog, setProg] = useState(0); const [pw, setPw] = useState(""); const raf = useRef(0); const t0 = useRef(0); const passed = useRef(false);
+    const stop = () => { cancelAnimationFrame(raf.current); if (!passed.current) setProg(0); };
+    const start = (e) => { e.preventDefault(); t0.current = performance.now(); const tick = (now) => { const p = Math.min(1, (now - t0.current) / 1100); setProg(p); if (p >= 1) { passed.current = true; onPass("fingerprint"); } else raf.current = requestAnimationFrame(tick); }; raf.current = requestAnimationFrame(tick); };
+    useEffect(() => () => cancelAnimationFrame(raf.current), []);
+    const C = 2 * Math.PI * 46;
+    return html`<div class="auth-box">
+      ${mode === "finger" ? html`<${React.Fragment}>
+        <button type="button" class=${"finger" + (prog > 0 ? " holding" : "")} aria-label="Press and hold to confirm with your fingerprint" onPointerDown=${start} onPointerUp=${stop} onPointerLeave=${stop} onPointerCancel=${stop}
+          onKeyDown=${(e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) start(e); }} onKeyUp=${stop} onContextMenu=${(e) => e.preventDefault()}>
+          <svg class="fgring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke-width="5" class="tr" /><circle cx="50" cy="50" r="46" fill="none" stroke-width="5" class="ar" stroke-linecap="round" stroke-dasharray=${C} stroke-dashoffset=${C * (1 - prog)} transform="rotate(-90 50 50)" /></svg>
+          <${Icon} name="fingerprint" size=${44} />
+        </button>
+        <p class="auth-t">Press and hold to confirm</p>
+        <button type="button" class="linkbtn" onClick=${() => setMode("pw")}>Use a password instead</button>
+      </${React.Fragment}>` : html`<form class="pwform" onSubmit=${(e) => { e.preventDefault(); if (pw.length >= 4) onPass("password"); }}>
+        <div class="field"><label for="co-pw">Tempo password</label><input id="co-pw" class="in" type="password" autocomplete="off" value=${pw} onInput=${(e) => setPw(e.target.value)} placeholder="Any 4 characters work in this demo" /></div>
+        <p class="quiet">This is a demo: do not type a real password. Nothing is checked, saved or sent.</p>
+        <button class="btn primary wide" type="submit" disabled=${pw.length < 4}>Confirm</button>
+        <button type="button" class="linkbtn" onClick=${() => setMode("finger")}>Use fingerprint instead</button>
+      </form>`}
+    </div>`;
+  }
+  function CheckoutSheet({ plan, prefs, onDone, onClose }) {
+    const [step, setStep] = useState("details"); const [method, setMethod] = useState("tempopay");
+    const guess = (prefs.name || "").trim().split(/\s+/); const [first, setFirst] = useState(guess[0] || ""); const [last, setLast] = useState(guess.slice(1).join(" ")); const [email, setEmail] = useState(""); const [err, setErr] = useState("");
+    const close = useCallback(() => { if (step !== "processing") onClose(); }, [step, onClose]); useEscape(close);
+    const mName = (METHODS.find((m) => m[0] === method) || METHODS[0])[1];
+    const pay = (e) => { e.preventDefault(); if (!first.trim() || !last.trim()) return setErr("Add your first and last name."); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setErr("That email address does not look right."); setErr(""); setStep("captcha"); };
+    useEffect(() => { if (step !== "processing") return; const id = setTimeout(() => { setStep("done"); if (prefs.sound !== false) { T.sound.unlock(); T.sound.play("pay", prefs.volume); } }, 1500); return () => clearTimeout(id); }, [step]);
+    const steps = ["details", "captcha", "auth", "done"]; const at = Math.max(0, steps.indexOf(step === "processing" ? "done" : step));
+    return html`<div class="sheet-bg co-bg" onPointerDown=${(e) => { if (e.target === e.currentTarget) close(); }}>
+      <div class="sheet co" role="dialog" aria-modal="true" aria-label=${"Checkout for Tempo " + plan.name}>
+        <div class="co-top">
+          <div><div class="co-k">Tempo ${plan.name}</div><div class="co-price num">${money(plan.price)}<small> / month</small></div></div>
+          ${step !== "processing" && step !== "done" ? html`<button class="ibtn" aria-label="Close checkout" onClick=${close}><${Icon} name="x" /></button>` : null}
+        </div>
+        <div class="co-steps" aria-hidden="true">${steps.map((s, i) => html`<i key=${s} class=${i <= at ? "on" : ""}></i>`)}</div>
+        <p class="co-demo"><${Icon} name="shield" size=${15} />Demo checkout. No real payment is made and nothing you type leaves this device.</p>
+        ${step === "details" ? html`<form onSubmit=${pay} class="co-form">
+          <div class="co-lbl">Pay with</div>
+          <div class="co-methods" role="radiogroup" aria-label="Payment method">${METHODS.map(([id, label, icon, sub]) => html`<button key=${id} type="button" role="radio" aria-checked=${method === id} class=${"co-m" + (method === id ? " on" : "")} onClick=${() => setMethod(id)}><span class="mi"><${Icon} name=${icon} size=${18} /></span><span class="mt"><b>${label}</b><small>${sub}</small></span><span class="rd" aria-hidden="true"></span></button>`)}</div>
+          <div class="grid2">
+            <div class="field"><label for="co-first">First name</label><input id="co-first" class="in" value=${first} onInput=${(e) => { setFirst(e.target.value); setErr(""); }} autocomplete="off" /></div>
+            <div class="field"><label for="co-last">Last name</label><input id="co-last" class="in" value=${last} onInput=${(e) => { setLast(e.target.value); setErr(""); }} autocomplete="off" /></div>
+          </div>
+          <div class="field"><label for="co-email">Email</label><input id="co-email" class="in" type="email" inputmode="email" value=${email} onInput=${(e) => { setEmail(e.target.value); setErr(""); }} placeholder="you@example.com" autocomplete="off" /></div>
+          ${err ? html`<p class="cpt-err" role="alert">${err}</p>` : null}
+          <button class="btn primary wide co-pay" type="submit"><${Icon} name="lock" size=${16} />Pay ${money(plan.price)}</button>
+        </form>` : null}
+        ${step === "captcha" ? html`<${Captcha} onPass=${() => setStep("auth")} />` : null}
+        ${step === "auth" ? html`<${AuthStep} onPass=${() => setStep("processing")} />` : null}
+        ${step === "processing" ? html`<div class="co-wait" role="status"><div class="spin"></div><p>Confirming with ${mName}…</p></div>` : null}
+        ${step === "done" ? html`<div class="co-done" role="status">
+          <svg class="paycheck" viewBox="0 0 100 100" aria-hidden="true"><circle class="pc-c" cx="50" cy="50" r="44" fill="none" stroke-width="5" /><path class="pc-t" d="M30 52l14 14 27-30" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <h3>Done</h3>
+          <p>Welcome to Tempo ${plan.name}, ${first.trim()}.</p>
+          <div class="receipt"><div><span>Plan</span><b>Tempo ${plan.name}</b></div><div><span>Paid with</span><b>${mName}</b></div><div><span>Amount</span><b class="num">${money(plan.price)} (demo, not charged)</b></div></div>
+          <button class="btn primary wide" onClick=${() => onDone({ plan: plan.id, method })}>Continue</button>
+        </div>` : null}
+      </div>
+    </div>`;
+  }
+
+  /* ---------- plans page ---------- */
+  function PlansView({ state, dispatch, toast }) {
+    const cur = planOf(state.prefs); const [buy, setBuy] = useState(null); const name = (state.prefs.name || "").trim();
+    const rank = (id) => PLANS.findIndex((p) => p.id === id);
+    const choose = (p) => { if (p.id === cur.id) return; if (p.price === 0) { dispatch({ type: "setPrefs", patch: { plan: "free" } }); toast("You are back on the Free plan"); } else setBuy(p); };
+    return html`<${React.Fragment}>
+      <header class="hero"><div><h1>${name ? name + "’s plan" : "Your plan"}</h1><p class="sub">You are on Tempo ${cur.name}. Change it any time.</p></div><${Pill} kind="accent" icon="crown">${cur.name}</${Pill}></header>
+      ${!name ? html`<div class="banner"><span>Add your name in Preferences and it shows up on your account button.</span><a class="btn sm soft" href="#preferences">Open preferences</a></div>` : null}
+      <div class="plans">${PLANS.map((p) => html`<section key=${p.id} class=${"card plan" + (p.id === cur.id ? " cur" : "") + (p.id === "pro" ? " best" : "")} aria-label=${"Tempo " + p.name}>
+        <div class="plan-top"><h2>${p.name}</h2>${p.id === cur.id ? html`<${Pill} kind="good" icon="check">Your plan</${Pill}>` : p.id === "pro" ? html`<${Pill} kind="accent">${p.tag}</${Pill}>` : null}</div>
+        <div class="plan-price num">${p.price ? "$" + p.price : "Free"}${p.price ? html`<small> / month</small>` : null}</div>
+        <p class="plan-tag">${p.id === "pro" && p.id !== cur.id ? "For people who plan every day" : p.tag}</p>
+        <ul class="plan-pts">${p.points.map((x, i) => html`<li key=${i}><${Icon} name="check" size=${16} /><span>${x}</span></li>`)}</ul>
+        <button class=${"btn wide " + (p.id === cur.id ? "ghost" : p.id === "free" ? "ghost" : "primary")} disabled=${p.id === cur.id} onClick=${() => choose(p)}>${p.id === cur.id ? "Current plan" : p.price === 0 ? "Switch to Free" : (rank(p.id) > rank(cur.id) ? "Upgrade to " : "Switch to ") + p.name}</button>
+      </section>`)}</div>
+      <section class="card"><div class="card-head"><h2>Good to know</h2></div>
+        <div class="learn flat">
+          <div><${Icon} name="shield" /><span>The checkout is a demo. It never asks for card details and no money moves.</span></div>
+          <div><${Icon} name="wand" /><span>Ultra switches on the AI icon maker on the <a href="#icons">Icons</a> page. Everything else in Tempo works the same on every plan.</span></div>
+        </div>
+      </section>
+      ${buy ? html`<${CheckoutSheet} plan=${buy} prefs=${state.prefs} onClose=${() => setBuy(null)} onDone=${(r) => { dispatch({ type: "setPrefs", patch: { plan: r.plan, planMethod: r.method, planSince: Date.now() } }); setBuy(null); toast("You are on Tempo " + buy.name + (r.plan === "ultra" ? ". The AI icon maker is unlocked." : ".")); }} />` : null}
+    </${React.Fragment}>`;
+  }
+
+  /* ---------- AI icon maker (Ultra) ---------- */
+  function AiIconMaker({ state, dispatch, toast, caps, onEdit }) {
+    const ultra = planOf(state.prefs).id === "ultra"; const [desc, setDesc] = useState(""); const [busy, setBusy] = useState(false); const [res, setRes] = useState(null); const alive = useRef(true);
+    useEffect(() => () => { alive.current = false; }, []);
+    const bgFor = (text) => T.HIGHLIGHTS[T.hash(text) % T.HIGHLIGHTS.length];
+    const make = async (e) => {
+      if (e) e.preventDefault(); const text = desc.trim(); if (!text || busy) return; setBusy(true); setRes(null); let out = null;
+      const ai = caps && caps.sample && !caps.sampleOff && !caps.needsCode;
+      if (ai) {
+        try {
+          const raw = await caps.sample.json(T.iconPrompt(text), { cache: false, modelTier: "default" });
+          const markup = T.safeMarkup(T.shapesToMarkup(raw && raw.shapes));
+          if (markup && markup !== T.ICONS.star && markup.length > 20) out = { markup, name: String((raw && raw.name) || text).slice(0, 40), hint: String((raw && raw.hint) || text).slice(0, 160), source: "ai" };
+        } catch (err) { out = null; }
+      }
+      if (!out) { const f = T.iconFromDescription(text); out = { markup: f.markup, name: f.name, hint: text.slice(0, 160), source: ai ? "fallback" : "local" }; }
+      if (!alive.current) return; setRes({ ...out, fg: "#FFFFFF", bg: bgFor(text) }); setBusy(false);
+    };
+    const save = () => { dispatch({ type: "saveIcon", icon: { id: T.uid("ci"), name: res.name, hint: res.hint, els: [res.markup], markup: res.markup, fg: res.fg, bg: res.bg, bgImage: null, ai: true, updatedAt: Date.now() } }); setRes(null); setDesc(""); toast("Icon saved. Tempo will use it for matching tasks."); };
+    if (!ultra) return html`<section class="card aimaker locked" aria-label="AI icon maker">
+      <div class="intel-head"><div class="orb"><${Icon} name="wand" /></div><h2>AI icon maker</h2><span class="st"><${Pill} kind="accent" icon="lock">Ultra</${Pill}></span></div>
+      <p class="quiet">Describe an icon in a few words and Tempo draws it for you. This is part of Tempo Ultra.</p>
+      <a class="btn sm primary" href="#plan"><${Icon} name="crown" />See plans</a>
+    </section>`;
+    return html`<section class="card aimaker" aria-label="AI icon maker">
+      <div class="intel-head"><div class="orb"><${Icon} name="wand" /></div><h2>AI icon maker</h2><span class="st"><${Pill} kind="accent" icon="crown">Ultra</${Pill}></span></div>
+      <form class="quick" onSubmit=${make}>
+        <div class="wrap"><${Icon} name="sparkles" /><input id="ai-icon" class="in" value=${desc} onInput=${(e) => setDesc(e.target.value)} placeholder="A paper plane for sending invoices" aria-label="Describe the icon" autocomplete="off" maxlength="200" /></div>
+        <button class="btn primary" type="submit" disabled=${!desc.trim() || busy}>${busy ? "Drawing…" : "Draw it"}</button>
+      </form>
+      ${busy ? html`<div class="ai-wait" role="status"><div class="spin"></div><span>Tempo is drawing your icon…</span></div>` : null}
+      ${res ? html`<div class="ai-res">
+        <div class="tile big" style=${{ color: res.fg, background: res.bg }}><${Glyph} markup=${res.markup} size=${44} /></div>
+        <div class="ai-meta">
+          <b>${res.name}</b>
+          <span>${res.source === "ai" ? "Drawn by the assistant." : res.source === "fallback" ? "The assistant could not draw this one, so this is the closest built-in shape." : "The AI server is not connected here, so this is the closest built-in shape."}</span>
+          <div class="swatches" role="group" aria-label="Background colour">${T.HIGHLIGHTS.map((c) => html`<button key=${c} type="button" class=${"sw" + (res.bg === c ? " on" : "")} style=${{ background: c }} aria-label=${"Background " + c} onClick=${() => setRes({ ...res, bg: c })}></button>`)}</div>
+          <div class="ai-acts"><button class="btn sm primary" onClick=${save}><${Icon} name="check" />Save icon</button><button class="btn sm ghost" onClick=${() => make()}><${Icon} name="refresh" />Try again</button><button class="btn sm ghost" onClick=${() => { onEdit({ seed: "ai" + Date.now(), name: res.name, hint: res.hint, markup: res.markup, fg: res.fg, bg: res.bg }); setRes(null); }}><${Icon} name="edit" />Edit by hand</button></div>
+        </div>
+      </div>` : null}
+    </section>`;
+  }
+
+  Object.assign(UI, { PLANS, planOf, AccountButton, PlansView, CheckoutSheet, AiIconMaker });
 })();
 </script>
 <script>
@@ -2968,32 +3649,53 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   const EngineLine = ({ a }) => html`<div class="engine"><span class=${"dot " + (a.sampleOn ? "" : "off")}></span>${a.sampleOn ? html`<span>Planner: <b>Claude</b> ${a.caps.remote ? "(server)" : "(your account)"}</span>`
     : html`<span>Planner: <b>built-in</b> (${a.caps.serverState === "unconfigured" ? "AI server has no API key yet" : a.caps.serverState === "missing" ? "no AI server found at /api/plan" : a.caps.serverState === "checking" ? "checking AI server…" : "offline rules"})</span>`}</div>`;
 
+  const STARTERS = [
+    ["sparkles", "Plan my day", "Put what is left in the best order", "Review my day and propose the best order and timing for what is left.", true],
+    ["zap", "I'm running late", "Shift everything by 20 minutes", "I'm running 20 minutes behind.", true],
+    ["forward", "Move something", "To another time or day", "Move my client call to tomorrow at 10 AM.", false],
+    ["trash", "Tidy up", "Clear what was postponed", "Delete the postponed tasks.", true],
+    ["coffee", "Take a break", "Add a pause right now", "Give me a 15-minute break.", true],
+    ["brain", "Remember this", "Teach Tempo your routine", "Remember that I pick up the kids at 3:30 PM on weekdays.", false],
+  ];
+  const prefill = (text) => window.dispatchEvent(new CustomEvent("tempo-prefill", { detail: text }));
+  const Avatar = ({ busy }) => html`<div class=${"av" + (busy ? " busy" : "")} aria-hidden="true"><${Icon} name="paw" /></div>`;
+  const stamp = (ts, fmt) => { if (!ts) return ""; const d = new Date(ts); return T.fmtTime(d.getHours() * 60 + d.getMinutes(), fmt); };
+
   function ChatLog({ state, a, compact }) {
     const bottom = useRef(null); const fmt = state.prefs.timeFormat;
-    useEffect(() => { bottom.current && bottom.current.scrollIntoView({ block: "end" }); }, [state.messages.length, a.busy]);
-    const msgs = compact ? state.messages.slice(-30) : state.messages;
+    useEffect(() => { const el = bottom.current; const box = el && el.closest(".chat-scroll, .pop-body"); if (box) box.scrollTop = box.scrollHeight; else if (el) el.scrollIntoView({ block: "nearest" }); }, [state.messages.length, a.busy]);
+    const msgs = compact ? state.messages.slice(-30) : state.messages; const name = (state.prefs.name || "").trim();
     return html`<div class="chat" aria-live="polite">
-      ${msgs.length === 0 ? html`<div class="empty"><${Icon} name="sparkles" size=${28} /><div class="big">Tell me what changed</div><p>${compact ? "Add, move, postpone or resize anything in plain words." : "Describe your day, or ask to move, postpone, resize or re-plan. I work on your existing schedule and remember what you tell me about yourself."}</p></div>` : null}
-      ${msgs.map((m) => { const canUndo = m.appliedRevisionId && state.history.some((h) => h.id === m.appliedRevisionId); const p = m.proposal; return html`<div key=${m.id} class=${"msg " + (m.role === "user" ? "user" : "ai")}>
+      ${msgs.length === 0 ? html`<div class="chat-empty">
+        <div class="av xl" aria-hidden="true"><${Icon} name="paw" /></div>
+        <div class="big">${name ? "Hi " + name + ", what changed?" : "What changed?"}</div>
+        <p>${compact ? "Add, move, postpone, delete or resize anything in plain words." : "Describe your day, or ask me to move, postpone, delete, resize or re-plan. I work on your existing schedule and remember what you tell me about yourself."}</p>
+        <div class="starters">${STARTERS.slice(0, compact ? 4 : 6).map(([icon, title, sub, text, go]) => html`<button key=${title} class="starter" onClick=${() => (go ? a.send(text) : prefill(text))}><span class="si"><${Icon} name=${icon} size=${17} /></span><span class="st2"><b>${title}</b><small>${sub}</small></span></button>`)}</div>
+      </div>` : null}
+      ${msgs.map((m) => { const canUndo = m.appliedRevisionId && state.history.some((h) => h.id === m.appliedRevisionId); const p = m.proposal; const ai = m.role !== "user"; return html`<div key=${m.id} class=${"msg " + (ai ? "ai" : "user") + (m.error ? " err" : "")}>
+        ${ai ? html`<${Avatar} />` : null}
+        <div class="mcol">
         <div class="bub">${m.text}</div>
-        ${m.warnings && m.warnings.length ? m.warnings.map((w, i) => html`<div class="warn" key=${i}>${w}</div>`) : null}
-        ${p ? html`<div class="proposal">
-          <div class="pt">${p.status === "pending" ? "Proposed changes" : p.status === "applied" ? "Applied" : p.status === "undone" ? "Undone" : "Discarded"}</div>
+        ${m.warnings && m.warnings.length ? m.warnings.map((w, i) => html`<div class="warn" key=${i}><${Icon} name="alert" size=${15} /><span>${w}</span></div>`) : null}
+        ${p ? html`<div class=${"proposal st-" + p.status}>
+          <div class="pt"><${Icon} name=${p.status === "applied" ? "check" : p.status === "pending" ? "sparkles" : "undo"} size=${14} />${p.status === "pending" ? "Proposed changes" : p.status === "applied" ? "Applied" : p.status === "undone" ? "Undone" : "Discarded"}</div>
           ${p.lines && p.lines.length ? html`<ul>${p.lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul>` : html`<p style=${{ color: "var(--fg-2)", fontSize: 14 }}>The remaining blocks get new times.</p>`}
           ${p.status === "pending" ? html`<div class="pa"><button class="btn sm primary" onClick=${() => a.applyProposal(m)}><${Icon} name="check" />Apply</button><button class="btn sm ghost" onClick=${() => a.discardProposal(m)}>Discard</button></div>` : null}
         </div>` : null}
-        ${m.changes && m.changes.length && !compact ? html`<div class="foot" style=${{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>${m.changes.slice(0, 4).map((l, i) => html`<span key=${i}>${l}</span>`)}</div>` : null}
+        ${m.changes && m.changes.length && !compact ? html`<div class="changes">${m.changes.slice(0, 4).map((l, i) => html`<span key=${i}><${Icon} name="check" size=${13} />${l}</span>`)}</div>` : null}
         ${m.remembered && m.remembered.length ? html`<div class="foot"><${Icon} name="brain" size=${14} /><span>Remembered: ${m.remembered.join("; ")}</span><a href="#memory" onClick=${a.closePopup}>Memory</a></div>` : null}
         ${m.needsCode ? html`<${CodeForm} onSubmit=${(c) => { try { localStorage.setItem(T.CODE_KEY, c); } catch {} a.caps.setNeedsCode(false); a.send(m.retry); }} />` : null}
         ${m.error && !m.needsCode ? html`<div class="foot"><button class="btn sm ghost" onClick=${() => a.send(m.retry)}>Try again</button><button class="btn sm ghost" onClick=${() => a.send(m.retry, "local")}>Use built-in planner</button></div>` : null}
-        ${m.role === "assistant" && !m.error ? html`<div class="foot">
-          ${m.engine ? html`<span>${m.engine === "claude" ? "Claude" : "Built-in planner"}</span>` : null}
+        ${ai && !m.error ? html`<div class="foot">
+          <span class="num">${stamp(m.createdAt, fmt)}</span>
+          ${m.engine ? html`<span>· ${m.engine === "claude" ? "Claude" : "Built-in planner"}</span>` : null}
           ${m.nowOverride ? html`<span>· planned from ${T.fmtTime(T.parseHHMM(m.nowOverride), fmt)}</span>` : null}
-          ${canUndo ? html`<span>· schedule updated</span><button class="btn sm ghost" onClick=${() => a.undo(m.appliedRevisionId)}><${Icon} name="undo" />Undo</button>` : m.undone ? html`<span>· undone</span>` : null}
-          ${m.appliedRevisionId && !compact ? html`<a class="btn sm ghost" href="#today">See schedule <${Icon} name="arrow" /></a>` : null}
-        </div>` : null}
+          ${canUndo ? html`<span>· schedule updated</span><button class="btn xs ghost" onClick=${() => a.undo(m.appliedRevisionId)}><${Icon} name="undo" />Undo</button>` : m.undone ? html`<span>· undone</span>` : null}
+          ${m.appliedRevisionId && !compact ? html`<a class="btn xs ghost" href="#today">See schedule <${Icon} name="arrow" /></a>` : null}
+        </div>` : !ai ? html`<div class="foot"><span class="num">${stamp(m.createdAt, fmt)}</span></div>` : null}
+        </div>
       </div>`; })}
-      ${a.busy ? html`<div class="msg ai"><div class="bub"><span class="thinking" aria-label="Thinking"><i></i><i></i><i></i></span> ${a.sampleOn ? "Thinking through your day…" + (a.secs > 3 ? " " + a.secs + "s" : "") : "Planning…"}</div>${a.sampleOn ? html`<div class="foot"><button class="btn sm ghost" onClick=${a.stop}><${Icon} name="stop" />Stop</button></div>` : null}</div>` : null}
+      ${a.busy ? html`<div class="msg ai"><${Avatar} busy=${true} /><div class="mcol"><div class="bub think"><span class="thinking" aria-label="Thinking"><i></i><i></i><i></i></span><span>${a.sampleOn ? "Thinking through your day" + (a.secs > 3 ? " · " + a.secs + "s" : "") : "Planning"}</span></div>${a.sampleOn ? html`<div class="foot"><button class="btn xs ghost" onClick=${a.stop}><${Icon} name="stop" />Stop</button></div>` : null}</div></div>` : null}
       <div ref=${bottom}></div>
     </div>`;
   }
@@ -3003,11 +3705,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     /* Dictation ends the moment a message is sent (or the composer goes away), and nothing it hears afterwards can land in the box. */
     const stopMic = (hard) => { const r = recRef.current; recRef.current = null; if (r) { if (hard) r.kill(); else r.stop(); } setRec(false); };
     useEffect(() => () => { if (recRef.current) recRef.current.kill(); }, []);
+    useEffect(() => { const h = (e) => { setText(String(e.detail || "")); if (ta.current) ta.current.focus(); }; window.addEventListener("tempo-prefill", h); return () => window.removeEventListener("tempo-prefill", h); }, []);
+    useEffect(() => { const el = ta.current; if (!el) return; el.style.height = "auto"; el.style.height = Math.min(150, Math.max(24, el.scrollHeight)) + "px"; }, [text]);
     const submit = () => { if (!text.trim() || a.busy) return; const v = text; stopMic(true); setRecNote(""); setText(""); a.send(v); };
     const toggleMic = () => {
       if (recRef.current) { stopMic(false); setRecNote("Review the text, then send."); return; }
       if (!T.speech.available()) { setRecNote("Voice input is not available in this browser. Type instead."); return; }
-      setRecNote("Listening… tap again to stop, or just press Send."); const base = text;
+      setRecNote("Listening… tap the microphone to stop, or just press Send."); const base = text;
       const h = T.speech.start({
         onText: (t) => setText((base ? base + " " : "") + t),
         onEnd: () => { recRef.current = null; setRec(false); setRecNote("Review the text, then send."); },
@@ -3017,48 +3721,35 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     };
     const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); } };
     const examples = compact
-      ? ["Move my client call to tomorrow at 10 AM", "Add 45 minutes for the quarterly report before 4 PM", "I want to be completely done by 6 PM", "I'm running 20 minutes behind", "Reorganize the rest of my day"]
-      : ["Move my client call to tomorrow at 10 AM.", "Schedule a gym session for Friday at 7 AM.", "Add 45 minutes for the quarterly report before 4 PM.", "I want to be completely done by 6 PM.", "Remember that I pick up the kids at 3:30 PM on weekdays.", "Move the groceries to after my team meeting.", "I'm running 20 minutes behind.", "Give me a 15-minute break.", "Reorganize the rest of my day."];
+      ? ["Move my client call to tomorrow at 10 AM", "Delete the postponed tasks", "Add 45 minutes for the quarterly report before 4 PM", "I want to be completely done by 6 PM", "I'm running 20 minutes behind", "Reorganize the rest of my day"]
+      : ["Move my client call to tomorrow at 10 AM.", "Delete the postponed tasks.", "Move the postponed tasks to tomorrow.", "Schedule a gym session for Friday at 7 AM.", "Add 45 minutes for the quarterly report before 4 PM.", "I want to be completely done by 6 PM.", "Move the groceries to after my team meeting.", "Give me a 15-minute break.", "Reorganize the rest of my day."];
     const codeBox = a.caps.needsCode ? html`<div class="note warn"><div style=${{ marginBottom: 8 }}>Claude is ready on this server. Enter the access code to use it.</div><${CodeForm} label="Unlock" onSubmit=${(c) => { try { localStorage.setItem(T.CODE_KEY, c); } catch {} a.caps.setNeedsCode(false); }} /></div>` : null;
-    if (compact) return html`<div class="pop-foot">
+    return html`<div class=${compact ? "pop-foot dock" : "dock"}>
       ${codeBox}
       <div class="chips scroll">${examples.map((ex, i) => html`<button key=${i} class="chip" onClick=${() => { setText(ex); ta.current && ta.current.focus(); }}>${ex}</button>`)}</div>
       ${recNote ? html`<div class="engine">${recNote}</div>` : null}
-      <div class="composer-row with-mic">
-        <button class=${"mic sm " + (rec ? "rec" : "")} aria-label=${rec ? "Stop recording" : "Start voice input"} aria-pressed=${rec} onClick=${toggleMic} disabled=${a.busy}><${Icon} name=${rec ? "stop" : "mic"} /></button>
-        <textarea id="pop-composer" ref=${ta} class="in" rows="1" style=${{ minHeight: 42, resize: "none" }} value=${text} onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey} placeholder="Move the dentist to Thursday, add a gym hour…" aria-label="Message to the planning assistant" autoFocus></textarea>
-        <button class="btn primary" onClick=${submit} disabled=${a.busy || !text.trim()} aria-label="Send"><${Icon} name="send" /></button>
+      <div class=${"cbar" + (rec ? " rec" : "")}>
+        <button class=${"cmic " + (rec ? "rec" : "")} aria-label=${rec ? "Stop recording" : "Start voice input"} aria-pressed=${rec} onClick=${toggleMic} disabled=${a.busy} title=${T.speech.available() ? "Dictate" : "Voice input is not available in this browser"}><${Icon} name=${rec ? "stop" : "mic"} /></button>
+        <textarea id=${compact ? "pop-composer" : "composer"} ref=${ta} rows="1" value=${text} onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey} placeholder=${compact ? "What changed?" : "Tell Tempo what changed…"} aria-label="Message to the planning assistant" autoFocus=${!!compact}></textarea>
+        <button class="csend" onClick=${submit} disabled=${a.busy || !text.trim()} aria-label="Send"><${Icon} name="send" /></button>
       </div>
+      ${compact ? null : html`<div class="dock-hint">Enter sends, Shift + Enter makes a new line. Big changes are shown to you before anything moves.</div>`}
     </div>`;
-    return html`<section class="card composer" aria-label="Compose">
-      ${codeBox}
-      <div class="mic-wrap">
-        <button class=${"mic " + (rec ? "rec" : "")} aria-label=${rec ? "Stop recording" : "Start voice input"} aria-pressed=${rec} onClick=${toggleMic} disabled=${a.busy}><${Icon} name=${rec ? "stop" : "mic"} /></button>
-        <span>${recNote || (T.speech.available() ? "Tap to dictate, or type below. Dictation stops when you send." : "Voice input is not available in this browser. Type below.")}</span>
-      </div>
-      <div class="composer-row">
-        <textarea id="composer" ref=${ta} class="in" rows="3" value=${text} onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey} placeholder="Tomorrow I have a client call at 10, need two hours for the budget report, and want to be at the gym by 6…" aria-label="Message to the planning assistant"></textarea>
-        <button class="btn primary" onClick=${submit} disabled=${a.busy || !text.trim()} aria-label="Send"><${Icon} name="send" />Send</button>
-      </div>
-      <div class="chips">${examples.map((ex, i) => html`<button key=${i} class="chip" onClick=${() => { setText(ex); ta.current && ta.current.focus(); }}>${ex}</button>`)}</div>
-    </section>`;
   }
 
   function AssistantView({ state, a, dispatch }) {
-    return html`<${React.Fragment}>
-      <header class="hero"><div><h1>Jaguar Planning Assistant</h1><p class="sub">Say what changed. Tempo revises your existing schedule and keeps it realistic.</p></div></header>
-      <section class="card" aria-label="Conversation">
-        <div class="card-head">
-          <${EngineLine} a=${a} />
-          <div class="head-tools">
-            ${a.caps.sample && !a.caps.sampleOff ? html`<button class="btn sm ghost" onClick=${() => a.setEngineForced(a.engineForced === "local" ? null : "local")}>${a.engineForced === "local" ? "Use Claude" : "Use built-in"}</button>` : null}
-            ${state.messages.length ? html`<button class="btn sm ghost" onClick=${() => dispatch({ type: "clearMessages" })}>Clear</button>` : null}
-          </div>
+    return html`<section class="chatwin" aria-label="Jaguar Planning Assistant">
+      <header class="chat-head">
+        <${Avatar} busy=${a.busy} />
+        <div class="ch-t"><h1>Jaguar Assistant</h1><${EngineLine} a=${a} /></div>
+        <div class="head-tools">
+          ${a.caps.sample && !a.caps.sampleOff ? html`<button class="btn sm ghost" onClick=${() => a.setEngineForced(a.engineForced === "local" ? null : "local")}>${a.engineForced === "local" ? "Use Claude" : "Use built-in"}</button>` : null}
+          ${state.messages.length ? html`<button class="btn sm ghost" onClick=${() => dispatch({ type: "clearMessages" })}><${Icon} name="eraser" />Clear</button>` : null}
         </div>
-        <${ChatLog} state=${state} a=${a} />
-      </section>
+      </header>
+      <div class="chat-scroll"><${ChatLog} state=${state} a=${a} /></div>
       <${Composer} a=${a} />
-    </${React.Fragment}>`;
+    </section>`;
   }
 
   function AssistantPopup({ state, a, onClose }) {
@@ -3066,7 +3757,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     return html`<div class="pop-bg" onPointerDown=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div class="pop" role="dialog" aria-modal="true" aria-label="Jaguar Planning Assistant">
         <div class="pop-head">
-          <div class="orb"><${Icon} name="sparkles" /></div>
+          <${Avatar} busy=${a.busy} />
           <div style=${{ minWidth: 0 }}><h3>Jaguar Assistant</h3><${EngineLine} a=${a} /></div>
           <div class="sp"><a class="btn sm ghost" href="#assistant" onClick=${onClose}>Open full</a><button class="ibtn" aria-label="Close assistant" onClick=${onClose}><${Icon} name="x" /></button></div>
         </div>
@@ -3082,6 +3773,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const sg = useMemo(() => T.suggestions({ all: Object.values(state.tasks), date: viewDate, today, now: nowMin, days: state.days, prefs: state.prefs, intel: state.intel, memory: state.memory }), [state.tasks, state.days, state.prefs, state.intel, state.memory, viewDate, today, nowMin]);
     const movedOut = Object.values(state.tasks).filter((t) => t.postponedFrom === viewDate && t.date !== viewDate && t.date > viewDate && t.status !== "completed");
     const open = tasks.filter((t) => isWork(t) && isActive(t)).length; const last = state.history[state.history.length - 1];
+    const eta = T.liveEta(tasks, { now: nowMin, isToday, day, prefs: state.prefs }); // recomputed on every tick of the clock and every change
+    const dash = { quick: true, suggestions: true, intel: true, progress: true, ...(state.prefs.dash || {}) }; const schedFirst = state.prefs.dashOrder === "schedule";
+    const all = useMemo(() => Object.values(state.tasks), [state.tasks]);
+    const cards = html`<${React.Fragment}>
+      ${dash.suggestions ? html`<${SuggestionsCard} sg=${sg} dateLabel=${isToday ? "the day" : T.relDay(viewDate, today).toLowerCase()} onOk=${(s) => h.onSuggestion(s, viewDate)} onDismiss=${(s) => h.onDismissSuggestion(s, viewDate)} onAsk=${() => h.onAsk(viewDate)} />` : null}
+      ${dash.intel ? html`<${IntelCard} an=${sg.an} intel=${state.intel} prefs=${state.prefs} memoryCount=${state.prefs.memoryEnabled === false ? 0 : state.memory.length} tasks=${tasks} all=${all} eta=${eta} nowMin=${nowMin} isToday=${isToday} today=${today} date=${viewDate} />` : null}
+      ${dash.progress ? html`<${ProgressCard} tasks=${tasks} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} onStatus=${actions.onStatus} onLate=${h.onLate} onFocus=${actions.onFocus} />` : null}
+    </${React.Fragment}>`;
+    const schedule = html`<${ScheduleCard} title=${day.title && day.title !== T.DAY_TITLE ? day.title : isToday ? "Today's schedule" : "Schedule"} tasks=${tasks} day=${day} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} actions=${actions} eta=${eta} onHideDone=${h.onHideDone}
+        onAdd=${(preset) => h.onAdd(viewDate, preset)} onReorder=${(ids, moved) => h.onReorder(viewDate, ids, moved)} onDayAction=${(kind) => h.onDayAction(viewDate, kind)} canUndo=${!!last} undoLabel=${last ? last.note : ""} view=${state.prefs.scheduleView} onView=${h.onView}
+        emptyHint=${isToday ? null : "Nothing is planned for this day. Add a task, or ask the assistant to schedule something here."} />`;
     return html`<${React.Fragment}>
       <header class="hero">
         <div>
@@ -3093,13 +3795,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           <div class="daynav" role="group" aria-label="Day"><button class="ibtn" aria-label="Previous day" onClick=${() => setViewDate(T.addDays(viewDate, -1))}><${Icon} name="left" /></button><button class="lbl" onClick=${() => setViewDate(today)} title="Back to today">${T.relDay(viewDate, today)}</button><button class="ibtn" aria-label="Next day" onClick=${() => setViewDate(T.addDays(viewDate, 1))}><${Icon} name="right" /></button></div>
         </div>
       </header>
-      <${QuickAdd} onQuick=${(text) => h.onQuick(text, viewDate)} dateLabel=${T.relDay(viewDate, today).toLowerCase()} />
-      <${SuggestionsCard} sg=${sg} dateLabel=${isToday ? "the day" : T.relDay(viewDate, today).toLowerCase()} onOk=${(s) => h.onSuggestion(s, viewDate)} onDismiss=${(s) => h.onDismissSuggestion(s, viewDate)} onAsk=${() => h.onAsk(viewDate)} />
-      <${IntelCard} an=${sg.an} intel=${state.intel} prefs=${state.prefs} memoryCount=${state.prefs.memoryEnabled === false ? 0 : state.memory.length} />
-      <${ProgressCard} tasks=${tasks} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} onStatus=${actions.onStatus} onLate=${h.onLate} onFocus=${actions.onFocus} />
-      <${ScheduleCard} title=${day.title && day.title !== T.DAY_TITLE ? day.title : isToday ? "Today's schedule" : "Schedule"} tasks=${tasks} day=${day} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} actions=${actions}
-        onAdd=${(preset) => h.onAdd(viewDate, preset)} onReorder=${(ids) => h.onReorder(viewDate, ids)} onDayAction=${(kind) => h.onDayAction(viewDate, kind)} canUndo=${!!last} undoLabel=${last ? last.note : ""} view=${state.prefs.scheduleView} onView=${h.onView}
-        emptyHint=${isToday ? null : "Nothing is planned for this day. Add a task, or ask the assistant to schedule something here."} />
+      ${dash.quick ? html`<${QuickAdd} onQuick=${(text) => h.onQuick(text, viewDate)} dateLabel=${T.relDay(viewDate, today).toLowerCase()} />` : null}
+      ${schedFirst ? schedule : cards}
+      ${schedFirst ? cards : schedule}
       ${movedOut.length ? html`<section class="card"><div class="card-head"><h2>Moved to another day</h2></div><ul class="rows">${movedOut.map((t) => { const look = iconLook(t); return html`<li class="row" key=${t.id}><div class="row-inner plain"><div class="tile" style=${look.style}><${Glyph} markup=${look.markup} /></div><div class="body"><div class="title">${t.title}</div><div class="dur">${T.relDay(t.date, today)}${t.start != null ? " at " + T.fmtTime(t.start, state.prefs.timeFormat) : ", no time yet"} · ${T.fmtDur(t.estimatedMinutes)}</div></div><div class="acts"><button class="btn sm ghost" onClick=${() => setViewDate(t.date)}>Open day</button></div></div></li>`; })}</ul></section>` : null}
       <button class="fab" onClick=${h.openAssistant} aria-haspopup="dialog"><${Icon} name="sparkles" />Jaguar Assistant</button>
     </${React.Fragment}>`;
@@ -3119,7 +3817,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div style=${{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8, flexWrap: "wrap" }}><div class="section-lbl">${T.relDay(sel, today)} · ${T.fmtLongDate(sel)}</div><div style=${{ display: "flex", gap: 6 }}>${sel !== today ? html`<button class="btn sm ghost" onClick=${() => { setSel(today); setAnchor(today); }}>Today</button>` : null}<button class="btn sm soft" onClick=${() => { setViewDate(sel); location.hash = "today"; }}>Open dashboard</button></div></div>
       </section>
       <${ScheduleCard} title=${day.title && day.title !== T.DAY_TITLE ? day.title : sel === today ? "Today's schedule" : T.relDay(sel, today)} tasks=${tasks} day=${day} prefs=${state.prefs} nowMin=${nowMin} isToday=${sel === today} actions=${actions}
-        onAdd=${(preset) => h.onAdd(sel, preset)} onReorder=${(ids) => h.onReorder(sel, ids)} onDayAction=${(kind) => h.onDayAction(sel, kind)} canUndo=${!!last} undoLabel=${last ? last.note : ""} view=${state.prefs.scheduleView} onView=${h.onView}
+        onAdd=${(preset) => h.onAdd(sel, preset)} onReorder=${(ids, moved) => h.onReorder(sel, ids, moved)} onDayAction=${(kind) => h.onDayAction(sel, kind)} canUndo=${!!last} undoLabel=${last ? last.note : ""} view=${state.prefs.scheduleView} onView=${h.onView}
         emptyHint=${sel < today ? "Nothing was planned for this day." : "Add tasks here, or tell the assistant: “schedule a dentist visit for " + T.parseDay(sel).toLocaleDateString("en-US", { weekday: "long" }) + " at 4 PM”."} />
       ${upcoming.length && sel === today ? html`<section class="card"><div class="card-head"><h2>Coming up</h2></div><ul class="rows">${upcoming.map((t) => { const look = iconLook(t); return html`<li class="row" key=${t.id}><div class="row-inner plain"><div class="tile" style=${look.style}><${Glyph} markup=${look.markup} /></div><div class="body"><div class="title">${t.title}</div><div class="dur">${T.relDay(t.date, today)}${t.start != null ? " at " + T.fmtTime(t.start, state.prefs.timeFormat) : ""} · ${T.fmtDur(t.estimatedMinutes)}</div></div><div class="acts"><button class="btn sm ghost" onClick=${() => { setSel(t.date); setAnchor(t.date); }}>Open</button></div></div></li>`; })}</ul></section>` : null}
     </${React.Fragment}>`;
@@ -3148,6 +3846,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const numIn = (id, label, key, min, max, step) => html`<div class="field"><label for=${id}>${label}</label><input id=${id} class="in num" type="number" min=${min} max=${max} step=${step} value=${p[key]} onChange=${(e) => set({ [key]: Math.max(min, Math.min(max, parseInt(e.target.value, 10) || 0)) })} /></div>`;
     const seg = (key, opts, fallback) => html`<div class="seg">${opts.map(([v, l]) => html`<button key=${String(v)} class=${(p[key] ?? fallback) === v ? "on" : ""} onClick=${() => set({ [key]: v })}>${l}</button>`)}</div>`;
     const sw = (id, key, label, sub, dflt) => html`<label class="switch-row"><input id=${id} type="checkbox" checked=${(p[key] ?? dflt) !== false && (p[key] ?? dflt) !== 0 && !!(p[key] ?? dflt)} onChange=${(e) => set({ [key]: e.target.checked })} /><span><b>${label}</b>${sub ? html`<small>${sub}</small>` : null}</span></label>`;
+    const dash = { quick: true, suggestions: true, intel: true, progress: true, ...(p.dash || {}) };
+    const dsw = (id, key, label, sub) => html`<label class="switch-row"><input id=${id} type="checkbox" checked=${!!dash[key]} onChange=${(e) => set({ dash: { ...dash, [key]: e.target.checked } })} /><span><b>${label}</b><small>${sub}</small></span></label>`;
+    const dashList = [dash.quick ? "Quick add" : null, dash.suggestions ? "Suggestions" : null, dash.intel ? "Intelligence" : null, dash.progress ? "Progress" : null].filter(Boolean);
     const [confirm, setConfirm] = useState(null); const pri = p.priorities || T.DEFAULT_PRIORITIES; const builtin = (id) => ["high", "medium", "low"].includes(id);
     const setPri = (id, patch) => set({ priorities: pri.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
     return html`<${React.Fragment}>
@@ -3168,6 +3869,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         </div>
         <div class="field" style=${{ marginTop: 12 }}><label>Default schedule view</label>${seg("scheduleView", [["list", "List"], ["timeline", "Timeline"]], "list")}</div>
       </section>
+      <section class="card" id="pf-today"><div class="card-head"><h2>Today view</h2></div>
+        <p class="quiet" style=${{ marginBottom: 10 }}>Choose what your dashboard shows and what comes first. The schedule itself is always there.</p>
+        <div class="field"><label>Order</label>${seg("dashOrder", [["cards", "Insights first"], ["schedule", "Schedule first"]], "cards")}</div>
+        <div class="switches">
+          ${dsw("pf-d-quick", "quick", "Quick add", "The one-line field for adding a task.")}
+          ${dsw("pf-d-sugg", "suggestions", "Suggestions for the day", "Ideas with an OK button.")}
+          ${dsw("pf-d-intel", "intel", "Tempo Intelligence", "Pace, expected finish time and what Tempo has learned.")}
+          ${dsw("pf-d-prog", "progress", "Progress and focus timer", "The ring, what is next, and the running-late buttons.")}
+        </div>
+        <div class="dashprev" aria-hidden="true">${(p.dashOrder === "schedule" ? ["Schedule", ...dashList] : [...dashList, "Schedule"]).map((x, i) => html`<span key=${i} class=${x === "Schedule" ? "on" : ""}>${x}</span>`)}</div>
+      </section>
       <section class="card"><div class="card-head"><h2>Sound</h2></div>
         <div class="switches">${sw("pf-sound", "sound", "Sounds", "A soft chime when Tempo opens and when you complete a task. Nothing else makes a sound.", true)}</div>
         <div class="field" style=${{ marginTop: 12 }}><label for="pf-vol">Volume</label><div style=${{ display: "flex", gap: 10, alignItems: "center" }}><input id="pf-vol" type="range" min="0" max="1" step="0.05" value=${p.volume ?? 0.6} onInput=${(e) => set({ volume: parseFloat(e.target.value) })} style=${{ flex: 1 }} /><button class="btn sm ghost" onClick=${() => { T.sound.unlock(); T.sound.play("done", p.volume ?? 0.6); }}><${Icon} name="volume" />Test</button></div></div>
@@ -3178,7 +3890,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="grid2">${numIn("pf-break", "Break (minutes)", "defaultBreakMinutes", 0, 60, 5)}${numIn("pf-focus", "Focus block (minutes)", "focusBlockMinutes", 20, 120, 5)}</div>
         <div class="grid2" style=${{ marginTop: 12 }}>${numIn("pf-buffer", "Transition between tasks (min)", "bufferMinutes", 0, 20, 5)}${numIn("pf-def", "Default task length (min)", "defaultMinutes", 5, 240, 5)}</div>
         <div class="grid2" style=${{ marginTop: 12 }}>${numIn("pf-steps", "Checklists for tasks from (min)", "stepsMinMinutes", 5, 120, 5)}<div></div></div>
-        <div class="switches">${sw("pf-next", "autoStartNext", "Start the next timer automatically", "When you complete a task, the focus timer of the next one starts.", false)}</div>
+        <div class="switches">
+          ${sw("pf-adjust", "autoAdjust", "Adjust times when I tick a task off", "Finish early and the next blocks move up. Run over and they move back. Fixed commitments stay put.", true)}
+          ${sw("pf-next", "autoStartNext", "Start the next timer automatically", "When you complete a task, the focus timer of the next one starts.", false)}
+        </div>
       </section>
       <section class="card"><div class="card-head"><h2>Priorities</h2><button class="btn sm soft" onClick=${() => set({ priorities: [...pri, { id: T.uid("p"), label: "New priority", color: "#0D9488", rank: 1 }] })}><${Icon} name="plus" />Add priority</button></div>
         <p class="quiet" style=${{ marginBottom: 10 }}>Name them, colour them, and say how early Tempo should schedule them. The colour highlights the task in your schedule.</p>
@@ -3213,7 +3928,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* ---------- app ---------- */
   const NAV = [["today", "Today", "Today", "home", ""], ["assistant", "Assistant", "Assistant", "sparkles", ""], ["calendar", "Calendar", "Calendar", "calendar", "d"], ["tasks", "Tasks", "Tasks", "list", ""], ["week", "Weekly overview", "Week", "week", ""], ["memory", "Memory", "Memory", "brain", "d"], ["icons", "Icons", "Icons", "shapes", "d"], ["preferences", "Preferences", "Preferences", "sliders", "d"], ["more", "More", "More", "grid", "m"]];
-  const MORE = new Set(["calendar", "memory", "icons", "preferences", "more"]);
+  const MORE = new Set(["calendar", "memory", "icons", "preferences", "more", "plan"]);
 
   function App() {
     const [state, dispatch] = useReducer(reducer, null, () => { const local = T.loadLocal(); return local ? reducer(initialState(), { type: "hydrate", state: local }) : initialState(); });
@@ -3282,7 +3997,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const undo = useCallback((revisionId) => { dispatch({ type: "undo", revisionId }); toast("Schedule restored"); }, [toast]);
     const undoLast = useCallback(() => { const st = stateRef.current; const last = st.history[st.history.length - 1]; if (!last) { toast("Nothing to undo"); return; } dispatch({ type: "undo" }); toast("Undid " + last.note); }, [toast]);
     const track = (kind) => dispatch({ type: "event", kind });
-    const commitPlan = (plan, res, note) => { track("plan"); return commit(res.tasks, "the assistant's change", "ai", { date: T.dayKey(), title: plan.dayTitle || undefined, targetFinish: plan.targetFinish ? T.parseHHMM(plan.targetFinish) : undefined }); };
+    const celebrate = (before, res) => {
+      const st = stateRef.current; const names = res.summary.completed || []; if (!names.length) return;
+      const day0 = T.dayKey(); const sprint = (list) => list.filter((x) => x.date === day0 && isWork(x) && !x.fixed && x.status !== "postponed");
+      const was = sprint(before), now = sprint(res.tasks); const allDone = now.length >= 2 && now.every((x) => x.status === "completed") && !was.every((x) => x.status === "completed");
+      if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
+      if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${now.length} tasks for today are done.` : names[0], key: Date.now() });
+    };
+    const commitPlan = (plan, res, note) => { track("plan"); celebrate(Object.values(stateRef.current.tasks), res); return commit(res.tasks, "the assistant's change", "ai", { date: T.dayKey(), title: plan.dayTitle || undefined, targetFinish: plan.targetFinish ? T.parseHHMM(plan.targetFinish) : undefined }); };
 
     /* ----- assistant brain (shared by the tab and the popup) ----- */
     const send = useCallback(async (message, force) => {
@@ -3350,13 +4072,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onStatus: (id, status) => {
         const st = stateRef.current; const t = st.tasks[id]; if (!t) return; let rect = null;
         if (status === "completed") { const el = document.querySelector(`li[data-id="${id}"] .row-inner`); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0) rect = { left: r.left, top: r.top, width: r.width, height: r.height }; } }
-        dispatch({ type: "setStatus", id, status });
+        let adjust = false, shiftMsg = "";
+        if (status === "completed" && st.prefs.autoAdjust !== false && t.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(st.tasks).filter((x) => x.date === t.date), t, T.minutesNow()); if (sh.moved) { adjust = true; shiftMsg = `. The next ${sh.moved > 1 ? sh.moved + " blocks" : "block"} moved ${sh.delta < 0 ? "up" : "back"} ${T.fmtShortDur(Math.abs(sh.delta))}`; track("autoslot"); } }
+        dispatch({ type: "setStatus", id, status, adjust });
         if (status === "completed") {
-          const dayWork = Object.values(st.tasks).filter((x) => x.date === t.date && isWork(x) && x.status !== "postponed");
-          const allDone = dayWork.length >= 2 && isWork(t) && dayWork.every((x) => x.id === id || x.status === "completed");
+          // the sprint is the flexible work of the day: commitments such as dinner do not hold the celebration back
+          const dayWork = Object.values(st.tasks).filter((x) => x.date === t.date && isWork(x) && !x.fixed && x.status !== "postponed");
+          const allDone = dayWork.length >= 2 && dayWork.some((x) => x.id === id) && dayWork.every((x) => x.id === id || x.status === "completed");
           if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
           if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, rect, key: Date.now() });
-          toast(allDone ? "Everything for the day is done" : "Marked as completed", () => dispatch({ type: "undo" }));
+          toast(allDone ? "Everything for the day is done" : "Marked as completed" + shiftMsg, () => dispatch({ type: "undo" }));
           if (st.prefs.autoStartNext && !allDone) { const next = dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0]; if (next) dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); }
         } else if (status === "in_progress") toast("Focus timer started");
       },
@@ -3379,6 +4104,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onEdit: (task) => setEditing(task),
       onAdd: (date, preset) => setEditing({ date: typeof date === "string" ? date : T.dayKey(), ...(preset && typeof preset === "object" && !preset.nativeEvent ? preset : {}) }),
       onView: (v) => dispatch({ type: "setPrefs", patch: { scheduleView: v } }),
+      onHideDone: (v) => dispatch({ type: "setPrefs", patch: { hideCompleted: !!v } }),
       openAssistant: () => setPop(true),
       onAsk: (date) => { setPop(true); const d0 = T.dayKey(); send(date === d0 ? "Review my day and propose the best order and timing for what is left." : `Review my plan for ${T.dayPhrase(date, d0)} and propose the best order and timing.`); },
       onDismissSuggestion: (s, date) => { if (s.action.type === "carry") dispatch({ type: "setDayMeta", date, patch: { carryDismissed: true } }); dispatch({ type: "dismissSuggestion", date, id: s.id }); },
@@ -3398,16 +4124,21 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         dispatch({ type: "postpone", id, toDate: date, start: slot ?? undefined, note: "moving a task" }); track("move");
         toast(`“${t.title}” moved to ${T.dayPhrase(date, day0)}${slot != null ? " at " + T.fmtTime(slot, st.prefs.timeFormat) : ", no time yet"}`, () => dispatch({ type: "undo" }));
       },
-      onReorder: (date, ids) => {
+      onReorder: (date, ids, movedId) => {
         const st = stateRef.current; const all = Object.values(st.tasks); const dayT = all.filter((t) => t.date === date); const isT = date === T.dayKey();
         const movable = ids.filter((id) => { const t = st.tasks[id]; return t && t.status !== "completed" && !isPinned(t); });
+        // where a task was dropped relative to fixed commitments counts: below dinner means after dinner
+        const after = {}; let pinEnd = null; let nextPin = null;
+        for (const id of ids) { const t = st.tasks[id]; if (!t || t.status === "completed") continue; if (isPinned(t)) { pinEnd = Math.max(pinEnd ?? 0, t.end); if (movedId && nextPin === undefined) nextPin = t; } else { if (pinEnd != null) after[id] = pinEnd; if (id === movedId) nextPin = undefined; } }
         const starts = dayT.filter((t) => movable.includes(t.id) && t.start != null).map((t) => t.start); const first = starts.length ? Math.min(...starts) : st.prefs.workdayStart; const base = isT ? Math.max(T.minutesNow(), first) : first;
         const prot = dayT.filter((t) => t.status === "protected" && t.start != null && t.start >= base).sort((x, y) => x.start - y.start)[0];
-        const laid = T.layoutDay(dayT.map((t) => (movable.includes(t.id) && t.status === "postponed" ? { ...t, status: "upcoming" } : t)), { now: base, limit: prot ? prot.start : st.prefs.bedTime, prefs: { ...st.prefs, bufferMinutes: 0 }, intel: st.intel, date, order: movable, keepBreaks: true });
+        const laid = T.layoutDay(dayT.map((t) => (movable.includes(t.id) && t.status === "postponed" ? { ...t, status: "upcoming" } : t)), { now: base, limit: prot ? prot.start : st.prefs.bedTime, prefs: { ...st.prefs, bufferMinutes: 0 }, intel: st.intel, date, order: movable, keepBreaks: true, after });
         const result = laid.tasks.map((t) => { const o = st.tasks[t.id]; return o && o.start == null && t.start == null ? o : t; });
+        const mv = movedId ? laid.tasks.find((t) => t.id === movedId) : null; const blocked = mv && nextPin && mv.start != null && mv.start >= nextPin.end ? nextPin : null; // wanted before a commitment, but it does not fit there
         const lost = laid.unscheduled.filter((u) => st.tasks[u.task.id] && st.tasks[u.task.id].start != null).length;
         const rev = commit([...all.filter((t) => t.date !== date), ...result], "the reorder", "manual"); track("reorder");
-        toast(lost ? `Reordered. ${lost} did not fit and ${lost > 1 ? "are" : "is"} parked.` : "Order updated, times recalculated", () => undo(rev));
+        const lostNames = laid.unscheduled.filter((u) => st.tasks[u.task.id] && st.tasks[u.task.id].start != null).map((u) => `“${u.task.title}”`);
+        toast(lost ? `Reordered. ${lostNames.slice(0, 2).join(" and ")}${lost > 2 ? " and " + (lost - 2) + " more" : ""} no longer fit${lost === 1 ? "s" : ""} before ${T.fmtTime(laid.limit, st.prefs.timeFormat)}, so ${lost === 1 ? "it is" : "they are"} postponed.` : blocked ? `“${mv.title}” (${T.fmtShortDur(mv.estimatedMinutes)}) does not fit before “${blocked.title}”, so it comes right after it.` : mv && mv.start != null ? `“${mv.title}” now starts at ${T.fmtTime(mv.start, st.prefs.timeFormat)}. Times recalculated.` : "Order updated, times recalculated", () => undo(rev));
       },
       /* run a suggestion the moment the user presses OK */
       onSuggestion: (s, date) => {
@@ -3459,11 +4190,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       : route === "tasks" ? html`<${TasksView} state=${state} nowMin=${nowMin} today=${today} actions=${actions} h=${h} />`
       : route === "week" ? html`<${UI.WeeklyView} state=${state} today=${today} h=${h} setViewDate=${setViewDate} />`
       : route === "memory" ? html`<${UI.MemoryView} state=${state} dispatch=${dispatch} toast=${toast} />`
-      : route === "icons" ? html`<${UI.IconsView} state=${state} dispatch=${dispatch} toast=${toast} />`
-      : route === "more" ? html`<${UI.MoreView} />`
+      : route === "icons" ? html`<${UI.IconsView} state=${state} dispatch=${dispatch} toast=${toast} caps=${caps} />`
+      : route === "plan" ? html`<${UI.PlansView} state=${state} dispatch=${dispatch} toast=${toast} />`
+      : route === "more" ? html`<${UI.MoreView} prefs=${state.prefs} />`
       : route === "preferences" ? html`<${PrefsView} state=${state} dispatch=${dispatch} caps=${caps} toast=${toast} h=${h} />`
       : html`<${TodayView} state=${state} nowMin=${nowMin} today=${today} viewDate=${viewDate} setViewDate=${(d) => setViewDate(d === today ? null : d)} actions=${actions} h=${h} />`;
-    const known = NAV.some(([x]) => x === route); const onToday = !known || route === "today";
+    const known = NAV.some(([x]) => x === route) || route === "plan"; const onToday = !known || route === "today";
     const active = (r) => route === r || (r === "today" && onToday) || (r === "more" && MORE.has(route));
 
     return html`<div class=${"shell" + (state.prefs.compact ? " compact" : "")}>
@@ -3471,9 +4203,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="nav-inner">
           <div class="brand"><div class="b1"><i></i>Tempo</div></div>
           ${NAV.map(([r, label, short, icon, only]) => html`<a key=${r} href=${"#" + r} class=${(active(r) ? "on " : "") + (only === "d" ? "d-only" : only === "m" ? "m-only" : "")} aria-current=${route === r ? "page" : undefined}><${Icon} name=${icon} /><span class="lg">${label}</span><span class="sm">${short}</span></a>`)}
+          <${UI.AccountButton} prefs=${state.prefs} active=${route === "plan"} />
         </div>
       </nav>
-      <main class="main view" key=${route}>${view}</main>
+      <main class=${"main view" + (route === "assistant" ? " chatmain" : "")} key=${route}>${view}</main>
       ${pop && onToday ? html`<${AssistantPopup} state=${state} a=${a} onClose=${() => setPop(false)} />` : null}
       ${focusTask ? html`<${UI.FocusMode} task=${focusTask} next=${focusNext} prefs=${state.prefs} onStatus=${actions.onStatus} onToggleBullet=${actions.onToggleBullet} onNotes=${(id, notes) => dispatch({ type: "setNotes", id, notes })} onExtend=${(id, m) => dispatch({ type: "updateTask", id, patch: { estimatedMinutes: state.tasks[id].estimatedMinutes + m }, note: "adding focus time" })} onClose=${() => setFocusId(null)} />` : null}
       ${editing ? html`<${TaskEditor} task=${editing} date=${viewDate} prefs=${state.prefs} icons=${state.icons} onSave=${onSave} onClose=${() => setEditing(null)} onDelete=${actions.onDelete} />` : null}
