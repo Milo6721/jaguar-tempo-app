@@ -39,6 +39,18 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 - Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
 - Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
 
+## Co doszło w wersji 6
+
+- **Nowy ekran Today**: na górze karta "Now" (co robisz teraz, odliczanie, Start / Focus / Done, co dalej, jedyna pigułka "Done by", pierścień "1 of 8 tasks · 13% of the time" i przyciski spóźnienia), zaraz pod nią harmonogram, a Suggestions i Tempo Intelligence są zwinięte w jedną kartę "Suggestions & Intelligence". Wiersze zadań są mniejsze i spokojniejsze.
+- **Logo na telefonie**: pasek u góry z logo Tempo i kółkiem konta. Pływający przycisk asystenta zniknął z telefonu (jest w dolnym pasku) i nie zasłania już treści.
+- **Godzina ustawiona przez Ciebie jest święta**: zadanie dodane "at 5pm" (szybkie dodawanie, asystent, edytor) nie jest nigdy przesuwane przez re-plan ani sugestie. Przesuniesz je tylko sam: przeciąganiem albo poleceniem.
+- **"Running late +10" naprawdę opóźnia**: wszystko po "teraz" przesuwa się o 10 minut później, przerwy i odstępy zostają, stałe punkty stoją. Koniec dnia nigdy nie robi się wcześniejszy.
+- **Re-plan**: nie gubi przerw, układa wg priorytetów także przy wypełnianiu dziur (High nie przegrywa z 5-minutowym Low), a pamięć ("football every Tuesday at 6 PM") daje ostrzeżenie przy kolizji i sugestię dodania stałego, powtarzalnego bloku.
+- **Przeniesione zadania dostają od razu godzinę** na nowym dniu, zamiast wisieć jako "Postponed".
+- **"Done by" liczy się z realnego planu**: szanuje odstępy i godziny bloków, rośnie gdy coś się przeciąga, spada gdy odhaczysz i bloki podjadą. Pierścień postępu już nie pokazuje bzdur (naprawiona animacja startowa i wartości NaN).
+- **Liczby się zgadzają**: Dinner i inne stałe punkty nie liczą się jako praca, kafelki Free / Work / Spare używają jednego wzoru, przerwa jest proponowana tam, gdzie kończy się skupienie, a przykładowy dzień nie wstawia już "Dinner" w południe.
+- High priority jest pomarańczowy, czerwony znaczy tylko "late".
+
 ## Co doszło w wersji 5
 
 - **Zadania powtarzalne**: w edytorze zadania jest pole "Repeat" (codziennie, dni robocze, co tydzień, dwa razy dziennie). Działa też dla czasu chronionego, np. "Chill" co wieczór. Tempo samo tworzy wystąpienia na tydzień do przodu, a usunięte wystąpienie nie wraca. Asystent też to umie: "Add Chill at 9 PM as protected time every day".

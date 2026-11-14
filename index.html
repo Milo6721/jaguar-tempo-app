@@ -908,6 +908,59 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 /* celebrations: in Focus mode the task scene takes the whole screen */
 .fx-task.full { background: #0B0418; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .fx-task.full .fx-stage { border-radius: 0; box-shadow: none; animation: fade .25s ease-out; }
+
+/* ---------- v6 ---------- */
+/* the logo finally exists on the phone */
+.topbar { position: sticky; top: 0; z-index: 24; display: flex; align-items: center; justify-content: space-between; padding: 10px max(16px, env(safe-area-inset-left, 0px)) 10px max(16px, env(safe-area-inset-right, 0px)); background: color-mix(in srgb, var(--bg) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.topbar .b1 { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 7px; }
+.topbar .b1 i { width: 9px; height: 9px; border-radius: 3px; background: var(--accent); display: inline-block; transform: rotate(45deg); }
+.topbar .tb-a .av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; }
+.topbar .tb-a .av svg { width: 15px; height: 15px; }
+@media (min-width: 980px) { .topbar { display: none; } }
+
+/* the assistant button stays out of the way: the phone has it in the bottom bar already */
+@media (max-width: 979px) { .fab { display: none; } }
+@media (min-width: 980px) { .main { padding-bottom: 120px; } .fab { bottom: 22px; } }
+
+/* the Now card */
+.nowcard { background: linear-gradient(180deg, var(--accent-softer), var(--card) 55%); border-color: var(--accent-soft); display: flex; flex-direction: column; gap: 12px; }
+.nc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.nc-k { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+.nc-main { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; }
+.nc-main .tile { width: 52px; height: 52px; }
+.nc-body { flex: 1 1 200px; min-width: 0; }
+.nc-title { font-family: var(--font-display); font-weight: 700; font-size: 17.5px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.nc-sub { color: var(--muted); font-size: 13px; margin-top: 2px; } .nc-sub b { color: var(--accent-text); font-weight: 700; } .nc-sub b.late { color: var(--bad); }
+.nc-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.nc-next { font-size: 13px; color: var(--muted); } .nc-next b { color: var(--fg-2); font-weight: 600; }
+.nc-late { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--warn); font-weight: 600; flex-wrap: wrap; } .nc-late svg { flex-shrink: 0; }
+.nc-foot { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--accent-soft); padding-top: 11px; flex-wrap: wrap; }
+.ring.sm { position: relative; width: 44px; height: 44px; flex-shrink: 0; } .ring.sm svg { position: absolute; inset: 0; width: 44px; height: 44px; }
+.ring.sm .lbl { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 11px; }
+.ring.sm .track { stroke: var(--accent-soft); } .ring.sm .bar { stroke: var(--accent); transition: stroke-dashoffset .3s; animation: none; } /* the big ring's entry animation starts from the wrong circumference here */
+.nc-stats { flex: 1 1 180px; min-width: 0; font-size: 13px; color: var(--muted); } .nc-stats b { color: var(--fg); }
+.nc-latebtns { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+
+/* suggestions and intelligence, folded into one card */
+.insightsfold { padding: 0; overflow: hidden; }
+.if-head { width: 100%; display: flex; align-items: center; gap: 11px; padding: 14px 18px; text-align: left; }
+.if-head:hover { background: var(--surface); }
+.if-head .orb { width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; flex-shrink: 0; } .if-head .orb svg { width: 16px; height: 16px; }
+.if-t { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; } .if-t b { font-family: var(--font-display); font-size: 15px; } .if-t small { color: var(--muted); font-size: 12px; }
+.if-head > svg { color: var(--muted); flex-shrink: 0; }
+.if-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.if-body .card { box-shadow: none; border-color: var(--line); }
+
+/* the schedule rows, slimmer and quieter */
+.tile { width: 52px; height: 52px; border-radius: 15px; } .tile svg { width: 22px; height: 22px; }
+.row-inner { grid-template-columns: 52px minmax(0, 1fr) auto auto; gap: 12px; padding: 13px 0; }
+.row-inner.plain { grid-template-columns: 52px minmax(0, 1fr) auto; }
+.row .title { font-size: 15px; }
+.row .dur { font-size: 12px; }
+.meta { margin-top: 5px; } .meta .pill { font-size: 10.5px; padding: 2px 8px; gap: 4px; } .meta .pill svg { width: 11px; height: 11px; }
+.checks { margin-top: 6px; } .ck .tx { font-size: 13.5px; }
+.note-line { font-size: 13px; }
+@media (max-width: 420px) { .row-inner, .shell.compact .row-inner { grid-template-columns: 44px minmax(0, 1fr) auto auto; } .tile { width: 44px; height: 44px; border-radius: 13px; } .tile svg { width: 19px; height: 19px; } }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -1191,29 +1244,33 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       { title: "Math questions (10 remaining)", minutes: 40, category: "math", priority: "high", bullets: ["Finish the ten remaining questions.", "Circle anything you want to revisit."] },
       { title: "Break", minutes: 10, category: "break", priority: "low", bullets: ["Get water and a snack.", "Give your brain a reset."] },
       { title: "Simon's math problems", minutes: 45, category: "math", priority: "high", bullets: ["Work through the problems carefully.", "Mark anything you can't solve to revisit later."] },
-      { title: "Dinner", minutes: 30, category: "meal", priority: "medium", bullets: ["Fixed commitment. Tempo plans around it."], fixed: true },
       { title: "Biology study guide", minutes: 40, category: "science", priority: "medium", bullets: ["Read the guide once.", "Answer the review questions.", "Highlight terms to memorise."] },
       { title: "Chemistry worksheets", minutes: 30, category: "chemistry", priority: "medium", bullets: ["Complete both worksheets.", "Check units on every answer."] },
       { title: "Personal admin", minutes: 15, category: "admin", priority: "medium", bullets: ["Order notebooks and binders.", "Order your whiteboard.", "Review your finances."] },
       { title: "Business PDF request", minutes: 5, category: "business", priority: "low", bullets: ["Send the PDF and confirm receipt."] },
     ];
     let cursor = Math.min(Math.max(roundUp(now + 4, 5), 420), 1140);
+    // dinner stays a dinner: it keeps an evening slot even when the sample loads in the morning
+    const dinnerStart = Math.max(1050, roundUp(cursor, 5)); const dinnerEnd = dinnerStart + 30;
     const created = Date.now(); const tasks = [];
     tasks.push({ id: "seed_done", date, title: "Math questions (7 of 17 done)", bullets: ["Warm-up: the first seven questions."], category: "math", priority: "high",
       estimatedMinutes: 25, start: cursor - 30, end: cursor - 5, status: "completed", fixed: false, completedAt: created - 300000, actualMinutes: 25, createdAt: created - 3600000, updatedAt: created });
     seeds.forEach((s, i) => {
+      if (cursor < dinnerEnd && cursor + s.minutes > dinnerStart) cursor = dinnerEnd; // work flows around dinner
       tasks.push({ id: "seed_" + (i + 1), date, title: s.title, bullets: s.bullets, category: s.category, priority: s.priority, estimatedMinutes: s.minutes,
         start: cursor, end: cursor + s.minutes, status: "upcoming", fixed: !!s.fixed, createdAt: created - 3600000 + i, updatedAt: created });
       cursor += s.minutes;
     });
-    const targetFinish = cursor + 20;
+    tasks.push({ id: "seed_dinner", date, title: "Dinner", bullets: ["Fixed commitment. Tempo plans around it."], category: "meal", priority: "medium",
+      estimatedMinutes: 30, start: dinnerStart, end: dinnerEnd, status: "upcoming", fixed: true, createdAt: created - 3600000, updatedAt: created });
+    const targetFinish = Math.max(roundUp(Math.max(cursor, dinnerEnd) + 20, 5), 1200);
     tasks.push({ id: "seed_free", date, title: "Chill evening", bullets: [], category: "free", priority: "low",
       estimatedMinutes: 90, start: targetFinish, end: Math.min(targetFinish + 90, 1440), status: "protected", fixed: true, createdAt: created - 3600000, updatedAt: created });
     return { tasks, title: T.DAY_TITLE, targetFinish };
   };
-  T.makeTask = (p) => { const ts = Date.now(); const est = Math.max(5, p.estimatedMinutes || 30); const t = { id: p.id || uid(), date: p.date, title: p.title || "Untitled task", bullets: p.bullets || [], category: p.category || "other", priority: p.priority || "medium", estimatedMinutes: est, start: p.start, end: p.end ?? (p.start != null ? p.start + est : undefined), status: p.status || "upcoming", fixed: !!p.fixed, createdAt: ts, updatedAt: ts }; if (p.dueBy != null) t.dueBy = p.dueBy; for (const k of ["icon", "color", "notes", "repeat", "sid"]) if (p[k]) t[k] = p[k]; if (t.repeat && !t.sid) t.sid = t.id; return t; };
+  T.makeTask = (p) => { const ts = Date.now(); const est = Math.max(5, p.estimatedMinutes || 30); const t = { id: p.id || uid(), date: p.date, title: p.title || "Untitled task", bullets: p.bullets || [], category: p.category || "other", priority: p.priority || "medium", estimatedMinutes: est, start: p.start, end: p.end ?? (p.start != null ? p.start + est : undefined), status: p.status || "upcoming", fixed: !!p.fixed, createdAt: ts, updatedAt: ts }; if (p.dueBy != null) t.dueBy = p.dueBy; for (const k of ["icon", "color", "notes", "repeat", "sid", "userStart"]) if (p[k]) t[k] = p[k]; if (t.repeat && !t.sid) t.sid = t.id; return t; };
   const isActive = (t) => t.status !== "completed" && t.status !== "postponed";
-  const isPinned = (t) => (t.fixed || t.status === "protected") && t.start != null && t.end != null;
+  const isPinned = (t) => (t.fixed || t.status === "protected" || t.userStart) && t.start != null && t.end != null && t.status !== "postponed"; // userStart: the user named this time, so no replan may move it
   const isWork = (t) => t.category !== "break" && t.status !== "protected";
   Object.assign(T, { isActive, isPinned, isWork });
 
@@ -1266,7 +1323,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if (!strict) {
           const nextStart = occupied.map(([os]) => os).filter((os) => os >= cursor).sort((a, b) => a - b)[0];
           const gap = Math.min(nextStart ?? hardLimit, hardLimit) - cursor;
-          const j = flex.findIndex((x, k) => k > i && x.status !== "in_progress" && x.estimatedMinutes <= gap);
+          let j = -1, br = 1e9, bm = -1; // the most important later task that fits, longest first on a tie
+          for (let k = i + 1; k < flex.length; k++) { const x = flex[k]; if (x.status === "in_progress" || x.estimatedMinutes > gap) continue; const r = rankOf(prefs, x.priority); if (r < br || (r === br && x.estimatedMinutes > bm)) { br = r; bm = x.estimatedMinutes; j = k; } }
           if (j > i && gap >= 10) { const filler = flex.splice(j, 1)[0]; flex.splice(i, 0, filler); i--; continue; }
         }
         sinceBreak = 0; // the commitment acted as a pause
@@ -1290,6 +1348,23 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     return { tasks: out, warnings, unscheduled, endsAt: cursor, limit: hardLimit };
   };
 
+  /* Running late: push every flexible timed block by `mins`, keeping order and the gaps between
+     them. Fixed commitments, protected time and user-set times stay put; a block that would land
+     inside one resumes right after it. The block the clock is inside keeps its start and grows. */
+  T.delayDay = function (dayTasks, now, mins) {
+    const out = new Map(); const pins = dayTasks.filter((t) => isPinned(t) && isActive(t)).sort((a, b) => a.start - b.start);
+    const flex = dayTasks.filter((t) => isActive(t) && !isPinned(t) && t.start != null && t.end != null && t.end > now).sort((a, b) => a.start - b.start);
+    let prevEnd = -1e9;
+    for (const t of flex) {
+      const dur = t.end - t.start; const live = t.start <= now;
+      let ns = live ? t.start : t.start + mins; let ne = live ? t.end + mins : ns + dur;
+      ns = Math.max(ns, prevEnd); ne = Math.max(ne, ns + dur);
+      for (const p of pins) if (ns < p.end && ne > p.start) { ns = p.end; ne = ns + dur; }
+      out.set(t.id, { ...t, start: ns, end: ne, updatedAt: Date.now() }); prevEnd = ne;
+    }
+    return dayTasks.map((t) => out.get(t.id) || t);
+  };
+
   /* Repair one day's tasks after a plan was applied: no overlaps, nothing in the past,
      nothing pushed into protected time or past bedtime. Returns fresh objects. */
   T.repairDay = function (dayTasks, opts) {
@@ -1300,7 +1375,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     let cursor = now != null ? roundUp(now, 5) : -1;
     for (const t of sched) {
       if (isPinned(t)) continue;
-      if (t.status === "in_progress") { cursor = Math.max(cursor, t.end); continue; }
+      if (t.status === "in_progress" || (opts.liveIds && opts.liveIds.has(t.id) && t.start < (now ?? 1e9) && t.end > (now ?? -1))) { cursor = Math.max(cursor, t.end); continue; } // a block that was already underway keeps its start
       const d = Math.max(5, t.end - t.start); let s = Math.max(t.start, cursor); let parked = null;
       for (let g = 0; g < 40; g++) {
         const hit = pinned.find((f) => s < f.end && s + d > f.start); if (!hit) break;
@@ -1456,7 +1531,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       if ((t.fixed || t.status === "protected") && !allow) { warnings.push(`“${t.title}” is ${t.status === "protected" ? "protected time" : "a fixed commitment"}, so it was not moved.`); referenced.add(t.id); continue; }
       referenced.add(t.id); touched.add(t.date);
       if (p.toDate && p.toDate !== t.date && p.toDate >= today) {
-        map.set(t.id, { ...t, date: p.toDate, start: undefined, end: undefined, status: "upcoming", postponedFrom: t.date, updatedAt: ts });
+        // a rescheduled task arrives on its new day as a normal task with a time, never marked postponed
+        const dayList = [...map.values()].filter((x) => x.date === p.toDate && x.id !== t.id);
+        const slot = T.findSlot(dayList, t.estimatedMinutes, p.toDate === today ? Math.max(now, prefs.workdayStart) : prefs.workdayStart, Math.min(prefs.bedTime, 1440));
+        map.set(t.id, { ...t, date: p.toDate, start: slot ?? undefined, end: slot != null ? slot + t.estimatedMinutes : undefined, status: "upcoming", postponedFrom: t.date, updatedAt: ts });
         summary.moved.push({ title: t.title, from: t.date, to: p.toDate }); touched.add(p.toDate);
       } else { map.set(t.id, { ...t, status: "postponed", start: undefined, end: undefined, updatedAt: ts }); summary.parked.push(t.title); }
     }
@@ -1471,7 +1549,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       }
     }
     for (const d of touched) {
-      const rep = T.repairDay([...map.values()].filter((t) => t.date === d), { now: d === today ? now : null, bedTime: prefs.bedTime, timeFormat: prefs.timeFormat });
+      const rep = T.repairDay([...map.values()].filter((t) => t.date === d), { now: d === today ? now : null, bedTime: prefs.bedTime, timeFormat: prefs.timeFormat,
+        liveIds: d === today ? new Set(allTasks.filter((t) => t.start != null && t.end != null && t.start < now && t.end > now).map((t) => t.id)) : null });
       for (const t of rep.tasks) map.set(t.id, t); warnings.push(...rep.warnings);
     }
     return { tasks: [...map.values()], warnings: [...new Set(warnings)], summary, touched: [...touched] };
@@ -1563,8 +1642,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       lateMin = Math.round(num(m[1] || m[2] || m[3]) || 0);
       if (lateMin > 0) {
         const cur = liveToday().find((t) => t.status === "in_progress") || liveToday().find((t) => t.start != null && t.start <= now && t.end > now && !isPinned(t));
-        if (cur) { cur.estimatedMinutes += lateMin; if (cur.end != null) cur.end += lateMin; liveId = cur.id; notes.push(`Added ${lateMin} minutes to “${cur.title}” and pushed what follows.`); }
-        else { now = now + lateMin; notes.push(`Shifted the rest of your day by ${lateMin} minutes.`); }
+        notes.push(cur ? `Gave “${cur.title}” ${lateMin} more minutes and pushed what follows back, keeping your gaps.` : `Pushed everything after now back by ${lateMin} minutes, keeping your gaps.`);
         changedToday = true; plan.needsConfirmation = true;
       }
     }
@@ -1626,12 +1704,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const clock = cm ? parseClock(cm[1] || cm[2]) : null;
       if (d && d.date !== t.date) {
         const from = t.date; t.postponedFrom = from; t.date = d.date; t.status = "upcoming";
-        if (clock != null) { t.start = clock; t.end = clock + t.estimatedMinutes; } else { t.start = undefined; t.end = undefined; }
+        if (clock != null) { t.start = clock; t.end = clock + t.estimatedMinutes; t.userStart = true; } else { t.start = undefined; t.end = undefined; t.userStart = undefined; }
         if (from === today || d.date === today) changedToday = true;
         if (d.date === today) { if (clock != null) pinnedIds.add(t.id); } else if (clock != null) otherDayBlocks.push(t); else plan.postponed.push({ taskId: t.id, title: t.title, toDate: d.date, reason: "You asked to move it." });
         notes.push(`Moved “${t.title}” to ${dayPhrase(d.date, today)}${clock != null ? " at " + fmtTime(clock, fmt) : ""}.`);
       } else if (clock != null) {
-        t.start = clock; t.end = clock + t.estimatedMinutes; t.status = t.status === "postponed" ? "upcoming" : t.status;
+        t.start = clock; t.end = clock + t.estimatedMinutes; t.userStart = true; t.status = t.status === "postponed" ? "upcoming" : t.status;
         if (t.date === today) { pinnedIds.add(t.id); changedToday = true; } else otherDayBlocks.push(t);
         notes.push(`Moved “${t.title}” to ${fmtTime(clock, fmt)}${t.date !== today ? " " + onDay(t.date, today) : ""}.`);
       } else if (d) notes.push(`“${t.title}” is already scheduled for ${dayPhrase(d.date, today)}.`);
@@ -1677,11 +1755,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if (rpt) { existing.repeat = rpt; if (!existing.sid) existing.sid = existing.id; }
         if (prot) { existing.status = "protected"; existing.fixed = true; }
         if (existing.date !== date) { existing.postponedFrom = existing.date; if (existing.date === today) changedToday = true; }
-        existing.date = date; existing.status = prot ? "protected" : "upcoming"; if (start != null) { existing.start = start; existing.end = start + existing.estimatedMinutes; } else if (d) { existing.start = undefined; existing.end = undefined; }
+        existing.date = date; existing.status = prot ? "protected" : "upcoming"; if (start != null) { existing.start = start; existing.end = start + existing.estimatedMinutes; existing.userStart = true; } else if (d) { existing.start = undefined; existing.end = undefined; }
         if (date === today) { if (start != null) pinnedIds.add(existing.id); changedToday = true; } else if (start != null) otherDayBlocks.push(existing); else plan.postponed.push({ taskId: existing.id, title: existing.title, toDate: date, reason: "You asked to schedule it there." });
         notes.push(`Moved “${existing.title}” to ${dayPhrase(date, today)}${start != null ? " at " + fmtTime(start, fmt) : ""}.`); continue;
       }
-      const t = T.makeTask({ date, title: cap(titleRaw), category: prot ? "free" : cat, estimatedMinutes: est.minutes, priority: prot ? "low" : dueBy != null || /urgent|important|asap/i.test(sent) ? "high" : "medium", start: start ?? undefined, dueBy: dueBy ?? undefined, status: prot ? "protected" : undefined, fixed: prot, repeat: rpt ?? undefined });
+      const t = T.makeTask({ date, title: cap(titleRaw), category: prot ? "free" : cat, estimatedMinutes: est.minutes, priority: prot ? "low" : dueBy != null || /urgent|important|asap/i.test(sent) ? "high" : "medium", start: start ?? undefined, dueBy: dueBy ?? undefined, status: prot ? "protected" : undefined, fixed: prot, repeat: rpt ?? undefined, userStart: start != null ? true : undefined });
       t._basis = est.basis; work.set(t.id, t);
       if (date === today) { if (start != null) pinnedIds.add(t.id); changedToday = true; } else if (start != null) otherDayBlocks.push(t); else { otherDayBlocks.push(t); }
       notes.push(`Added ${prot ? "protected time " : ""}“${t.title}” (${fmtDur(t.estimatedMinutes)}${prot ? "" : ", " + est.basis})${date !== today ? " " + onDay(date, today) : ""}${start != null ? " at " + fmtTime(start, fmt) : ""}${rpt ? ", repeating " + (rpt === "daily" ? "every day" : rpt === "weekdays" ? "on weekdays" : rpt === "weekly" ? "every week" : "twice a day") : ""}${dueBy != null ? ", to finish before " + fmtTime(dueBy, fmt) : ""}.`);
@@ -1726,8 +1804,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const tf = plan.targetFinish ? parseHHMM(plan.targetFinish) : null;
       if (tf != null && targetChanged) for (const t of dayTasks) if (t.status === "protected" && t.start != null && t.start !== tf) { const d = t.end - t.start; t.start = tf; t.end = Math.min(1440, tf + d); plan.allowFixedChanges = true; }
       const limit = tf != null ? tf : T.dayLimit(dayTasks, day, prefs, now);
-      const strict = !!order || lateMin > 0;
-      laid = T.layoutDay(dayTasks, { now, limit, prefs, intel, date: today, breakMinutes, leadingBreak: breakMinutes, order: order || undefined, keepOrder: strict && !order, fillGaps: lateMin > 0 && !order, keepBreaks: !!order, pinnedIds, liveId });
+      const lateOnly = lateMin > 0 && !reorg && !order && !breakMinutes && !added.length && !targetChanged && !plan.deletedTaskIds.length && !plan.completedTaskIds.length;
+      if (lateOnly) laid = { tasks: T.delayDay(dayTasks, now, lateMin), warnings: [], unscheduled: [], limit }; // being late makes the day later, never tighter
+      else { const strict = !!order || lateMin > 0;
+        laid = T.layoutDay(dayTasks, { now: now + (lateMin > 0 ? lateMin : 0), limit, prefs, intel, date: today, breakMinutes, leadingBreak: breakMinutes, order: order || undefined, keepOrder: strict && !order, fillGaps: false, keepBreaks: !!order, pinnedIds, liveId }); }
       placed = laid.tasks.filter((t) => isActive(t) && t.start != null).sort((a, b) => a.start - b.start);
       if (breakMinutes) notes.push(`Added a ${breakMinutes}-minute break now.`);
       for (const t of placed) plan.blocks.push({ taskId: origIds.has(t.id) ? t.id : null, date: today, title: t.title, category: t.category, priority: t.priority, start: toHHMM(t.start), end: toHHMM(t.end), bullets: t.bullets || [], kind: t.status === "protected" ? "protected" : t.fixed ? "fixed" : t.category === "break" ? "break" : "task", repeat: t.repeat || undefined, _dueBy: t.dueBy });
@@ -2024,7 +2104,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* ---------- priorities and new preference defaults ---------- */
   T.DEFAULT_PRIORITIES = [
-    { id: "high", label: "High", color: "#DC2626", rank: 0 },
+    { id: "high", label: "High", color: "#EA580C", rank: 0 },
     { id: "medium", label: "Medium", color: "", rank: 1 },
     { id: "low", label: "Low", color: "#2563EB", rank: 2 },
   ];
@@ -2075,6 +2155,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const plan = baseLocal(req);
     plan.remember = req.prefs.memoryEnabled === false ? [] : T.extractMemories(req.message);
     if (plan.remember.length && plan.kind === "message") plan.reply = "Got it. I will remember that: " + plan.remember.map((x) => `“${x}”`).join(", ") + ".";
+    // a plan that collides with a remembered routine says so instead of silently double-booking
+    if (req.prefs.memoryEnabled !== false && req.memory && req.memory.length && plan.blocks && plan.blocks.length) {
+      for (const b of plan.blocks) {
+        if (!b.start || b.kind === "break" || b.kind === "protected") continue;
+        const rc = T.routineConflict(req.memory, b.date || req.date, T.parseHHMM(b.start));
+        if (rc && similarity(b.title, rc.text) < 0.55) { plan.warnings.push(`Heads up: your memory says “${rc.text}”, and “${b.title}” at ${T.fmtTime(T.parseHHMM(b.start), req.prefs.timeFormat)} would collide with it.`); plan.needsConfirmation = true; break; }
+      }
+    }
     return plan;
   };
 
@@ -2106,13 +2194,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       }
     }
     // a long stretch of work with no break
-    { let runStart = null, run = 0, last = null; const breakLen = T.preferredBreak(intel, prefs.defaultBreakMinutes); const focus = (prefs.focusBlockMinutes || 50) + 40;
+    { let runStart = null, run = 0, last = null; const breakLen = T.preferredBreak(intel, prefs.defaultBreakMinutes); const focus = (prefs.focusBlockMinutes || 50) + 15;
       for (const t of sched) {
         if (!isWork(t) || t.status === "protected" || t.fixed || t.category === "meal") { run = 0; last = null; continue; } // a break, meal or commitment already interrupts the stretch
         if (last && t.start - last.end > 5) run = 0; if (run === 0) runStart = t;
-        run += t.end - t.start;
-        if (run >= focus && breakLen > 0 && last) { add({ id: "break:" + last.id, icon: "coffee", text: `You have ${fmtDur(run)} of work in a row from ${fmtTime(runStart.start, fmt)}. Add a ${breakLen}-minute break after “${last.title}”?`, action: { type: "break", afterId: last.id, minutes: breakLen } }); break; }
-        last = t;
+        const dur = t.end - t.start;
+        if (last && run > 0 && run + dur > focus && breakLen > 0) { // the pause goes where focus runs out, not at the end of the stretch
+          add({ id: "break:" + last.id, icon: "coffee", text: `“${last.title}” ends ${fmtDur(run)} of work in a row from ${fmtTime(runStart.start, fmt)}. Add a ${breakLen}-minute break before “${t.title}”?`, action: { type: "break", afterId: last.id, minutes: breakLen } }); break; }
+        run += dur; last = t;
       } }
     // most important work first
     { const flex = sched.filter((t) => isWork(t) && !isPinned(t) && t.status !== "in_progress" && (!isToday || t.start >= now)); const top = flex.find((t) => T.rankOf(prefs, t.priority) === 0);
@@ -2125,7 +2214,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const cm = new RegExp(`\\b(?:at|from|@)\\s+${T._h.CLOCK}`, "i").exec(mem.text); const start = cm ? T.parseClock(cm[1]) : null; if (start == null || (isToday && start < now)) continue;
         const title = cap(clean(mem.text.replace(/\b(?:i|we)\s+(?:have|go to|do|usually|always|normally)\b/ig, " ").replace(new RegExp(`\\b(?:every|on|each)\\s+(?:${WD.join("|")}|day|morning|evening|night)s?\\b`, "ig"), " ").replace(cm[0], " ").replace(/\s+/g, " "))) || "Commitment";
         if (dayT.some((t) => similarity(t.title, title) >= 0.6)) continue;
-        add({ id: "mem:" + mem.id + ":" + date, icon: "brain", text: `From memory: “${mem.text}”. Add “${title}” at ${fmtTime(start, fmt)} as a fixed commitment?`, action: { type: "addFixed", title, start, minutes: 60 } });
+        const rpt = /\bevery (?:day|morning|evening|night)\b/.test(low) ? "daily" : "weekly";
+        add({ id: "mem:" + mem.id + ":" + date, icon: "brain", text: `From memory: “${mem.text}”. Add “${title}” at ${fmtTime(start, fmt)} as a fixed block, repeating ${rpt === "daily" ? "every day" : "every week"}?`, action: { type: "addFixed", title, start, minutes: 60, repeat: rpt } });
       }
     }
     // protect the evening
@@ -2134,6 +2224,18 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       if (mins >= 30) add({ id: "protect:" + date, icon: "moon", text: `Protect your evening from ${fmtTime(start, fmt)}, so nothing gets planned into it?`, action: { type: "protect", start, minutes: mins } });
     }
     return { an, items: out, brief: T.dayBrief(an, dayT, prefs, isToday, now) };
+  };
+  /* Does this date and start time collide with a routine the user told Tempo about? */
+  T.routineConflict = function (memory, date, start) {
+    if (start == null || !date) return null; const wd = WD[parseDay(date).getDay()];
+    for (const mem of memory || []) {
+      const low = mem.text.toLowerCase();
+      if (!(new RegExp("\\b" + wd + "s?\\b").test(low) || /\bevery (?:day|morning|evening|night)\b/.test(low))) continue;
+      const cm = new RegExp("\\b(?:at|from|@)\\s+" + T._h.CLOCK, "i").exec(mem.text); if (!cm) continue;
+      const rs = T.parseClock(cm[1]); if (rs == null) continue;
+      if (Math.abs(rs - start) < 60) return { text: mem.text, start: rs };
+    }
+    return null;
   };
   T.dayBrief = function (an, dayT, prefs, isToday, now) {
     const fmt = prefs.timeFormat;
@@ -2236,6 +2338,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       let need = live ? Math.max(1, t.estimatedMinutes - spent(t)) : inBlock ? Math.max(1, t.end - now) : ranOut && isWork(t) ? Math.min(t.estimatedMinutes, Math.max(5, Math.round(t.estimatedMinutes * 0.25))) : t.estimatedMinutes * (isWork(t) ? pace : 1);
       // a break that is already behind us on the clock is not waited for again
       if (!isWork(t) && isToday && t.end != null && t.end <= now) continue;
+      // the plan's own gaps count: nothing finishes before it is even scheduled to start
+      if (!live && !inBlock && !ranOut && t.start != null && t.start > cur) cur = t.start;
       for (const p of pins) if (p.start < cur + need && p.end > cur) cur = Math.max(cur, p.end); // work resumes after the commitment
       cur += need; remaining += need; if (isWork(t)) lastWork = cur;
     }
@@ -2403,6 +2507,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         for (const [k, v] of Object.entries(d.days || {})) if (v) days[k] = { date: k, title: v.title, targetFinish: v.targetFinish, carryDismissed: v.carryDismissed, dismissed: Array.isArray(v.dismissed) ? v.dismissed : [], allDoneSeen: v.allDoneSeen };
         for (const [k, v] of Object.entries(d.tasks || {})) if (v && v.id && T.isDayKey(v.date)) tasks[k] = { bullets: [], priority: "medium", estimatedMinutes: 30, status: "upcoming", ...v, category: T.CATEGORIES.includes(v.category) ? v.category : "other" };
         const prefs = { ...T.DEFAULT_PREFS, ...(d.prefs || {}) }; if (!Array.isArray(prefs.priorities) || !prefs.priorities.length) prefs.priorities = T.DEFAULT_PRIORITIES;
+        if ((prefs.dashVer || 0) < 2) { prefs.dashOrder = "schedule"; prefs.dashVer = 2; } // v6: the schedule sits near the top, insights fold below it
         const arr = (v) => (Array.isArray(v) ? v : []);
         return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id), events: arr(d.events), series: d.series && typeof d.series === "object" ? d.series : {} };
       }
@@ -2522,8 +2627,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
   function useClock() { const [now, setNow] = useState(() => new Date()); useEffect(() => { const id = setInterval(() => setNow(new Date()), 15000); return () => clearInterval(id); }, []); return now; }
   function useTick(active) { const [t, setT] = useState(() => Date.now()); useEffect(() => { if (!active) return; setT(Date.now()); const id = setInterval(() => setT(Date.now()), 1000); return () => clearInterval(id); }, [active]); return t; }
-  function useCount(target) {
+  function useCount(raw) {
+    const target = Number.isFinite(raw) ? Math.round(raw) : 0; // a NaN here once poisoned the ring with numbers like -204924%
     const [v, setV] = useState(0); const from = useRef(0);
+    if (!Number.isFinite(from.current)) from.current = 0;
     useEffect(() => {
       const start = performance.now(), a = from.current, dur = 700; let raf;
       const tick = (t) => { const p = Math.min(1, (t - start) / dur); const e = 1 - Math.pow(1 - p, 3); const val = Math.round(a + (target - a) * e); from.current = val; setV(val); if (p < 1) raf = requestAnimationFrame(tick); };
@@ -2576,7 +2683,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const bullets = task.bullets || []; const doneB = task.doneBullets || []; const steps = T.showSteps(task, prefs); const ticked = bullets.filter((b) => doneB.includes(b)).length;
     const pr = T.priorityOf(prefs, task.priority); const hl = task.color || (pr.id !== "medium" && pr.color && !done ? pr.color : null);
     const cls = ["row", done ? "done" : "", live ? "live" : "", task.status === "postponed" ? "postponed" : "", open ? "menu-open" : "", leaving ? "leaving " + leaving : "", dx ? "swiping" : "", hl ? "hl" : "", dragClass || ""].join(" ");
-    const [label, pk] = STATUS[task.status]; const showStatus = task.status !== "upcoming" || live; const look = iconLook(task);
+    const [label, pk] = STATUS[task.status]; const showStatus = task.status !== "upcoming" && task.status !== "in_progress"; const look = iconLook(task);
     const setX = (v) => { dxRef.current = v; setDx(v); };
     /* The whole row can be dragged up or down: with a mouse just drag, on a touch screen press and hold first. */
     const startRowDrag = (s, el) => { if (!grab || rowDrag.current) return; clearTimeout(hold.current); sw.current = null; rowDrag.current = true; setLift(true); grab.down({ button: 0, clientY: s.y, pointerId: s.id, currentTarget: el }, task); };
@@ -2616,12 +2723,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           ${steps ? html`<div class="checks">${bullets.map((b, i) => { const on = doneB.includes(b); return html`<div class=${"ck " + (on ? "on" : "")} key=${i}><button class="box" role="checkbox" aria-checked=${on} aria-label=${b} onClick=${() => onToggleBullet(task.id, b)}><${Icon} name="check" /></button><span class="tx">${b}</span></div>`; })}</div>`
             : bullets.length ? html`<div class="note-line">${bullets[0]}</div>` : null}
           ${nt ? html`<div class=${"nowtimer" + (nt.ms < 0 ? " over" : "")} role="timer" aria-label="Time left on the current task">
-            <span class="dot" aria-hidden="true"></span><span class="big num">${nt.ms < 0 ? "+" : ""}${T.fmtClock(Math.abs(nt.ms) / 1000)}</span><span class="lbl">${nt.ms < 0 ? "over the planned time" : nt.lbl}</span>
+            <span class="dot" aria-hidden="true"></span><span class="big num">${nt.ms < 0 ? "+" : ""}${T.fmtClock(Math.abs(nt.ms) / 1000)}</span><span class="lbl">${nt.ms < 0 ? (tm.elapsed || tm.running ? "over the estimate" : "past its planned end") : nt.lbl}</span>
             <span class="barw"><i style=${{ width: nt.pct + "%" }}></i></span>
-            ${tm.running ? html`<button class="btn xs ghost" onClick=${() => onStatus(task.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />${tm.elapsed > 0 ? "Resume" : "Start timer"}</button>`}
+            ${tm.running ? html`<button class="btn xs ghost" onClick=${() => onStatus(task.id, "upcoming")}><${Icon} name="pause" />Pause</button>`
+              : nt.ms < 0 && !tm.elapsed ? html`<${React.Fragment}><button class="btn xs soft" onClick=${() => onStatus(task.id, "completed")}><${Icon} name="check" />Done</button><button class="btn xs ghost" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />Start timer</button></${React.Fragment}>`
+              : html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />${tm.elapsed > 0 ? "Resume" : "Start timer"}</button>`}
           </div>` : !done && (tm.running || tm.elapsed > 0) ? html`<div class=${"timer " + (tm.left < 0 ? "over" : "")}><span class="barw"><i style=${{ width: tm.pct + "%" }}></i></span>${tm.running ? html`<span>focus timer running</span>` : html`<span>timer paused</span>`}</div>` : null}
           ${showMeta ? html`<div class="meta">
-            ${showStatus ? html`<${Pill} kind=${live && task.status === "upcoming" ? "accent" : pk}>${live && task.status === "upcoming" ? "Now" : label}</${Pill}>` : null}
+            ${showStatus ? html`<${Pill} kind=${pk}>${label}</${Pill}>` : null}
             ${pr.id !== "medium" && !done ? html`<${Pill} icon="flag" style=${pr.color ? { background: tint(pr.color, 14), color: pr.color } : null}>${pr.label}</${Pill}>` : null}
             ${task.fixed ? html`<${Pill} icon="lock">Fixed</${Pill}>` : null}
             ${task.repeat ? html`<${Pill} icon="refresh">${T.REPEATS[task.repeat]}</${Pill}>` : null}
@@ -2711,7 +2820,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* ---------- schedule card: Jaguar Sprint list or timeline, protected time below ---------- */
-  function ScheduleCard({ title, tasks, day, prefs, nowMin, isToday, actions, onAdd, onReorder, onDayAction, canUndo, undoLabel, view, onView, emptyHint, eta, onHideDone }) {
+  function ScheduleCard({ title, tasks, day, prefs, nowMin, isToday, actions, onAdd, onReorder, onDayAction, canUndo, undoLabel, view, onView, emptyHint, eta, onHideDone, hideEta }) {
     const [localHide, setLocalHide] = useState(null); useEffect(() => { setLocalHide(null); }, [prefs.hideCompleted]);
     const hideDone = localHide != null ? localHide : !!prefs.hideCompleted; // one switch, both directions
     const toggleDone = () => { const v = !hideDone; setLocalHide(v); if (onHideDone) onHideDone(v); };
@@ -2748,6 +2857,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     /* The green pill is live: it shows when the day will really end, from the clock and from what is ticked off. */
     const fmtT = (m) => T.fmtTime(((Math.round(m) % 1440) + 1440) % 1440, prefs.timeFormat);
     let etaPill = null;
+    if (hideEta) etaPill = null;
+    else
     if (eta && eta.eta != null) {
       const late = finish != null && eta.eta > finish + 1; const spare = finish != null ? finish - eta.eta : null;
       etaPill = html`<span class=${"pill eta " + (late ? "warn" : "good")} title=${"Live estimate: " + T.fmtDur(Math.max(1, eta.remaining)) + " of work left" + (eta.pace > 1.05 ? ", and today things are taking a little longer than planned" : eta.pace < 0.95 ? ", and today you are faster than planned" : "") + "."}><i class="livedot" aria-hidden="true"></i>${isToday ? "Done by " : "Ends "}<b class="num">${fmtT(eta.eta)}</b>${eta.overnight ? " (after midnight)" : ""}${finish != null ? html`<span class="sub"> · ${late ? T.fmtShortDur(-spare) + " past your " + fmtT(finish) + " target" : spare >= 1 ? T.fmtShortDur(spare) + " before " + fmtT(finish) : "right on " + fmtT(finish)}</span>` : null}</span>`;
@@ -2835,7 +2946,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="t"><${Icon} name=${s.icon || "bulb"} /><span>${s.text}</span></div>
         <div class="sbtn"><button class="btn sm primary" onClick=${() => onOk(s)}>OK</button><button class="ibtn" aria-label="Dismiss this suggestion" title="Not now" onClick=${() => onDismiss(s)}><${Icon} name="x" /></button></div>
       </div>`)}
-      ${!sg.items.length && sg.an.status !== "empty" ? html`<p class="quiet">Nothing to change right now. Your plan looks good.</p>` : null}
+      ${!sg.items.length && sg.an.status !== "empty" ? html`<p class="quiet">${["behind", "over"].includes(sg.an.status) ? "The day needs a re-plan; use the card above." : "Nothing to change right now. Your plan looks good."}</p>` : null}
       <div style=${{ marginTop: 12 }}><button class="btn sm soft" onClick=${onAsk}><${Icon} name="sparkles" />Ask Jaguar to plan this day</button></div>
     </section>`;
   }
@@ -2897,6 +3008,64 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </section>`;
   }
 
+  /* ---------- the Now card: what you are doing, what comes next, and the one finish time ---------- */
+  function NowCard({ tasks, prefs, nowMin, isToday, eta, day, onStatus, onFocus, onLate, onReplan }) {
+    const fmt = prefs.timeFormat; const ft = (m) => T.fmtTime(((Math.round(m) % 1440) + 1440) % 1440, fmt);
+    const work = tasks.filter((t) => isWork(t) && !t.fixed && t.status !== "postponed"); // commitments such as dinner are not "work"
+    const done = work.filter((t) => t.status === "completed"); const open = work.filter(isActive);
+    const doneMin = done.reduce((a, t) => a + t.estimatedMinutes, 0); const totalMin = doneMin + open.reduce((a, t) => a + t.estimatedMinutes, 0);
+    const leftMin = open.reduce((a, t) => a + t.estimatedMinutes, 0);
+    const pct = work.length ? Math.round((done.length / work.length) * 100) : 0;
+    const tpct = totalMin > 0 ? Math.round((doneMin / totalMin) * 100) : 0;
+    const shown = useCount(pct);
+    const timed = tasks.filter((t) => isActive(t) && t.status !== "protected" && t.start != null && t.end != null);
+    const running = tasks.find((t) => t.status === "in_progress");
+    const liveAny = !running && isToday ? timed.filter((t) => t.start <= nowMin && t.end > nowMin).sort((a, b) => a.start - b.start)[0] : null;
+    const overdue = isToday ? timed.filter((t) => !t.fixed && t.end <= nowMin && t.status !== "in_progress").sort((a, b) => a.end - b.end) : [];
+    const cur = running || liveAny || overdue[0] || null;
+    const moreLate = overdue.filter((t) => t !== cur).length;
+    const from = cur && cur.end > nowMin ? cur.end : nowMin;
+    const next = timed.filter((t) => t !== cur && !t.fixed && (!isToday || t.start >= from)).sort((a, b) => a.start - b.start)[0] || null;
+    const nextFixed = timed.filter((t) => t !== cur && t.fixed && (!isToday || t.end > nowMin)).sort((a, b) => a.start - b.start)[0] || null;
+    const tm = cur ? timerOf(cur, Date.now()) : null; const info = cur ? clockInfo(cur, nowMin, isToday, tm) : null;
+    const C = 2 * Math.PI * 19; const look = cur ? iconLook(cur) : null;
+    let pill = null;
+    if (eta && eta.eta != null) { const late = eta.target != null && eta.eta > eta.target + 1;
+      pill = html`<span class=${"pill eta " + (late ? "warn" : "good")}><i class="livedot" aria-hidden="true"></i>Done by <b class="num">${ft(eta.eta)}</b>${eta.target != null ? html`<span class="sub"> · ${late ? T.fmtShortDur(eta.eta - eta.target) + " past " + ft(eta.target) : eta.target - eta.eta >= 1 ? T.fmtShortDur(eta.target - eta.eta) + " before " + ft(eta.target) : "right on " + ft(eta.target)}</span>` : null}</span>`; }
+    else if (eta && eta.done && eta.finishedAt != null) pill = html`<span class="pill eta good"><${Icon} name="check" />All done at <b class="num">${ft(eta.finishedAt)}</b></span>`;
+    else if (day && day.targetFinish != null) pill = html`<${Pill} kind="good">Finish by ${ft(day.targetFinish)}</${Pill}>`;
+    const canLate = isToday && open.some((t) => t.start != null && !t.fixed);
+    return html`<section class="card nowcard" aria-label="Now">
+      <div class="nc-head"><span class="nc-k">${cur ? (overdue.includes(cur) ? "Ran over" : "Now") : next ? "Next" : "Today"}</span>${pill}</div>
+      ${cur ? html`<div class="nc-main">
+        <div class="tile" style=${look.style}><${Glyph} markup=${look.markup} /></div>
+        <div class="nc-body">
+          <div class="nc-title">${cur.title}</div>
+          <div class="nc-sub num">${T.fmtRange(cur.start, cur.end, fmt)} · <b class=${info.tone === "bad" ? "late" : ""}>${info.label} ${info.sub}</b></div>
+        </div>
+        ${cur.fixed ? null : html`<div class="nc-acts">
+          ${cur.status === "in_progress" ? html`<button class="btn sm ghost" onClick=${() => onStatus(cur.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class="btn sm ghost" onClick=${() => onStatus(cur.id, "in_progress")}><${Icon} name="play" />${tm && tm.elapsed > 0 ? "Resume" : "Start"}</button>`}
+          <button class="btn sm ghost" onClick=${() => onFocus(cur.id)} aria-label="Focus mode"><${Icon} name="expand" /></button>
+          <button class="btn sm primary" onClick=${() => onStatus(cur.id, "completed")}><${Icon} name="check" />Done</button>
+        </div>`}
+      </div>` : next ? html`<div class="nc-main">
+        <div class="tile" style=${iconLook(next).style}><${Glyph} markup=${iconLook(next).markup} /></div>
+        <div class="nc-body"><div class="nc-title">${next.title}</div><div class="nc-sub num">${T.fmtRange(next.start, next.end, fmt)} · starts in ${T.fmtShortDur(Math.max(1, next.start - nowMin))}</div></div>
+        <div class="nc-acts"><button class="btn sm ghost" onClick=${() => onStatus(next.id, "in_progress")}><${Icon} name="play" />Start now</button><button class="btn sm ghost" onClick=${() => onFocus(next.id)} aria-label="Focus mode"><${Icon} name="expand" /></button></div>
+      </div>` : html`<div class="nc-main"><div class="nc-body"><div class="nc-title">${work.length && !open.length ? "Everything on the sprint is done." : open.length ? "Remaining work has no time yet." : "Nothing planned yet."}</div><div class="nc-sub">${work.length && !open.length ? "The rest of the day is yours." : open.length ? "Re-plan to give it times." : "Add a task below, or ask the assistant."}</div></div>${open.length && onReplan ? html`<div class="nc-acts"><button class="btn sm soft" onClick=${onReplan}><${Icon} name="sparkles" />Re-plan</button></div>` : null}</div>`}
+      ${cur && next ? html`<div class="nc-next">Then <b>${next.title}</b> <span class="num">${ft(next.start)}</span>${nextFixed && nextFixed.start < next.start ? html` · <b>${nextFixed.title}</b> <span class="num">${ft(nextFixed.start)}</span>` : null}</div>` : cur && nextFixed ? html`<div class="nc-next">Then <b>${nextFixed.title}</b> <span class="num">${ft(nextFixed.start)}</span></div>` : null}
+      ${moreLate ? html`<div class="nc-late"><${Icon} name="alert" size=${14} /><span>${moreLate + (overdue.includes(cur) ? 1 : 0)} task${moreLate + (overdue.includes(cur) ? 1 : 0) > 1 ? "s" : ""} ran past ${moreLate + (overdue.includes(cur) ? 1 : 0) > 1 ? "their times" : "its time"}.</span>${onReplan ? html`<button class="btn xs ghost" onClick=${onReplan}>Re-plan from now</button>` : null}</div>` : null}
+      ${work.length ? html`<div class="nc-foot">
+        <div class="ring sm" role="img" aria-label=${done.length + " of " + work.length + " tasks done, " + tpct + "% of the planned time"}>
+          <svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="19" fill="none" stroke-width="4" /><circle class="bar" cx="22" cy="22" r="19" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray=${C} stroke-dashoffset=${C * (1 - Math.max(0, Math.min(100, shown)) / 100)} /></svg>
+          <div class="lbl num">${shown}%</div>
+        </div>
+        <div class="nc-stats"><b class="num">${done.length} of ${work.length}</b> tasks · <b class="num">${tpct}%</b> of the time · <b class="num">${T.fmtShortDur(leftMin)}</b> left</div>
+        ${canLate && onLate ? html`<div class="nc-latebtns"><span>Late?</span><button class="btn xs ghost" onClick=${() => onLate(10)}>+10</button><button class="btn xs ghost" onClick=${() => onLate(20)}>+20</button></div>` : null}
+      </div>` : null}
+    </section>`;
+  }
+
   const QUICK_EXAMPLES = ["Call the accountant 20 min", "Gym 1h at 6pm", "Buy groceries 30 min", "Client proposal 45 min !high", "Laundry 15 min", "Team meeting 30 min tomorrow at 10am", "Pay the electricity bill 10 min"];
   function QuickAdd({ onQuick, dateLabel }) {
     const [v, setV] = useState(""); const ex = QUICK_EXAMPLES[T.hash(T.dayKey()) % QUICK_EXAMPLES.length];
@@ -2907,7 +3076,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </form>`;
   }
 
-  Object.assign(UI, { html, reducer, initialState, sortTasks, tasksFor, Icon, Glyph, Pill, catStyle, tint, iconLook, customLook, STATUS, useHashRoute, useClock, useTick, useCount, useOutside, useEscape, timerOf, clockInfo, TaskClock, TaskRow, ProtectedCard, Timeline, ScheduleCard, ProgressCard, SuggestionsCard, IntelCard, QuickAdd });
+  Object.assign(UI, { html, reducer, initialState, sortTasks, tasksFor, Icon, Glyph, Pill, catStyle, tint, iconLook, customLook, STATUS, useHashRoute, useClock, useTick, useCount, useOutside, useEscape, timerOf, clockInfo, TaskClock, TaskRow, ProtectedCard, Timeline, ScheduleCard, ProgressCard, NowCard, SuggestionsCard, IntelCard, QuickAdd });
 })();
 </script>
 <script>
@@ -3665,7 +3834,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   "use strict";
   const T = window.Tempo; const UI = window.TempoUI;
   const { useState, useEffect, useReducer, useRef, useMemo, useCallback } = React;
-  const { html, reducer, initialState, sortTasks, tasksFor, Icon, Glyph, Pill, catStyle, tint, iconLook, customLook, useHashRoute, useClock, useEscape, TaskRow, ScheduleCard, ProgressCard, SuggestionsCard, IntelCard, QuickAdd } = UI;
+  const { html, reducer, initialState, sortTasks, tasksFor, Icon, Glyph, Pill, catStyle, tint, iconLook, customLook, useHashRoute, useClock, useEscape, TaskRow, ScheduleCard, NowCard, SuggestionsCard, IntelCard, QuickAdd } = UI;
   const { isActive, isPinned, isWork } = T;
   const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
 
@@ -3683,6 +3852,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const start = f.start ? T.parseHHMM(f.start) : null; const est = Math.max(5, parseInt(f.estimatedMinutes, 10) || 30); const prot = f.status === "protected";
       const status = prot || f.status === "completed" ? f.status : task.status === "in_progress" && f.status === "upcoming" ? "in_progress" : f.status === "postponed" && start == null ? "postponed" : "upcoming";
       onSave({ ...task, title: f.title.trim() || "Untitled task", category: f.category, priority: f.priority, estimatedMinutes: est, date: T.isDayKey(f.date) ? f.date : date, start: start ?? undefined, end: start != null ? start + est : undefined, fixed: prot ? true : f.fixed, status,
+        userStart: start != null ? (isNew || task.start == null || T.toHHMM(task.start) !== f.start ? true : !!task.userStart) : undefined,
         bullets: f.bullets.split("\n").map((s) => s.trim()).filter(Boolean), icon: f.icon || undefined, color: f.color || undefined, notes: f.notes.trim() || undefined, repeat: f.repeat || null });
     };
     useEscape(onClose);
@@ -3890,20 +4060,33 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* ---------- views ---------- */
+  const AN_BADGE = { empty: ["Nothing planned", ""], done: ["All done", "good"], ontrack: ["On track", "good"], tight: ["Tight", "warn"], unplanned: ["Needs times", "accent"], behind: ["Behind", "warn"], over: ["Over capacity", "bad"] };
+  function Insights({ sg, open0, children }) {
+    const [open, setOpen] = useState(!!open0); const B = AN_BADGE[sg.an.status] || AN_BADGE.empty;
+    return html`<section class=${"card insightsfold" + (open ? " open" : "")} aria-label="Suggestions and intelligence">
+      <button class="if-head" aria-expanded=${open} onClick=${() => setOpen((o) => !o)}>
+        <span class="orb"><${Icon} name="sparkles" /></span>
+        <span class="if-t"><b>Suggestions & Intelligence</b><small>${sg.items.length ? sg.items.length + (sg.items.length === 1 ? " idea" : " ideas") + " for this day" : "No ideas right now"}</small></span>
+        ${B[0] !== "Nothing planned" ? html`<${Pill} kind=${B[1]}>${B[0]}</${Pill}>` : null}
+        <${Icon} name=${open ? "up" : "down"} size=${18} />
+      </button>
+      ${open ? html`<div class="if-body">${children}</div>` : null}
+    </section>`;
+  }
   function TodayView({ state, nowMin, today, viewDate, setViewDate, actions, h }) {
     const isToday = viewDate === today; const tasks = tasksFor(state.tasks, viewDate); const day = state.days[viewDate] || {}; const clock = useClock();
     const sg = useMemo(() => T.suggestions({ all: Object.values(state.tasks), date: viewDate, today, now: nowMin, days: state.days, prefs: state.prefs, intel: state.intel, memory: state.memory }), [state.tasks, state.days, state.prefs, state.intel, state.memory, viewDate, today, nowMin]);
     const movedOut = Object.values(state.tasks).filter((t) => t.postponedFrom === viewDate && t.date !== viewDate && t.date > viewDate && t.status !== "completed");
     const open = tasks.filter((t) => isWork(t) && isActive(t)).length; const last = state.history[state.history.length - 1];
     const eta = T.liveEta(tasks, { now: nowMin, isToday, day, prefs: state.prefs }); // recomputed on every tick of the clock and every change
-    const dash = { quick: true, suggestions: true, intel: true, progress: true, ...(state.prefs.dash || {}) }; const schedFirst = state.prefs.dashOrder === "schedule";
+    const dash = { quick: true, suggestions: true, intel: true, progress: true, ...(state.prefs.dash || {}) }; const insightsFirst = state.prefs.dashOrder === "cards";
     const all = useMemo(() => Object.values(state.tasks), [state.tasks]);
-    const cards = html`<${React.Fragment}>
+    const showNow = dash.progress && isToday;
+    const cards = dash.suggestions || dash.intel ? html`<${Insights} sg=${sg} open0=${insightsFirst}>
       ${dash.suggestions ? html`<${SuggestionsCard} sg=${sg} dateLabel=${isToday ? "the day" : T.relDay(viewDate, today).toLowerCase()} onOk=${(s) => h.onSuggestion(s, viewDate)} onDismiss=${(s) => h.onDismissSuggestion(s, viewDate)} onAsk=${() => h.onAsk(viewDate)} />` : null}
-      ${dash.intel ? html`<${IntelCard} an=${sg.an} intel=${state.intel} prefs=${state.prefs} memoryCount=${state.prefs.memoryEnabled === false ? 0 : state.memory.length} tasks=${tasks} all=${all} eta=${eta} nowMin=${nowMin} isToday=${isToday} today=${today} date=${viewDate} />` : null}
-      ${dash.progress ? html`<${ProgressCard} tasks=${tasks} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} onStatus=${actions.onStatus} onLate=${h.onLate} onFocus=${actions.onFocus} />` : null}
-    </${React.Fragment}>`;
-    const schedule = html`<${ScheduleCard} title=${day.title && day.title !== T.DAY_TITLE ? day.title : isToday ? "Today's schedule" : "Schedule"} tasks=${tasks} day=${day} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} actions=${actions} eta=${eta} onHideDone=${h.onHideDone}
+      ${dash.intel ? html`<${IntelCard} an=${sg.an} intel=${state.intel} prefs=${state.prefs} memoryCount=${state.prefs.memoryEnabled === false ? 0 : state.memory.length} tasks=${tasks} all=${all} eta=${showNow ? null : eta} nowMin=${nowMin} isToday=${isToday} today=${today} date=${viewDate} />` : null}
+    </${Insights}>` : null;
+    const schedule = html`<${ScheduleCard} title=${day.title && day.title !== T.DAY_TITLE ? day.title : isToday ? "Today's schedule" : "Schedule"} tasks=${tasks} day=${day} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} actions=${actions} eta=${eta} hideEta=${showNow} onHideDone=${h.onHideDone}
         onAdd=${(preset) => h.onAdd(viewDate, preset)} onReorder=${(ids, moved) => h.onReorder(viewDate, ids, moved)} onDayAction=${(kind) => h.onDayAction(viewDate, kind)} canUndo=${!!last} undoLabel=${last ? last.note : ""} view=${state.prefs.scheduleView} onView=${h.onView}
         emptyHint=${isToday ? null : "Nothing is planned for this day. Add a task, or ask the assistant to schedule something here."} />`;
     return html`<${React.Fragment}>
@@ -3917,9 +4100,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           <div class="daynav" role="group" aria-label="Day"><button class="ibtn" aria-label="Previous day" onClick=${() => setViewDate(T.addDays(viewDate, -1))}><${Icon} name="left" /></button><button class="lbl" onClick=${() => setViewDate(today)} title="Back to today">${T.relDay(viewDate, today)}</button><button class="ibtn" aria-label="Next day" onClick=${() => setViewDate(T.addDays(viewDate, 1))}><${Icon} name="right" /></button></div>
         </div>
       </header>
+      ${showNow ? html`<${NowCard} tasks=${tasks} prefs=${state.prefs} nowMin=${nowMin} isToday=${isToday} eta=${eta} day=${day} onStatus=${actions.onStatus} onFocus=${actions.onFocus} onLate=${h.onLate} onReplan=${() => h.onDayAction(viewDate, "replan")} />` : null}
       ${dash.quick ? html`<${QuickAdd} onQuick=${(text) => h.onQuick(text, viewDate)} dateLabel=${T.relDay(viewDate, today).toLowerCase()} />` : null}
-      ${schedFirst ? schedule : cards}
-      ${schedFirst ? cards : schedule}
+      ${insightsFirst ? cards : null}
+      ${schedule}
+      ${insightsFirst ? null : cards}
       ${movedOut.length ? html`<section class="card"><div class="card-head"><h2>Moved to another day</h2></div><ul class="rows">${movedOut.map((t) => { const look = iconLook(t); return html`<li class="row" key=${t.id}><div class="row-inner plain"><div class="tile" style=${look.style}><${Glyph} markup=${look.markup} /></div><div class="body"><div class="title">${t.title}</div><div class="dur">${T.relDay(t.date, today)}${t.start != null ? " at " + T.fmtTime(t.start, state.prefs.timeFormat) : ", no time yet"} · ${T.fmtDur(t.estimatedMinutes)}</div></div><div class="acts"><button class="btn sm ghost" onClick=${() => setViewDate(t.date)}>Open day</button></div></div></li>`; })}</ul></section>` : null}
       <button class="fab" onClick=${h.openAssistant} aria-haspopup="dialog"><${Icon} name="sparkles" />Jaguar Assistant</button>
     </${React.Fragment}>`;
@@ -4211,7 +4396,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         } else if (status === "in_progress") toast("Focus timer started");
       },
       onEdit: (task) => setEditing(task),
-      onPostpone: (id) => { const t = stateRef.current.tasks[id]; if (!t) return; dispatch({ type: "postpone", id, toDate: T.addDays(t.date < T.dayKey() ? T.dayKey() : t.date, 1) }); toast("Moved to tomorrow", () => dispatch({ type: "undo" })); },
+      onPostpone: (id) => {
+        const st = stateRef.current; const t = st.tasks[id]; if (!t) return; const toDate = T.addDays(t.date < T.dayKey() ? T.dayKey() : t.date, 1);
+        const dayT = Object.values(st.tasks).filter((x) => x.date === toDate); // it lands with a real time, not as "postponed"
+        const slot = T.findSlot(dayT, t.estimatedMinutes, st.prefs.workdayStart, T.dayLimit(dayT, st.days[toDate], st.prefs, st.prefs.workdayStart));
+        dispatch({ type: "postpone", id, toDate, start: slot ?? undefined });
+        toast(`Moved to tomorrow${slot != null ? " at " + T.fmtTime(slot, st.prefs.timeFormat) : ""}`, () => dispatch({ type: "undo" }));
+      },
       onPark: (id) => { dispatch({ type: "postpone", id }); toast("Postponed, no time set", () => dispatch({ type: "undo" })); },
       onDelete: (id) => { if (!stateRef.current.tasks[id]) return; dispatch({ type: "deleteTask", id }); setEditing(null); toast("Task deleted", () => dispatch({ type: "undo" })); },
       onMove: (task) => setEditing(task),
@@ -4239,7 +4430,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const st = stateRef.current; const q = T.parseQuick(text, T.dayKey(), st.prefs.learnFromHistory === false ? null : st.intel); if (!q) return; const date = q.date || date0; const day0 = T.dayKey(); const isT = date === day0;
         const dayT = Object.values(st.tasks).filter((t) => t.date === date); let start = q.start; let noteT = "";
         if (start == null) { const from = isT ? T.minutesNow() : st.prefs.workdayStart; const limit = T.dayLimit(dayT, st.days[date], st.prefs, from); const slot = T.findSlot(dayT, q.estimatedMinutes, from, limit); if (slot != null) { start = slot; track("autoslot"); } else noteT = `, no free slot before ${T.fmtTime(limit, st.prefs.timeFormat)} so it has no time yet`; }
-        const task = T.makeTask({ date, title: q.title, category: q.category, priority: q.priority, estimatedMinutes: q.estimatedMinutes, start: start ?? undefined });
+        const task = T.makeTask({ date, title: q.title, category: q.category, priority: q.priority, estimatedMinutes: q.estimatedMinutes, start: start ?? undefined, userStart: q.start != null ? true : undefined });
         dispatch({ type: "addTask", task });
         toast(`Added “${task.title}” · ${T.fmtShortDur(task.estimatedMinutes)}${start != null ? " at " + T.fmtTime(start, st.prefs.timeFormat) : ""}${date !== date0 ? " " + T.onDay(date, day0) : ""}${noteT}`, () => dispatch({ type: "undo" }));
       },
@@ -4251,13 +4442,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       },
       onReorder: (date, ids, movedId) => {
         const st = stateRef.current; const all = Object.values(st.tasks); const dayT = all.filter((t) => t.date === date); const isT = date === T.dayKey();
-        const movable = ids.filter((id) => { const t = st.tasks[id]; return t && t.status !== "completed" && !isPinned(t); });
+        const hardPin = (t) => (t.fixed || t.status === "protected") && t.start != null && t.end != null;
+        const movable = ids.filter((id) => { const t = st.tasks[id]; return t && t.status !== "completed" && !hardPin(t) && (!t.userStart || t.start == null || id === movedId); });
         // where a task was dropped relative to fixed commitments counts: below dinner means after dinner
         const after = {}; let pinEnd = null; let nextPin = null;
         for (const id of ids) { const t = st.tasks[id]; if (!t || t.status === "completed") continue; if (isPinned(t)) { pinEnd = Math.max(pinEnd ?? 0, t.end); if (movedId && nextPin === undefined) nextPin = t; } else { if (pinEnd != null) after[id] = pinEnd; if (id === movedId) nextPin = undefined; } }
         const starts = dayT.filter((t) => movable.includes(t.id) && t.start != null).map((t) => t.start); const first = starts.length ? Math.min(...starts) : st.prefs.workdayStart; const base = isT ? Math.max(T.minutesNow(), first) : first;
         const prot = dayT.filter((t) => t.status === "protected" && t.start != null && t.start >= base).sort((x, y) => x.start - y.start)[0];
-        const laid = T.layoutDay(dayT.map((t) => (movable.includes(t.id) && t.status === "postponed" ? { ...t, status: "upcoming" } : t)), { now: base, limit: prot ? prot.start : st.prefs.bedTime, prefs: { ...st.prefs, bufferMinutes: 0 }, intel: st.intel, date, order: movable, keepBreaks: true, after });
+        const laid = T.layoutDay(dayT.map((t) => { let x = movable.includes(t.id) && t.status === "postponed" ? { ...t, status: "upcoming" } : t; if (t.id === movedId && t.userStart) x = { ...x, userStart: undefined }; return x; }), { now: base, limit: prot ? prot.start : st.prefs.bedTime, prefs: { ...st.prefs, bufferMinutes: 0 }, intel: st.intel, date, order: movable, keepBreaks: true, after });
         const result = laid.tasks.map((t) => { const o = st.tasks[t.id]; return o && o.start == null && t.start == null ? o : t; });
         const mv = movedId ? laid.tasks.find((t) => t.id === movedId) : null; const blocked = mv && nextPin && mv.start != null && mv.start >= nextPin.end ? nextPin : null; // wanted before a commitment, but it does not fit there
         const lost = laid.unscheduled.filter((u) => st.tasks[u.task.id] && st.tasks[u.task.id].start != null).length;
@@ -4270,7 +4462,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const st = stateRef.current; const act = s.action; const ts = Date.now(); let msg = "Done"; let rev = null;
         if (act.type === "carry") { h.onCarry(act.ids); dispatch({ type: "dismissSuggestion", date, id: s.id }); return; }
         if (act.type === "protect") { dispatch({ type: "addTask", task: T.makeTask({ date, title: "Free evening", category: "free", priority: "low", estimatedMinutes: act.minutes, start: act.start, status: "protected", fixed: true }), note: "protecting your evening" }); msg = `Evening protected from ${T.fmtTime(act.start, st.prefs.timeFormat)}`; }
-        else if (act.type === "replan") { const r = relay(date, null, { keepOrder: true, fillGaps: true }, "the re-plan"); rev = r.rev; msg = "Re-planned." + parkedNote(r.laid); track("replan"); }
+        else if (act.type === "replan") { const r = relay(date, null, { keepOrder: true, fillGaps: true, keepBreaks: true }, "the re-plan"); rev = r.rev; msg = "Re-planned." + parkedNote(r.laid); track("replan"); }
         else if (act.type === "prioritize") { const r = relay(date, null, {}, "the reorder by priority"); rev = r.rev; msg = "Most important work now comes first." + parkedNote(r.laid); }
         else if (act.type === "move") { const r = relay(date, (d, extra) => { const an = T.analyzeDay(d, { now: T.minutesNow(), day: st.days[date] || {}, prefs: st.prefs, intel: st.intel, isToday: date === T.dayKey() }); const ids = new Set(an.toMove.map((t) => t.id)); const next = T.addDays(date, 1); for (const t of d) if (ids.has(t.id)) extra.push({ ...t, date: next, start: undefined, end: undefined, status: "upcoming", postponedFrom: date, updatedAt: ts }); return d.filter((t) => !ids.has(t.id)); }, { keepOrder: true, fillGaps: true }, "moving the overflow"); rev = r.rev; msg = `${r.extra.length} task${r.extra.length > 1 ? "s" : ""} moved to ${T.dayPhrase(T.addDays(date, 1), T.dayKey())}`; }
         else if (act.type === "resize") { const t0 = st.tasks[act.taskId]; if (!t0) return; const r = relay(date, (d) => d.map((t) => { if (t.id !== act.taskId) return t; const est = Math.max(5, t.estimatedMinutes + act.minutes); return { ...t, estimatedMinutes: est, end: t.start != null ? t.start + est : t.end, tuned: true, updatedAt: ts }; }), { keepOrder: true, keepBreaks: true }, "the duration change"); rev = r.rev; msg = `“${t0.title}” is now ${T.fmtDur(Math.max(5, t0.estimatedMinutes + act.minutes))}.` + parkedNote(r.laid); }
@@ -4288,7 +4480,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if (kind === "deleteAll") { const rev = commit(all.filter((t) => t.date !== date), "deleting the whole day", "manual"); return toast(`Deleted ${dayT.length} item${dayT.length === 1 ? "" : "s"}`, () => undo(rev)); }
         if (kind === "clearDone") { const n = dayT.filter((t) => t.status === "completed").length; const rev = commit(all.filter((t) => !(t.date === date && t.status === "completed")), "clearing completed tasks", "manual"); return toast(`Cleared ${n} completed task${n === 1 ? "" : "s"}`, () => undo(rev)); }
         let r, msg;
-        if (kind === "replan") { r = relay(date, null, { keepOrder: true, fillGaps: true }, "the re-plan"); msg = "Re-planned from " + T.fmtTime(r.an.base, fmt) + "." + parkedNote(r.laid); track("replan"); }
+        if (kind === "replan") { r = relay(date, null, { keepOrder: true, fillGaps: true, keepBreaks: true }, "the re-plan"); msg = "Re-planned from " + T.fmtTime(r.an.base, fmt) + "." + parkedNote(r.laid); track("replan"); }
         else if (kind === "prioritize") { r = relay(date, null, {}, "sorting by priority"); msg = "Sorted by priority." + parkedNote(r.laid); track("replan"); }
         else if (kind === "breakNow") { const len = T.preferredBreak(st.intel, st.prefs.defaultBreakMinutes) || 10; r = relay(date, null, { keepOrder: true, keepBreaks: true, leadingBreak: len }, "adding a break"); msg = `Added a ${len}-minute break now.` + parkedNote(r.laid); }
         else if (kind === "noBreaks") { r = relay(date, (d) => d.filter((t) => !(t.category === "break" && !t.fixed && isActive(t))), { keepOrder: true, keepBreaks: true }, "removing the breaks"); msg = "Breaks removed."; }
@@ -4296,14 +4488,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if (r) toast(msg, () => undo(r.rev));
       },
       onLate: (mins) => {
-        const st = stateRef.current; const day0 = T.dayKey(); const nm = T.minutesNow();
-        const plan = T.localPlan({ message: `I'm running ${mins} minutes behind.`, allTasks: Object.values(st.tasks), prefs: { ...st.prefs, memoryEnabled: false }, intel: st.intel, date: day0, nowMinutes: nm, days: st.days });
-        const res = T.applyPlan(Object.values(st.tasks), plan, { today: day0, now: nm, prefs: st.prefs });
+        const st = stateRef.current; const day0 = T.dayKey(); const nm = T.minutesNow(); const all = Object.values(st.tasks);
+        const dayT = all.filter((t) => t.date === day0); const shifted = T.delayDay(dayT, nm, mins); // a delay makes the day later, never tighter
+        const res = [...all.filter((t) => t.date !== day0), ...shifted];
         const ends = (list) => Math.max(0, ...list.filter((t) => t.date === day0 && isActive(t) && isWork(t) && !t.fixed && t.end != null).map((t) => t.end));
-        const before = ends(Object.values(st.tasks)), after = ends(res.tasks);
-        const lines = T.describeSummary(res.summary, day0, st.prefs.timeFormat).filter((l) => !/new time/.test(l));
-        if (after && before) lines.unshift(after === before ? `Your last block still ends at ${T.fmtTime(after, st.prefs.timeFormat)}.` : `Your last block ends at ${T.fmtTime(after, st.prefs.timeFormat)} instead of ${T.fmtTime(before, st.prefs.timeFormat)}.`);
-        setSheet({ title: `Running ${mins} minutes late`, intro: "Here is what shifting the rest of today does. Fixed commitments and protected time stay where they are.", lines, warnings: res.warnings.filter((w) => /fit|available|parked|protected|bedtime/.test(w)), applyLabel: "Shift my day", onApply: () => { track("late"); const rev = commit(res.tasks, "the shift for running late", "manual"); setSheet(null); toast("Schedule shifted", () => undo(rev)); } });
+        const before = ends(all), after = ends(res);
+        const moved = shifted.filter((t, i) => { const o = dayT.find((x) => x.id === t.id); return o && (o.start !== t.start || o.end !== t.end); });
+        const lines = [];
+        if (after && before) lines.push(after === before ? `Your last block still ends at ${T.fmtTime(after, st.prefs.timeFormat)}.` : `Your last block ends at ${T.fmtTime(after, st.prefs.timeFormat)} instead of ${T.fmtTime(before, st.prefs.timeFormat)}.`);
+        lines.push(moved.length ? `${moved.length} block${moved.length > 1 ? "s move" : " moves"} ${mins} minutes later. Gaps and breaks stay as they are.` : "Nothing needs to move.");
+        const lateEnd = Math.max(0, ...shifted.filter((t) => isActive(t) && t.end != null && t.status !== "protected").map((t) => t.end));
+        setSheet({ title: `Running ${mins} minutes late`, intro: "Everything after now simply moves back. Fixed commitments, protected time and times you set yourself stay put.", lines, warnings: lateEnd > st.prefs.bedTime ? [`The day now runs past your ${T.fmtTime(st.prefs.bedTime, st.prefs.timeFormat)} bedtime.`] : [], applyLabel: "Shift my day", onApply: () => { track("late"); const rev = commit(res, "the shift for running late", "manual"); setSheet(null); toast("Schedule shifted " + mins + " minutes later", () => undo(rev)); } });
       },
     };
     const onSave = (t) => { if (t.id) dispatch({ type: "updateTask", id: t.id, patch: t }); else dispatch({ type: "addTask", task: T.makeTask(t) }); setEditing(null); toast(t.id ? "Saved" : t.status === "protected" ? "Time protected" : "Task added", () => dispatch({ type: "undo" })); };
@@ -4324,6 +4519,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const active = (r) => route === r || (r === "today" && onToday) || (r === "more" && MORE.has(route));
 
     return html`<div class=${"shell" + (state.prefs.compact ? " compact" : "")}>
+      <header class="topbar" aria-label="Tempo">
+        <div class="b1"><i></i>Tempo</div>
+        <a class="tb-a" href="#plan" aria-label="Your account and plan">${(state.prefs.name || "").trim() ? html`<span class="av">${(state.prefs.name || "").trim().charAt(0).toUpperCase()}</span>` : html`<span class="av"><${Icon} name="user" /></span>`}</a>
+      </header>
       <nav class="nav" aria-label="Main">
         <div class="nav-inner">
           <div class="brand"><div class="b1"><i></i>Tempo</div></div>
