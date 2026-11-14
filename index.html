@@ -877,6 +877,37 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .fx-task .fx-stage { border-radius: 26px; overflow: hidden; background: #150A2E; box-shadow: 0 30px 80px rgba(11, 4, 24, .6), 0 0 0 1px rgba(196, 181, 253, .3); animation: pop .28s cubic-bezier(.2,1.2,.4,1) backwards; }
 .fx-day .fx-stage { background: #0B0418; }
 .fx-skip { position: absolute; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(221, 214, 254, .7); font-size: 12px; font-weight: 600; letter-spacing: .04em; pointer-events: none; }
+
+/* ---------- v5 ---------- */
+/* the schedule, tidied: finished work folds into quiet compact rows */
+.row.done .row-inner { padding-block: 9px; }
+.row.done .tile { width: 42px; height: 42px; border-radius: 13px; } .row.done .tile svg { width: 18px; height: 18px; }
+.row.done .checks, .row.done .note-line, .row.done .meta, .row.done .tclock small { display: none; }
+.row.done .title { font-size: 14.5px; } .row.done .dur { font-size: 12px; margin-top: 0; }
+.row.done .tclock svg { width: 24px; height: 24px; } .row.done .tclock { min-width: 34px; }
+.sec-lbl .cnt { margin-left: 10px; color: var(--muted); font-weight: 600; font-size: 11.5px; letter-spacing: .01em; text-transform: none; }
+.rows .row .title .range { color: var(--accent-text); font-weight: 700; }
+.row.live .title .range, .row.cur .title .range { color: var(--accent); }
+
+/* the mouse captcha pattern pad */
+.pat-box { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.pat { width: min(230px, 64vw); touch-action: none; -webkit-user-select: none; user-select: none; }
+.pat-dot { fill: var(--line-2); transition: fill .12s; } .pat-dot.on { fill: var(--accent); }
+.pat-hint { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 5; animation: patPulse 1.6s ease-in-out infinite; }
+.pat-target { fill: none; stroke: color-mix(in srgb, var(--accent) 30%, var(--card)); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 11; }
+.pat-live { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
+@keyframes patPulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+/* assistant: a friendlier mic and calmer warnings */
+.cmic { background: var(--accent-soft); color: var(--accent-text); }
+.cmic:hover { background: color-mix(in srgb, var(--accent) 24%, var(--card)); }
+.cmic:disabled { background: var(--surface); color: var(--muted); }
+.msg .warn { background: var(--card); border: 1px solid var(--line-2); border-left: 3px solid var(--warn); color: var(--fg-2); font-size: 13px; border-radius: 12px; padding: 9px 12px; font-weight: 500; }
+.msg .warn svg { color: var(--warn); }
+
+/* celebrations: in Focus mode the task scene takes the whole screen */
+.fx-task.full { background: #0B0418; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.fx-task.full .fx-stage { border-radius: 0; box-shadow: none; animation: fade .25s ease-out; }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -1180,7 +1211,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       estimatedMinutes: 90, start: targetFinish, end: Math.min(targetFinish + 90, 1440), status: "protected", fixed: true, createdAt: created - 3600000, updatedAt: created });
     return { tasks, title: T.DAY_TITLE, targetFinish };
   };
-  T.makeTask = (p) => { const ts = Date.now(); const est = Math.max(5, p.estimatedMinutes || 30); const t = { id: p.id || uid(), date: p.date, title: p.title || "Untitled task", bullets: p.bullets || [], category: p.category || "other", priority: p.priority || "medium", estimatedMinutes: est, start: p.start, end: p.end ?? (p.start != null ? p.start + est : undefined), status: p.status || "upcoming", fixed: !!p.fixed, createdAt: ts, updatedAt: ts }; if (p.dueBy != null) t.dueBy = p.dueBy; for (const k of ["icon", "color", "notes"]) if (p[k]) t[k] = p[k]; return t; };
+  T.makeTask = (p) => { const ts = Date.now(); const est = Math.max(5, p.estimatedMinutes || 30); const t = { id: p.id || uid(), date: p.date, title: p.title || "Untitled task", bullets: p.bullets || [], category: p.category || "other", priority: p.priority || "medium", estimatedMinutes: est, start: p.start, end: p.end ?? (p.start != null ? p.start + est : undefined), status: p.status || "upcoming", fixed: !!p.fixed, createdAt: ts, updatedAt: ts }; if (p.dueBy != null) t.dueBy = p.dueBy; for (const k of ["icon", "color", "notes", "repeat", "sid"]) if (p[k]) t[k] = p[k]; if (t.repeat && !t.sid) t.sid = t.id; return t; };
   const isActive = (t) => t.status !== "completed" && t.status !== "postponed";
   const isPinned = (t) => (t.fixed || t.status === "protected") && t.start != null && t.end != null;
   const isWork = (t) => t.category !== "break" && t.status !== "protected";
@@ -1339,7 +1370,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* ---------- planner response contract ----------
      Both planners (Claude and the built-in one) return this shape; applyPlan turns it into tasks. */
-  T.PLAN_SHAPE = `{"kind":"plan","reply":"<what you did and any trade-offs, 1-4 sentences, concrete, with numbers when time is short>","dayTitle":"<short title or null>","targetFinish":"HH:MM or null","nowOverride":"HH:MM or null (only if the user stated the current time)","feasible":true,"needsConfirmation":false,"allowFixedChanges":false,"blocks":[{"taskId":"<existing task id, or null for a new task>","date":"YYYY-MM-DD (the day this block is on; today if omitted)","title":"...","category":"math|science|chemistry|business|reading|writing|coding|admin|work|break|meal|exercise|family|free|other","priority":"high|medium|low","start":"HH:MM","end":"HH:MM","bullets":["short actionable step"],"kind":"task|break|fixed|protected"}],"completedTaskIds":["ids the user explicitly said they finished"],"postponed":[{"taskId":"<id>","title":"...","toDate":"YYYY-MM-DD or null","reason":"..."}],"deletedTaskIds":["ids the user explicitly asked to delete"],"deleteCompleted":false,"warnings":["anything that does not fit or had to be traded off"]}`;
+  T.PLAN_SHAPE = `{"kind":"plan","reply":"<what you did and any trade-offs, 1-4 sentences, concrete, with numbers when time is short>","dayTitle":"<short title or null>","targetFinish":"HH:MM or null","nowOverride":"HH:MM or null (only if the user stated the current time)","feasible":true,"needsConfirmation":false,"allowFixedChanges":false,"blocks":[{"taskId":"<existing task id, or null for a new task>","date":"YYYY-MM-DD (the day this block is on; today if omitted)","title":"...","category":"math|science|chemistry|business|reading|writing|coding|admin|work|break|meal|exercise|family|free|other","priority":"high|medium|low","start":"HH:MM","end":"HH:MM","repeat":"omit, or daily|weekdays|weekly|twicedaily ONLY when the user asks for it to repeat","bullets":["short actionable step"],"kind":"task|break|fixed|protected"}],"completedTaskIds":["ids the user explicitly said they finished"],"postponed":[{"taskId":"<id>","title":"...","toDate":"YYYY-MM-DD or null","reason":"..."}],"deletedTaskIds":["ids the user explicitly asked to delete"],"deleteCompleted":false,"warnings":["anything that does not fit or had to be traded off"]}`;
 
   T.normalizePlan = function (raw, today, opts) {
     const r = raw && typeof raw === "object" ? raw : {}; const okPri = (opts && opts.priorities) || ["high", "medium", "low"]; const okIcon = (opts && opts.icons) || null;
@@ -1358,6 +1389,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         category: T.CATEGORIES.includes(b.category) ? b.category : T.guessCategory(str(b.title)),
         priority: okPri.includes(b.priority) ? b.priority : "medium",
         icon: typeof b.icon === "string" && b.icon && (!okIcon || okIcon.includes(b.icon)) ? b.icon : null,
+        repeat: ["daily", "weekdays", "weekly", "twicedaily"].includes(b.repeat) ? b.repeat : null,
         start: b.start, end: b.end,
         bullets: arr(b.bullets).filter((x) => typeof x === "string").slice(0, 6),
         kind: ["task", "break", "fixed", "protected"].includes(b.kind) ? b.kind : "task",
@@ -1406,6 +1438,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const status = b.kind === "protected" ? "protected" : base.status === "in_progress" && date === base.date ? "in_progress" : "upcoming";
         const t = { ...base, date, title: b.title || base.title, bullets: b.bullets && b.bullets.length ? b.bullets : base.bullets, category: b.category || base.category, priority: b.priority || base.priority, icon: b.icon || base.icon,
           estimatedMinutes: end - start, start, end, status, fixed: b.kind === "fixed" || b.kind === "protected" || (base.fixed && b.kind !== "task"), updatedAt: ts };
+        if (b.repeat) { t.repeat = b.repeat; t.sid = base.sid || base.id; }
         if (base.date !== date) { t.postponedFrom = base.date; summary.moved.push({ title: base.title, from: base.date, to: date, start }); touched.add(base.date); }
         else if (base.start !== start || base.end !== end) summary.retimed++;
         map.set(base.id, t); referenced.add(base.id);
@@ -1414,7 +1447,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if (dup) { referenced.add(dup.id); continue; }
         const t = { id: uid(), date, title: b.title, bullets: b.bullets || [], category: b.kind === "break" ? "break" : b.category, priority: b.priority || "medium", estimatedMinutes: end - start, start, end,
           status: b.kind === "protected" ? "protected" : "upcoming", fixed: b.kind === "fixed" || b.kind === "protected", createdAt: ts, updatedAt: ts };
-        if (b._dueBy != null) t.dueBy = b._dueBy; if (b.icon) t.icon = b.icon;
+        if (b._dueBy != null) t.dueBy = b._dueBy; if (b.icon) t.icon = b.icon; if (b.repeat) { t.repeat = b.repeat; t.sid = t.id; }
         map.set(t.id, t); referenced.add(t.id); if (t.category !== "break") summary.created.push({ title: t.title, date, start });
       }
     }
@@ -1620,7 +1653,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     for (const sent of sentences) {
       const cmd = /^\s*(?:please\s+)?(?:can you\s+)?(?:add|schedule|plan|put|book|create|set up)\s+(.+?)[.!?;]?$/i.exec(sent);
       if (!cmd || /^(?:a|an|another)?\s*\d*\s*(?:-|\s)?(?:min|minute)?\s*break\b/i.test(cmd[1])) continue;
-      let body = cmd[1]; const d = T.parseDateExpr(body, today); const date = d ? d.date : today; if (d) body = (body.slice(0, d.index) + " " + body.slice(d.index + d.length)).replace(/\b(?:for|on)\s*$/i, "");
+      let body = cmd[1];
+      // repetition and protected time, in plain words
+      let rpt = null, prot = false, rm = null;
+      if ((rm = /\b(?:every\s?day|daily|each day)\b/i.exec(body))) rpt = "daily";
+      else if ((rm = /\b(?:on weekdays|every weekday|weekdays(?:\s+only)?)\b/i.exec(body))) rpt = "weekdays";
+      else if ((rm = /\btwice a day\b/i.exec(body))) rpt = "twicedaily";
+      else if ((rm = /\b(?:every week|weekly)\b/i.exec(body))) rpt = "weekly";
+      if (rm) body = (body.slice(0, rm.index) + " " + body.slice(rm.index + rm[0].length));
+      if (!rpt && /\bevery\s+(?:mon|tues|wednes|thurs|fri|satur|sun)day\b/i.test(body)) { rpt = "weekly"; body = body.replace(/\bevery\s+/i, " "); }
+      if (/\bprotect(?:ed)?(?:\s+time)?\b|\bas free time\b/i.test(body)) { prot = true; body = body.replace(/\b(?:as\s+)?protect(?:ed)?(?:\s+time)?\b|\bas free time\b/gi, " "); }
+      const d = T.parseDateExpr(body, today); const date = d ? d.date : today; if (d) body = (body.slice(0, d.index) + " " + body.slice(d.index + d.length)).replace(/\b(?:for|on)\s*$/i, "");
       let start = null, dueBy = null; let mm;
       if ((mm = new RegExp(`\\b(?:before|by|no later than)\\s+${CLOCK}`, "i").exec(body))) { dueBy = parseClock(mm[1]); body = body.replace(mm[0], " "); }
       if ((mm = new RegExp(`\\b(?:at|@|from)\\s+${CLOCK}`, "i").exec(body))) { start = parseClock(mm[1]); body = body.replace(mm[0], " "); }
@@ -1628,17 +1671,20 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const titleRaw = clean(stripDuration(body)).replace(/^(?:of|for)\s+/i, ""); if (!titleRaw || titleRaw.length < 2) continue;
       const cat = T.guessCategory(titleRaw); const est = T.estimateTask(body, cat, prefs.learnFromHistory === false ? null : intel);
       const existing = T.findTask(upcoming(), titleRaw);
-      if (existing && similarity(existing.title, titleRaw) >= 0.99 && (d || start != null)) {
-        // same task already exists: move it rather than duplicating it
+      if (existing && similarity(existing.title, titleRaw) >= 0.99 && (d || start != null || rpt || prot)) {
+        // same task already exists: move or retune it rather than duplicating it
+        if (existing.fixed || existing.status === "protected") plan.allowFixedChanges = true; // the user named it explicitly
+        if (rpt) { existing.repeat = rpt; if (!existing.sid) existing.sid = existing.id; }
+        if (prot) { existing.status = "protected"; existing.fixed = true; }
         if (existing.date !== date) { existing.postponedFrom = existing.date; if (existing.date === today) changedToday = true; }
-        existing.date = date; existing.status = "upcoming"; if (start != null) { existing.start = start; existing.end = start + existing.estimatedMinutes; } else { existing.start = undefined; existing.end = undefined; }
+        existing.date = date; existing.status = prot ? "protected" : "upcoming"; if (start != null) { existing.start = start; existing.end = start + existing.estimatedMinutes; } else if (d) { existing.start = undefined; existing.end = undefined; }
         if (date === today) { if (start != null) pinnedIds.add(existing.id); changedToday = true; } else if (start != null) otherDayBlocks.push(existing); else plan.postponed.push({ taskId: existing.id, title: existing.title, toDate: date, reason: "You asked to schedule it there." });
         notes.push(`Moved “${existing.title}” to ${dayPhrase(date, today)}${start != null ? " at " + fmtTime(start, fmt) : ""}.`); continue;
       }
-      const t = T.makeTask({ date, title: cap(titleRaw), category: cat, estimatedMinutes: est.minutes, priority: dueBy != null || /urgent|important|asap/i.test(sent) ? "high" : "medium", start: start ?? undefined, dueBy: dueBy ?? undefined });
+      const t = T.makeTask({ date, title: cap(titleRaw), category: prot ? "free" : cat, estimatedMinutes: est.minutes, priority: prot ? "low" : dueBy != null || /urgent|important|asap/i.test(sent) ? "high" : "medium", start: start ?? undefined, dueBy: dueBy ?? undefined, status: prot ? "protected" : undefined, fixed: prot, repeat: rpt ?? undefined });
       t._basis = est.basis; work.set(t.id, t);
       if (date === today) { if (start != null) pinnedIds.add(t.id); changedToday = true; } else if (start != null) otherDayBlocks.push(t); else { otherDayBlocks.push(t); }
-      notes.push(`Added “${t.title}” (${fmtDur(t.estimatedMinutes)}, ${est.basis})${date !== today ? " " + onDay(date, today) : ""}${start != null ? " at " + fmtTime(start, fmt) : ""}${dueBy != null ? ", to finish before " + fmtTime(dueBy, fmt) : ""}.`);
+      notes.push(`Added ${prot ? "protected time " : ""}“${t.title}” (${fmtDur(t.estimatedMinutes)}${prot ? "" : ", " + est.basis})${date !== today ? " " + onDay(date, today) : ""}${start != null ? " at " + fmtTime(start, fmt) : ""}${rpt ? ", repeating " + (rpt === "daily" ? "every day" : rpt === "weekdays" ? "on weekdays" : rpt === "weekly" ? "every week" : "twice a day") : ""}${dueBy != null ? ", to finish before " + fmtTime(dueBy, fmt) : ""}.`);
     }
     const newRe = /\b(?:i (?:also |still )?(?:need|have|want|got|would like|'d like) to|i should|remind me to)\s+(?:complete|finish|do|work on|get through|tackle|write|read|study|review|spend (?:some |a bit of |a little )?time(?: on)?)?\s*([^.;]+)/gi;
     const skipWords = /^(?:be (?:completely |totally )?(?:free|done)|finish (?:all|everything|by)|stop by|relax|rest|sleep|eat|leave|go\b|update|reorgani[sz]e|replan|move|push|have|be\b)/i;
@@ -1661,7 +1707,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       }
     }
 
-    const reorg = /reorgani[sz]e|re-?plan|update my plan|reschedule (?:my|the) (?:day|rest)|plan (?:my|the|out)|rebuild|fit everything|squeeze|what should i|help me plan|revised? (?:schedule|plan)/i.test(low);
+    const reorg = /reorgani[sz]e|re-?plan|update my plan|reschedule (?:my|the) (?:day|rest)|plan (?:my|the|out)|rebuild|fit everything|squeeze|what should i|help me plan|revised? (?:schedule|plan)|improve|optimi[sz]e|make (?:it|this|my (?:day|plan|schedule)) better|better order|fix my (?:day|plan|schedule)|clean up my day|sort (?:my|the) day/i.test(low);
+    if (/improve|optimi[sz]e|better/.test(low) && reorg && !notes.length) notes.push("Rebuilt the day: most important work first, breaks where focus runs long, everything inside your limits.");
     const anything = changedToday || reorg || notes.length || plan.postponed.length || otherDayBlocks.length || plan.completedTaskIds.length || plan.deletedTaskIds.length;
     if (!anything) { plan.kind = "message"; plan.reply = "I did not catch a change to make. Try: “move Chemistry to tomorrow”, “schedule Biology for Friday at 4 PM”, “add 45 minutes of Biology revision before 6 PM”, “I'm running 20 minutes behind”, or “I want to be done by 7 PM”."; return plan; }
 
@@ -1669,7 +1716,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     for (const t of new Set(otherDayBlocks)) {
       if (t.date === today) continue;
       if (t.start == null) { const dayList = all().filter((x) => x.date === t.date && x.id !== t.id); const slot = T.findSlot(dayList, t.estimatedMinutes, Math.max(prefs.workdayStart, 0), prefs.bedTime); if (slot == null) { plan.postponed.push({ taskId: origIds.has(t.id) ? t.id : null, title: t.title, toDate: t.date, reason: "No free slot, added without a time." }); continue; } t.start = slot; t.end = slot + t.estimatedMinutes; }
-      plan.blocks.push({ taskId: origIds.has(t.id) ? t.id : null, date: t.date, title: t.title, category: t.category, priority: t.priority, start: toHHMM(t.start), end: toHHMM(t.start + t.estimatedMinutes), bullets: t.bullets || [], kind: t.fixed ? "fixed" : "task", _dueBy: t.dueBy });
+      plan.blocks.push({ taskId: origIds.has(t.id) ? t.id : null, date: t.date, title: t.title, category: t.category, priority: t.priority, start: toHHMM(t.start), end: toHHMM(t.start + t.estimatedMinutes), bullets: t.bullets || [], kind: t.status === "protected" ? "protected" : t.fixed ? "fixed" : "task", repeat: t.repeat || undefined, _dueBy: t.dueBy });
     }
 
     // lay out today when something about today changed
@@ -1683,7 +1730,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       laid = T.layoutDay(dayTasks, { now, limit, prefs, intel, date: today, breakMinutes, leadingBreak: breakMinutes, order: order || undefined, keepOrder: strict && !order, fillGaps: lateMin > 0 && !order, keepBreaks: !!order, pinnedIds, liveId });
       placed = laid.tasks.filter((t) => isActive(t) && t.start != null).sort((a, b) => a.start - b.start);
       if (breakMinutes) notes.push(`Added a ${breakMinutes}-minute break now.`);
-      for (const t of placed) plan.blocks.push({ taskId: origIds.has(t.id) ? t.id : null, date: today, title: t.title, category: t.category, priority: t.priority, start: toHHMM(t.start), end: toHHMM(t.end), bullets: t.bullets || [], kind: t.status === "protected" ? "protected" : t.fixed ? "fixed" : t.category === "break" ? "break" : "task", _dueBy: t.dueBy });
+      for (const t of placed) plan.blocks.push({ taskId: origIds.has(t.id) ? t.id : null, date: today, title: t.title, category: t.category, priority: t.priority, start: toHHMM(t.start), end: toHHMM(t.end), bullets: t.bullets || [], kind: t.status === "protected" ? "protected" : t.fixed ? "fixed" : t.category === "break" ? "break" : "task", repeat: t.repeat || undefined, _dueBy: t.dueBy });
       plan.warnings.push(...laid.warnings);
       if (laid.unscheduled.length) {
         const an = T.analyzeDay(dayTasks, { now, day: { ...day, targetFinish: tf != null ? tf : day.targetFinish }, prefs, intel, isToday: true });
@@ -1750,6 +1797,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       "13. Bullets are 1-3 short concrete steps; keep the existing bullets of existing tasks. Titles stay short. Delete a task only when the user explicitly asks (deletedTaskIds).",
       "14. If essential information is missing, return kind 'clarification' with one question and no blocks. For a greeting or a question, return kind 'message' and no blocks.",
       "15. Reply in the user's language, in 1-4 concrete sentences. Explain significant changes.",
+      "17. Repeating work: when the user wants something to happen regularly ('every day', 'daily', 'on weekdays', 'every week', 'twice a day'), set repeat on that block: daily, weekdays, weekly or twicedaily. Tempo then creates the future copies itself, so return ONLY the first occurrence, never a block per day. Protected time repeats the same way (kind 'protected' with repeat). 'Make my 8 PM chill time repeat every day' = return that existing block (same taskId) with repeat 'daily'. Never set repeat unless the user asked for repetition.",
       "16. Group requests act on EVERY matching task, by id. 'Delete the postponed stuff' = put the id of every task with status 'postponed' (and every task listed under EARLIER DAYS, if the user means those) into deletedTaskIds. 'Clear the completed ones' = their ids in deletedTaskIds AND deleteCompleted=true (the only case where completed tasks may be removed). 'Move the postponed to Friday' = each one in 'postponed' with that toDate, or as a timed block on that date. 'Bring the postponed back' = return each as a block dated today. A task with status 'postponed' has no time: giving it a block with a date and time is how you put it back on the schedule. Never answer that you cannot move or delete a task that is listed below: do it and say what you did.",
       "",
       "CALENDAR: " + cal.join("; ") + ".",
@@ -1838,6 +1886,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-2 11H5z"/>',
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
     fingerprint: '<path d="M12 11v3a8 8 0 0 1-1.200 4.200M8 11a4 4 0 0 1 8 0v2a12 12 0 0 1-.800 4.300M5.500 16.500A9 9 0 0 0 6 13v-2a6 6 0 0 1 9.600-4.800M18 11v1a14 14 0 0 1-.300 2.900M12 21a10 10 0 0 0 1-1.800M3.500 9.500A9 9 0 0 1 12 3a9 9 0 0 1 8.500 6"/>',
+    mouse: '<circle cx="7.5" cy="6.5" r="2.6"/><path d="M4 14.3C4 10.6 7.2 8 11 8c3.9 0 7 2.6 7 6 0 1.9-1.5 3-3.4 3H8c-2.3 0-4-1-4-2.7z"/><path d="M18 14.5c1.8-.2 4 .4 4 2.5"/><circle cx="14.2" cy="12.3" r=".4" fill="currentColor"/>',
+    pcmouse: '<rect x="7" y="3" width="10" height="18" rx="5"/><path d="M12 3v5"/>',
     wand: '<path d="M15 4V2M15 10V8M11 6H9M21 6h-2M17.800 3.200l-1 1M17.800 8.800l-1-1M3 21l11-11M12.500 8.500l3 3"/>',
     refresh: '<path d="M21 12a9 9 0 1 1-2.640-6.360M21 3v6h-6"/>',
     phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
@@ -1991,7 +2041,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const out = []; const sents = String(message || "").split(/[.!?;]+\s*/).map((s) => s.trim()).filter(Boolean);
     for (const s of sents) {
       if (s.length > 170 || SENSITIVE.test(s)) continue; let m;
-      if ((m = /^(?:please\s+)?remember (?:that\s+)?(.{6,160})$/i.exec(s))) out.push(m[1]);
+      if ((m = /^(?:please\s+)?remember (?:that\s+)?(.{6,160})$/i.exec(s))) { out.push(m[1]); continue; }
+      if (/^(?:please\s+)?(?:can you\s+)?(?:add|schedule|plan|put|book|create|set up|move|push|delete|remove|cancel|drop|reschedule|shift)\b/i.test(s)) continue; // a command is not a fact about the user
       else if (/\b(?:i|we)\s+(?:usually|always|normally|typically|generally|often|never|prefer|like to|love to|hate|tend to)\b/i.test(s)) out.push(s);
       else if (/\bevery\s+(?:day|morning|evening|night|week|weekday|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(s)) out.push(s);
       else if (/\b(?:on|each)\s+(?:mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b/i.test(s)) out.push(s);
@@ -2128,6 +2179,36 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     return lines.join("\n");
   };
 
+  /* ---------- repeating tasks ----------
+     A task with `repeat` belongs to a series (`sid`). Tempo materialises the next occurrences
+     itself, a week ahead, and remembers per series how far it got (`series[sid]`), so a deleted
+     occurrence is never resurrected. */
+  T.REPEATS = { daily: "Every day", weekdays: "Weekdays", weekly: "Every week", twicedaily: "Twice a day" };
+  T.nextRepeats = function (tasks, series, today, horizon) {
+    const end = addDays(today, horizon || 7); const created = []; const nextSeries = {}; let changed = false;
+    const by = new Map();
+    for (const t of tasks) if (t.repeat && T.REPEATS[t.repeat] && t.sid) { const g = by.get(t.sid) || []; g.push(t); by.set(t.sid, g); }
+    for (const [sid, list] of by.entries()) {
+      list.sort((a, b) => a.date.localeCompare(b.date)); const tpl = list[list.length - 1];
+      const anchorDow = parseDay(list[0].date).getDay();
+      let last = series[sid] && series[sid] > tpl.date ? series[sid] : tpl.date;
+      let d = addDays(last, 1);
+      while (d <= end) {
+        const dow = parseDay(d).getDay();
+        const ok = tpl.repeat === "weekly" ? dow === anchorDow : tpl.repeat === "weekdays" ? dow >= 1 && dow <= 5 : true;
+        if (ok && d >= today) {
+          const mk = (shift) => { const ts = Date.now(); const start = tpl.start != null ? Math.max(0, Math.min(1380, tpl.start + shift)) : undefined;
+            created.push({ ...tpl, id: uid(), date: d, start, end: start != null ? start + tpl.estimatedMinutes : undefined, status: tpl.status === "protected" ? "protected" : "upcoming",
+              doneBullets: [], spentMs: 0, startedAt: undefined, completedAt: undefined, actualMinutes: undefined, postponedFrom: undefined, tuned: undefined, createdAt: ts, updatedAt: ts }); };
+          mk(0); if (tpl.repeat === "twicedaily" && tpl.start != null) mk(tpl.start < 720 ? 480 : -480);
+        }
+        last = d; d = addDays(d, 1);
+      }
+      nextSeries[sid] = last; if (last !== series[sid]) changed = true;
+    }
+    return { created, series: { ...series, ...nextSeries }, changed: changed || created.length > 0 };
+  };
+
   /* ---------- live finish estimate ----------
      Where the day will really end, recomputed from the clock and from what has been ticked off:
      remaining minutes of every open task (time already spent on the running one is subtracted),
@@ -2189,11 +2270,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const work = tasks.filter((t) => isWork(t) && t.status !== "postponed"); const done = work.filter((t) => t.status === "completed"); const open = work.filter(isActive);
     // pace: real minutes against planned minutes on what is finished
     const measured = done.filter((t) => t.actualMinutes > 0 && t.estimatedMinutes > 0); const est = measured.reduce((a, t) => a + t.estimatedMinutes, 0), act = measured.reduce((a, t) => a + t.actualMinutes, 0);
-    const ratio = est ? act / est : null;
-    const pace = ratio == null ? { tone: "idle", label: "No pace yet", sub: "Tick off a timed task and Tempo starts measuring." }
-      : ratio > 1.12 ? { tone: "warn", label: `${Math.round((ratio - 1) * 100)}% slower than planned`, sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` }
-      : ratio < 0.88 ? { tone: "good", label: `${Math.round((1 - ratio) * 100)}% faster than planned`, sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` }
-      : { tone: "good", label: "Right on your estimates", sub: `${fmtDur(act)} spent on ${fmtDur(est)} of planned work.` };
+    // one quick task is noise, not a pace: it takes two measured tasks and 20 planned minutes before Tempo makes a claim, and the claim is capped
+    const n = measured.length;
+    const ratio = n >= 2 && est >= 20 ? act / est : null;
+    const pctOff = ratio == null ? 0 : Math.round(Math.min(0.35, Math.abs(ratio - 1)) * 100);
+    const paceSub = `${fmtDur(Math.max(1, Math.round(act)))} spent on ${fmtDur(est)} of planned work, ${n} task${n === 1 ? "" : "s"} measured.`;
+    const pace = ratio == null ? { tone: "idle", label: n ? "Measuring your pace" : "No pace yet", sub: n ? "One task measured so far. One or two more and this becomes reliable." : "Tick off a timed task and Tempo starts measuring." }
+      : ratio > 1.12 ? { tone: "warn", label: `About ${pctOff}% slower than planned`, sub: paceSub }
+      : ratio < 0.88 ? { tone: "good", label: `About ${pctOff}% faster than planned`, sub: paceSub }
+      : { tone: "good", label: "Right on your estimates", sub: paceSub };
     // the line of the day: where it started, where the clock is, where it will end
     const timed = tasks.filter((t) => t.start != null && t.end != null && t.status !== "postponed" && t.status !== "protected");
     let line = null;
@@ -2283,11 +2368,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       play(kind, volume) {
         const c = ensure(); if (!c) return false;
         if (c.state === "running") { run(kind, volume); return true; }
-        queued = kind === "load" ? { kind, volume } : queued; // browsers only allow sound after a first tap
-        c.resume().then(() => { if (c.state === "running" && kind !== "load") run(kind, volume); }).catch(() => {});
+        // browsers only allow sound after a user gesture: remember what was asked for and play it the moment audio wakes up
+        queued = { kind, volume, at: Date.now() };
+        c.resume().then(() => { if (c.state === "running" && queued && Date.now() - queued.at < 4000) { const q = queued; queued = null; run(q.kind, q.volume); } }).catch(() => {});
         return false;
       },
-      unlock() { const c = ensure(); if (!c) return; c.resume().then(() => { if (queued && c.state === "running") { const q = queued; queued = null; run(q.kind, q.volume); } }).catch(() => {}); },
+      unlock() { const c = ensure(); if (!c) return; c.resume().then(() => { if (queued && c.state === "running" && Date.now() - queued.at < 4000) { const q = queued; queued = null; run(q.kind, q.volume); } }).catch(() => {}); },
     };
   })();
 })();
@@ -2305,7 +2391,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   const { isActive, isPinned, isWork } = T;
 
   /* ---------- store ---------- */
-  const initialState = () => ({ tasks: {}, days: {}, prefs: { ...T.DEFAULT_PREFS }, messages: [], intel: T.EMPTY_INTEL, history: [], memory: [], icons: [], events: [], seeded: false, updatedAt: 0 });
+  const initialState = () => ({ tasks: {}, days: {}, prefs: { ...T.DEFAULT_PREFS }, messages: [], intel: T.EMPTY_INTEL, history: [], memory: [], icons: [], events: [], series: {}, seeded: false, updatedAt: 0 });
   const touch = (s) => ({ ...s, updatedAt: Date.now() });
   const snap = (s, note, source, id) => [...s.history.slice(-14), { id: id || T.uid("rev"), at: Date.now(), note, source: source || "manual", tasks: s.tasks, days: s.days }];
   const SNAP_LABEL = { addTask: "adding a task", updateTask: "an edit", deleteTask: "a deletion", setStatus: "a status change", toggleBullet: "a ticked step", postpone: "a move" };
@@ -2318,7 +2404,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         for (const [k, v] of Object.entries(d.tasks || {})) if (v && v.id && T.isDayKey(v.date)) tasks[k] = { bullets: [], priority: "medium", estimatedMinutes: 30, status: "upcoming", ...v, category: T.CATEGORIES.includes(v.category) ? v.category : "other" };
         const prefs = { ...T.DEFAULT_PREFS, ...(d.prefs || {}) }; if (!Array.isArray(prefs.priorities) || !prefs.priorities.length) prefs.priorities = T.DEFAULT_PRIORITIES;
         const arr = (v) => (Array.isArray(v) ? v : []);
-        return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id), events: arr(d.events) };
+        return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id), events: arr(d.events), series: d.series && typeof d.series === "object" ? d.series : {} };
       }
       case "addTask": return touch({ ...s, tasks: { ...s.tasks, [a.task.id]: a.task }, seeded: true });
       case "updateTask": {
@@ -2326,7 +2412,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const next = { ...prev, ...a.patch, updatedAt: Date.now() };
         if (next.start != null && (a.patch.start !== undefined || a.patch.estimatedMinutes !== undefined) && a.patch.end === undefined) next.end = next.start + next.estimatedMinutes;
         if (next.start == null) next.end = undefined;
-        return touch({ ...s, tasks: { ...s.tasks, [a.id]: next } });
+        if ("repeat" in a.patch) { if (!a.patch.repeat) { delete next.repeat; } else if (!next.sid) next.sid = next.id; }
+        const tasks = { ...s.tasks, [a.id]: next };
+        // changing how a task repeats speaks for its whole series, from this day on
+        if ("repeat" in a.patch && next.sid && a.patch.repeat !== prev.repeat) for (const t of Object.values(tasks)) if (t.sid === next.sid && t.id !== next.id && t.status !== "completed" && t.date >= next.date) { const c = { ...t, updatedAt: Date.now() }; if (a.patch.repeat) c.repeat = a.patch.repeat; else delete c.repeat; tasks[t.id] = c; }
+        return touch({ ...s, tasks });
       }
       case "setNotes": { const prev = s.tasks[a.id]; if (!prev || (prev.notes || "") === a.notes) return s; return touch({ ...s, tasks: { ...s.tasks, [a.id]: { ...prev, notes: a.notes } } }); }
       case "deleteTask": { if (!s.tasks[a.id]) return s; const tasks = { ...s.tasks }; delete tasks[a.id]; return touch({ ...s, tasks }); }
@@ -2388,7 +2478,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const date = T.dayKey(); const sample = T.buildSampleDay(date); const rest = Object.values(s.tasks).filter((t) => t.date !== date);
         return reduce({ ...s, seeded: true }, { type: "commit", tasks: [...rest, ...sample.tasks], revisionId: T.uid("rev"), note: "loading the sample day", source: "seed", dayMeta: { date, title: sample.title, targetFinish: sample.targetFinish } });
       }
-      case "clearAll": return touch({ ...s, tasks: {}, days: {}, messages: [], history: [], seeded: true });
+      case "materialize": {
+        const r = T.nextRepeats(Object.values(s.tasks), s.series || {}, a.today);
+        if (!r.changed) return s;
+        const tasks = { ...s.tasks }; for (const t of r.created) tasks[t.id] = t;
+        return touch({ ...s, tasks, series: r.series });
+      }
+      case "clearAll": return touch({ ...s, tasks: {}, days: {}, messages: [], history: [], series: {}, seeded: true });
       default: return s;
     }
   }
@@ -2408,7 +2504,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   /* What a tile looks like for a task or a custom icon: { style, markup }. */
   const okImage = (u) => typeof u === "string" && /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(u);
   const okColor = (c, d) => (typeof c === "string" && /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : d);
-  const customLook = (c) => ({ style: { color: okColor(c.fg, "#FFFFFF"), background: okImage(c.bgImage) ? `center / cover no-repeat url("${c.bgImage}")` : okColor(c.bg, "var(--accent)") }, markup: T.safeMarkup(c.markup) });
+  const customLook = (c) => ({ style: c.cat && !c.bgImage && !c.bg ? catStyle(c.cat) : { color: okColor(c.fg, "#FFFFFF"), background: okImage(c.bgImage) ? `center / cover no-repeat url("${c.bgImage}")` : okColor(c.bg, "var(--accent)") }, markup: T.safeMarkup(c.markup) });
   const iconLook = (task) => {
     const pick = T.pickIcon(task, UI.customIcons);
     if (pick.custom) return customLook(pick.custom);
@@ -2507,7 +2603,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       if (d <= -90) leave(() => onDelete(task.id), "l"); else if (d >= 90) onStatus(task.id, done ? "upcoming" : "completed");
     };
     const grabProps = grab ? { onPointerDown: (e) => grab.down(e, task), onPointerMove: grab.move, onPointerUp: grab.up, onPointerCancel: grab.up, title: "Drag to reorder" } : {};
-    const showMeta = showStatus || task.fixed || task.postponedFrom || (pr.id !== "medium" && !done) || task.dueBy != null;
+    const showMeta = showStatus || task.fixed || task.repeat || task.postponedFrom || (pr.id !== "medium" && !done) || task.dueBy != null;
     const item = (icon, text, fn, danger) => html`<button role="menuitem" class=${danger ? "danger" : ""} onClick=${() => { setOpen(false); fn(); }}><${Icon} name=${icon} />${text}</button>`;
     return html`<li ref=${liRef} class=${cls + (cur ? " cur" : "") + (lift ? " lift" : "")} style=${{ ...(dragStyle || {}), ...(hl ? { "--hl": hl } : {}) }} data-id=${task.id} onContextMenu=${(e) => { if (rowDrag.current || lift) e.preventDefault(); }}>
       ${dx > 0 ? html`<div class="swipe-bg ok"><${Icon} name="check" />${done ? "Not done" : "Complete"}</div>` : null}
@@ -2528,6 +2624,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
             ${showStatus ? html`<${Pill} kind=${live && task.status === "upcoming" ? "accent" : pk}>${live && task.status === "upcoming" ? "Now" : label}</${Pill}>` : null}
             ${pr.id !== "medium" && !done ? html`<${Pill} icon="flag" style=${pr.color ? { background: tint(pr.color, 14), color: pr.color } : null}>${pr.label}</${Pill}>` : null}
             ${task.fixed ? html`<${Pill} icon="lock">Fixed</${Pill}>` : null}
+            ${task.repeat ? html`<${Pill} icon="refresh">${T.REPEATS[task.repeat]}</${Pill}>` : null}
             ${task.dueBy != null && !done ? html`<${Pill} kind="warn" icon="clock">Due by ${T.fmtTime(task.dueBy, prefs.timeFormat)}</${Pill}>` : null}
             ${task.postponedFrom ? html`<${Pill} icon="forward">Moved from ${T.relDay(task.postponedFrom)}</${Pill}>` : null}
           </div>` : null}
@@ -2565,7 +2662,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       <div class="ptile"><${Glyph} markup=${look.markup} /></div>
       <div style=${{ minWidth: 0 }}>
         <div class="title">${sched ? html`<span class="num">${T.fmtRange(task.start, task.end, prefs.timeFormat)}</span> — ` : null}${task.title}</div>
-        <div class="dur">${sched ? T.fmtDur(task.end - task.start) + " · " : ""}Reserved for you. Tempo keeps work out of it.</div>
+        <div class="dur">${sched ? T.fmtDur(task.end - task.start) + " · " : ""}${task.repeat ? T.REPEATS[task.repeat] + " · " : ""}Reserved for you. Tempo keeps work out of it.</div>
       </div>
       <div class="menu-wrap" ref=${ref}>
         <button class="ibtn" aria-label="Protected time options" aria-expanded=${open} onClick=${() => setOpen((o) => !o)}><${Icon} name="more" /></button>
@@ -2685,7 +2782,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${!count ? html`<div class="empty"><${Icon} name="sparkles" size=${28} /><div class="big">Nothing planned yet</div><p>${emptyHint || "Tell the assistant what your day looks like, or add a task by hand."}</p></div>` : null}
       ${count && view === "timeline" ? html`<${Timeline} tasks=${tasks} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} onEdit=${actions.onEdit} />` : null}
       ${count && view !== "timeline" ? html`<div>
-        ${sprint.length ? html`<div class="sec-lbl">Jaguar Sprint</div><ul class="rows" ref=${listRef}>${sprint.map((t, i) => html`<${TaskRow} key=${t.id} task=${t} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} ...${actions}
+        ${sprint.length ? html`<div class="sec-lbl">Jaguar Sprint<span class="cnt num">${(() => { const l = sprint.filter((t) => isActive(t) && isWork(t)); return l.length ? l.length + " left · " + T.fmtShortDur(l.reduce((a, t) => a + t.estimatedMinutes, 0)) : "all done"; })()}</span></div><ul class="rows" ref=${listRef}>${sprint.map((t, i) => html`<${TaskRow} key=${t.id} task=${t} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} ...${actions}
           grab=${onReorder && movable(t) ? grab : null} onNudge=${onReorder ? nudge : null} current=${!!overdue && overdue.id === t.id} dragStyle=${styleFor(i)} dragClass=${drag ? (drag.from === i ? "dragging" : "shift") : ""} />`)}</ul>` : null}
         ${doneCount ? html`<button class="btn sm ghost donetoggle" aria-pressed=${hideDone} onClick=${toggleDone}><${Icon} name=${hideDone ? "eye" : "eyeoff"} />${hideDone ? `Show ${doneCount} completed` : "Hide completed"}</button>` : null}
         ${prots.length ? html`<div class="sec-lbl prot-lbl">Protected time</div><div class="prots">${prots.map((t) => html`<${ProtectedCard} key=${t.id} task=${t} prefs=${prefs} onEdit=${actions.onEdit} onDelete=${actions.onDelete} />`)}</div>` : null}
@@ -2759,13 +2856,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     else if (an.status === "ontrack") line = `The plan fits and ends about ${T.fmtDur(an.slack)} before ${lim}.`;
     const learned = prefs.learnFromHistory === false ? [] : T.insights(intel).slice(0, 3); const samples = Object.values(intel.byCategory).reduce((a, s) => a + s.samples, 0);
     const pct = an.workCount ? Math.round((an.doneCount / an.workCount) * 100) : 0; const L = rep.line;
+    const spare = an.available - an.needed - an.breaks; // the same arithmetic as the two tiles beside it
     return html`<section class="card intel" aria-label="Tempo Intelligence">
       <div class="intel-head"><div class="orb"><${Icon} name="brain" /></div><h2>Tempo Intelligence</h2><span class="st"><${Pill} kind=${ST[1]}>${ST[0]}</${Pill}></span></div>
       <p class="intel-line">${line}</p>
       ${an.status !== "empty" ? html`<div class="intel-grid">
         <div class="mini"><div class="v num">${T.fmtShortDur(an.available)}</div><div class="k">Free until ${lim}</div></div>
         <div class="mini"><div class="v num">${T.fmtShortDur(an.needed + an.breaks)}</div><div class="k">Work + breaks</div></div>
-        <div class="mini"><div class="v num" style=${{ color: an.slack < 0 ? "var(--bad)" : "inherit" }}>${an.slack < 0 ? "−" : "+"}${T.fmtShortDur(Math.abs(an.slack))}</div><div class="k">${an.slack < 0 ? "Over" : "Spare"}</div></div>
+        <div class="mini"><div class="v num" style=${{ color: spare < 0 ? "var(--bad)" : "inherit" }}>${spare < 0 ? "−" : "+"}${T.fmtShortDur(Math.abs(spare))}</div><div class="k">${spare < 0 ? "Over" : "Spare"}</div></div>
       </div>` : null}
       ${L ? html`<div class="dayline" role="img" aria-label=${"Day from " + ft(L.start) + " to " + ft(L.end) + (eta && eta.eta != null ? ", expected finish " + ft(eta.eta) : "")}>
         <div class="dl-track">
@@ -2779,7 +2877,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${an.status !== "empty" ? html`<div class="intel-tiles">
         <div class=${"itile tone-" + rep.pace.tone}><div class="k">Pace today</div><div class="v">${rep.pace.label}</div><div class="s">${rep.pace.sub}</div></div>
         <div class="itile"><div class="k">Streak</div><div class="v num">${rep.streak} day${rep.streak === 1 ? "" : "s"}</div><div class="s">${rep.streak ? "in a row with something finished" : "Finish one task to start a streak."}</div></div>
-        <div class="itile"><div class="k">Focused today</div><div class="v num">${T.fmtShortDur(rep.focused)}</div><div class="s">${rep.accuracy != null ? "Estimates are " + rep.accuracy + "% accurate lately." : "on the focus timer"}</div></div>
+        <div class="itile"><div class="k">Focused today</div><div class="v num">${T.fmtShortDur(rep.focused)}</div><div class="s">${rep.focused ? (rep.accuracy != null ? "Estimates are " + rep.accuracy + "% accurate lately." : "on the focus timer") : "Start the focus timer and this fills in."}</div></div>
       </div>` : null}
       ${rep.tip ? html`<div class="intel-tip"><${Icon} name="zap" /><span>${rep.tip}</span></div>` : null}
       ${an.status !== "empty" ? html`<button class="btn sm ghost intel-more" aria-expanded=${more} onClick=${() => setMore((m) => !m)}><${Icon} name=${more ? "up" : "down"} />${more ? "Less detail" : "More detail"}</button>` : null}
@@ -2940,9 +3038,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       if (!letters) { letters = []; let x = Math.max(18, (W - c.measureText(text).width) / 2); for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
       const baseY = Math.min(ground - 8, H * 0.46);
       letters.forEach((L, i) => {
-        const grow = easeBack((t - 0.12 - i * 0.022) / 0.75); const la = 1 - ease((t - i * 0.02) / 0.55);
-        if (L.ch.trim() && grow > 0) { const y0 = lerp(baseY, ground + 6, ease((t - 0.1) / 0.8)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3) , y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
-        if (la > 0) { A(la); c.fillStyle = la > 0.6 ? V.glow : V.pale; c.fillText(L.ch, L.x, baseY); }
+        // the title holds for a beat, then a wave runs through it: each letter lifts, sways and
+        // dissolves into light while its plant grows out of the same spot and roots itself in the ground
+        const grow = easeBack((t - 0.5 - i * 0.04) / 0.9); const lw = 1 - ease((t - 0.4 - i * 0.045) / 0.95);
+        if (L.ch.trim() && grow > 0) { const y0 = lerp(baseY, ground + 6, ease((t - 0.4) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3) , y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
+        if (lw > 0 && L.ch.trim()) {
+          const rise = (1 - lw) * (1 - lw) * -26; const wob = Math.sin(t * 2.6 + L.p) * 3 * (1 - lw);
+          A(lw); c.fillStyle = V.glow; c.fillText(L.ch, L.x + wob, baseY + rise);
+          A(lw * 0.45); c.fillStyle = V.soft; c.fillText(L.ch, L.x + wob * 1.6, baseY + rise + 4); // a soft echo trailing behind
+          if (lw < 0.55) { A((0.55 - lw) * 1.1); ell(c, L.x + L.w / 2 + wob, baseY + rise - 7, 1.6 + (1 - lw) * 2, 1.6 + (1 - lw) * 2, V.mist); } // and it ends as a mote of light
+        }
       });
       A(1);
       // the jaguar
@@ -3037,12 +3142,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   }
 
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
-  function Celebration({ kind, title, onDone }) {
+  function Celebration({ kind, title, onDone, full }) {
     /* The big one fills the screen. The task one plays on a stage in the middle of the screen, above everything
        (also above Focus mode), so it looks the same wherever the task was ticked off. */
     const ref = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const box = kind === "day" ? { width: vw, height: vh } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
+    const big = kind === "day" || !!full; // in Focus mode (and real full screen) every celebration fills the screen
+    const box = big ? { width: vw, height: vh } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
     useEffect(() => {
       const cv = ref.current; if (!cv) return;
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
@@ -3057,10 +3163,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       return () => { finished = true; cancelAnimationFrame(raf); clearTimeout(guard); };
     }, []);
     useEscape(useCallback(() => doneRef.current(), []));
-    return html`<div class=${"fx fx-" + kind} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : "Task done. Celebration animation."}>
+    const el = html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : "Task done. Celebration animation."}>
       <div class="fx-stage" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
       <span class="fx-skip">Tap anywhere to skip</span>
     </div>`;
+    // rendered into the fullscreen element when one is active, otherwise the overlay would be invisible behind it
+    return ReactDOM.createPortal(el, document.fullscreenElement || document.body);
   }
 
   /* ---------- Focus mode: one task, a big timer, its steps and your notes ---------- */
@@ -3368,7 +3476,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   "use strict";
   const T = window.Tempo; const UI = window.TempoUI;
   const { useState, useEffect, useRef, useCallback, useMemo } = React;
-  const { html, Icon, Glyph, Pill, useEscape } = UI;
+  const { html, Icon, Glyph, Pill, useEscape, catStyle } = UI;
 
   const PLANS = [
     { id: "free", name: "Free", price: 0, tag: "Where everyone starts", points: ["Basic limits", "Assistant with a limit of 10 requests", "Some new features are not available", "Memory with basic capacity"] },
@@ -3389,22 +3497,51 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </a>`;
   }
 
-  /* ---------- demo checkout ---------- */
-  const CAPTCHA_ICONS = ["paw", "leaf", "book", "coffee", "paw", "moon", "bike", "paw", "music"];
+  /* ---------- checkout: pick a method, pass the mouse check, confirm with a finger or a pattern.
+     Nothing is typed in and nothing leaves the browser. ---------- */
+  const CAPTCHA_DECOYS = ["paw", "leaf", "coffee", "moon", "bike", "music", "book"];
   function Captcha({ onPass }) {
-    const order = useMemo(() => { const a = CAPTCHA_ICONS.map((icon, i) => ({ icon, i })); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }, []);
+    const order = useMemo(() => { const a = ["mouse", "pcmouse", ...CAPTCHA_DECOYS].map((icon, i) => ({ icon, i })); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }, []);
     const [sel, setSel] = useState([]); const [bad, setBad] = useState(false);
+    const isMouse = (o) => o.icon === "mouse" || o.icon === "pcmouse";
     const toggle = (i) => { setBad(false); setSel((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i])); };
-    const verify = () => { const want = order.filter((o) => o.icon === "paw").map((o) => o.i).sort().join(); if (sel.slice().sort().join() === want) onPass(); else { setBad(true); setSel([]); } };
+    const verify = () => { const want = order.filter(isMouse).map((o) => o.i).sort().join(); if (sel.slice().sort().join() === want) onPass(); else { setBad(true); setSel([]); } };
     return html`<div class="cpt-box">
-      <div class="cpt-head"><b>Quick check</b><span>Select every tile with a jaguar paw.</span></div>
-      <div class="cpt-grid" role="group" aria-label="Select every tile with a paw">${order.map((o) => html`<button key=${o.i} type="button" class=${"cpt-tile" + (sel.includes(o.i) ? " on" : "")} aria-pressed=${sel.includes(o.i)} aria-label=${o.icon === "paw" ? "Paw" : "Not a paw"} onClick=${() => toggle(o.i)}><${Icon} name=${o.icon} size=${26} /></button>`)}</div>
-      ${bad ? html`<p class="cpt-err" role="alert">Not quite. Pick all three paws and try again.</p>` : null}
+      <div class="cpt-head"><b>Press the mouse</b><span>The animal and the computer mouse both count.</span></div>
+      <div class="cpt-grid" role="group" aria-label="Press every tile with a mouse">${order.map((o) => html`<button key=${o.i} type="button" class=${"cpt-tile" + (sel.includes(o.i) ? " on" : "")} aria-pressed=${sel.includes(o.i)} aria-label=${o.icon === "mouse" ? "Mouse" : o.icon === "pcmouse" ? "Computer mouse" : "Not a mouse"} onClick=${() => toggle(o.i)}><${Icon} name=${o.icon} size=${26} /></button>`)}</div>
+      ${bad ? html`<p class="cpt-err" role="alert">Not quite. There are two mice in there: the animal and the computer one.</p>` : null}
       <button type="button" class="btn primary wide" disabled=${!sel.length} onClick=${verify}>Verify</button>
     </div>`;
   }
+  /* Trace the pattern that is shown: start on the first dot and drag through the rest. */
+  function PatternStep({ onPass }) {
+    const target = useMemo(() => [[0, 4, 8, 5], [6, 4, 2, 1], [3, 4, 5, 8], [0, 1, 4, 7]][Math.floor(Math.random() * 4)], []);
+    const [seq, setSeq] = useState([]); const [bad, setBad] = useState(false); const seqRef = useRef([]); const drag = useRef(false); const svg = useRef(null);
+    const P = (i) => [40 + (i % 3) * 60, 40 + Math.floor(i / 3) * 60];
+    const pt = (e) => { const r = svg.current.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 200, ((e.clientY - r.top) / r.height) * 200]; };
+    const near = (x, y) => { for (let i = 0; i < 9; i++) { const [px, py] = P(i); if (Math.hypot(px - x, py - y) < 24) return i; } return -1; };
+    const add = (i) => { if (i < 0 || seqRef.current.includes(i)) return; seqRef.current = [...seqRef.current, i]; setSeq(seqRef.current); };
+    const down = (e) => { e.preventDefault(); drag.current = true; setBad(false); seqRef.current = []; setSeq([]); const [x, y] = pt(e); add(near(x, y)); try { svg.current.setPointerCapture(e.pointerId); } catch {} };
+    const move = (e) => { if (!drag.current) return; const [x, y] = pt(e); add(near(x, y)); };
+    const up = () => {
+      if (!drag.current) return; drag.current = false; const a = seqRef.current.join();
+      if (a === target.join() || a === target.slice().reverse().join()) onPass("pattern");
+      else { if (seqRef.current.length) setBad(true); seqRef.current = []; setSeq([]); }
+    };
+    const line = (ids) => ids.map((i, k) => (k ? "L" : "M") + P(i).join(" ")).join(" ");
+    return html`<div class="pat-box">
+      <p class="auth-t">Draw this pattern</p>
+      <svg ref=${svg} class="pat" viewBox="0 0 200 200" role="img" aria-label="Pattern pad: trace the dashed line with your finger or mouse"
+        onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up} onContextMenu=${(e) => e.preventDefault()}>
+        <path class="pat-target" d=${line(target)} />
+        ${seq.length > 1 ? html`<path class="pat-live" d=${line(seq)} />` : null}
+        ${Array.from({ length: 9 }, (_, i) => { const [x, y] = P(i); const on = seq.includes(i); const isEnd = target[0] === i; return html`<g key=${i}><circle class=${"pat-dot" + (on ? " on" : "")} cx=${x} cy=${y} r="7" />${isEnd && !seq.length ? html`<circle class="pat-hint" cx=${x} cy=${y} r="13" />` : null}</g>`; })}
+      </svg>
+      ${bad ? html`<p class="cpt-err" role="alert">Almost. Start on the marked dot and follow the dashed line.</p>` : null}
+    </div>`;
+  }
   function AuthStep({ onPass }) {
-    const [mode, setMode] = useState("finger"); const [prog, setProg] = useState(0); const [pw, setPw] = useState(""); const raf = useRef(0); const t0 = useRef(0); const passed = useRef(false);
+    const [mode, setMode] = useState("finger"); const [prog, setProg] = useState(0); const raf = useRef(0); const t0 = useRef(0); const passed = useRef(false);
     const stop = () => { cancelAnimationFrame(raf.current); if (!passed.current) setProg(0); };
     const start = (e) => { e.preventDefault(); t0.current = performance.now(); const tick = (now) => { const p = Math.min(1, (now - t0.current) / 1100); setProg(p); if (p >= 1) { passed.current = true; onPass("fingerprint"); } else raf.current = requestAnimationFrame(tick); }; raf.current = requestAnimationFrame(tick); };
     useEffect(() => () => cancelAnimationFrame(raf.current), []);
@@ -3417,23 +3554,19 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           <${Icon} name="fingerprint" size=${44} />
         </button>
         <p class="auth-t">Press and hold to confirm</p>
-        <button type="button" class="linkbtn" onClick=${() => setMode("pw")}>Use a password instead</button>
-      </${React.Fragment}>` : html`<form class="pwform" onSubmit=${(e) => { e.preventDefault(); if (pw.length >= 4) onPass("password"); }}>
-        <div class="field"><label for="co-pw">Tempo password</label><input id="co-pw" class="in" type="password" autocomplete="off" value=${pw} onInput=${(e) => setPw(e.target.value)} placeholder="Any 4 characters work in this demo" /></div>
-        <p class="quiet">This is a demo: do not type a real password. Nothing is checked, saved or sent.</p>
-        <button class="btn primary wide" type="submit" disabled=${pw.length < 4}>Confirm</button>
+        <button type="button" class="linkbtn" onClick=${() => setMode("pattern")}>Draw a pattern instead</button>
+      </${React.Fragment}>` : html`<${React.Fragment}>
+        <${PatternStep} onPass=${onPass} />
         <button type="button" class="linkbtn" onClick=${() => setMode("finger")}>Use fingerprint instead</button>
-      </form>`}
+      </${React.Fragment}>`}
     </div>`;
   }
   function CheckoutSheet({ plan, prefs, onDone, onClose }) {
-    const [step, setStep] = useState("details"); const [method, setMethod] = useState("tempopay");
-    const guess = (prefs.name || "").trim().split(/\s+/); const [first, setFirst] = useState(guess[0] || ""); const [last, setLast] = useState(guess.slice(1).join(" ")); const [email, setEmail] = useState(""); const [err, setErr] = useState("");
+    const [step, setStep] = useState("method"); const [method, setMethod] = useState("tempopay"); const [auth, setAuth] = useState("fingerprint");
     const close = useCallback(() => { if (step !== "processing") onClose(); }, [step, onClose]); useEscape(close);
-    const mName = (METHODS.find((m) => m[0] === method) || METHODS[0])[1];
-    const pay = (e) => { e.preventDefault(); if (!first.trim() || !last.trim()) return setErr("Add your first and last name."); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setErr("That email address does not look right."); setErr(""); setStep("captcha"); };
+    const mName = (METHODS.find((m) => m[0] === method) || METHODS[0])[1]; const name = (prefs.name || "").trim();
     useEffect(() => { if (step !== "processing") return; const id = setTimeout(() => { setStep("done"); if (prefs.sound !== false) { T.sound.unlock(); T.sound.play("pay", prefs.volume); } }, 1500); return () => clearTimeout(id); }, [step]);
-    const steps = ["details", "captcha", "auth", "done"]; const at = Math.max(0, steps.indexOf(step === "processing" ? "done" : step));
+    const steps = ["method", "captcha", "auth", "done"]; const at = Math.max(0, steps.indexOf(step === "processing" ? "done" : step));
     return html`<div class="sheet-bg co-bg" onPointerDown=${(e) => { if (e.target === e.currentTarget) close(); }}>
       <div class="sheet co" role="dialog" aria-modal="true" aria-label=${"Checkout for Tempo " + plan.name}>
         <div class="co-top">
@@ -3441,32 +3574,24 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           ${step !== "processing" && step !== "done" ? html`<button class="ibtn" aria-label="Close checkout" onClick=${close}><${Icon} name="x" /></button>` : null}
         </div>
         <div class="co-steps" aria-hidden="true">${steps.map((s, i) => html`<i key=${s} class=${i <= at ? "on" : ""}></i>`)}</div>
-        <p class="co-demo"><${Icon} name="shield" size=${15} />Demo checkout. No real payment is made and nothing you type leaves this device.</p>
-        ${step === "details" ? html`<form onSubmit=${pay} class="co-form">
+        ${step === "method" ? html`<div class="co-form">
           <div class="co-lbl">Pay with</div>
           <div class="co-methods" role="radiogroup" aria-label="Payment method">${METHODS.map(([id, label, icon, sub]) => html`<button key=${id} type="button" role="radio" aria-checked=${method === id} class=${"co-m" + (method === id ? " on" : "")} onClick=${() => setMethod(id)}><span class="mi"><${Icon} name=${icon} size=${18} /></span><span class="mt"><b>${label}</b><small>${sub}</small></span><span class="rd" aria-hidden="true"></span></button>`)}</div>
-          <div class="grid2">
-            <div class="field"><label for="co-first">First name</label><input id="co-first" class="in" value=${first} onInput=${(e) => { setFirst(e.target.value); setErr(""); }} autocomplete="off" /></div>
-            <div class="field"><label for="co-last">Last name</label><input id="co-last" class="in" value=${last} onInput=${(e) => { setLast(e.target.value); setErr(""); }} autocomplete="off" /></div>
-          </div>
-          <div class="field"><label for="co-email">Email</label><input id="co-email" class="in" type="email" inputmode="email" value=${email} onInput=${(e) => { setEmail(e.target.value); setErr(""); }} placeholder="you@example.com" autocomplete="off" /></div>
-          ${err ? html`<p class="cpt-err" role="alert">${err}</p>` : null}
-          <button class="btn primary wide co-pay" type="submit"><${Icon} name="lock" size=${16} />Pay ${money(plan.price)}</button>
-        </form>` : null}
+          <button class="btn primary wide co-pay" type="button" onClick=${() => setStep("captcha")}><${Icon} name="lock" size=${16} />Pay ${money(plan.price)} with ${mName}</button>
+        </div>` : null}
         ${step === "captcha" ? html`<${Captcha} onPass=${() => setStep("auth")} />` : null}
-        ${step === "auth" ? html`<${AuthStep} onPass=${() => setStep("processing")} />` : null}
+        ${step === "auth" ? html`<${AuthStep} onPass=${(kind) => { setAuth(kind); setStep("processing"); }} />` : null}
         ${step === "processing" ? html`<div class="co-wait" role="status"><div class="spin"></div><p>Confirming with ${mName}…</p></div>` : null}
         ${step === "done" ? html`<div class="co-done" role="status">
           <svg class="paycheck" viewBox="0 0 100 100" aria-hidden="true"><circle class="pc-c" cx="50" cy="50" r="44" fill="none" stroke-width="5" /><path class="pc-t" d="M30 52l14 14 27-30" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" /></svg>
           <h3>Done</h3>
-          <p>Welcome to Tempo ${plan.name}, ${first.trim()}.</p>
-          <div class="receipt"><div><span>Plan</span><b>Tempo ${plan.name}</b></div><div><span>Paid with</span><b>${mName}</b></div><div><span>Amount</span><b class="num">${money(plan.price)} (demo, not charged)</b></div></div>
+          <p>Welcome to Tempo ${plan.name}${name ? ", " + name : ""}.</p>
+          <div class="receipt"><div><span>Plan</span><b>Tempo ${plan.name}</b></div><div><span>Paid with</span><b>${mName}</b></div><div><span>Confirmed by</span><b>${auth === "pattern" ? "Pattern" : "Fingerprint"}</b></div><div><span>Amount</span><b class="num">${money(plan.price)}</b></div></div>
           <button class="btn primary wide" onClick=${() => onDone({ plan: plan.id, method })}>Continue</button>
         </div>` : null}
       </div>
     </div>`;
   }
-
   /* ---------- plans page ---------- */
   function PlansView({ state, dispatch, toast }) {
     const cur = planOf(state.prefs); const [buy, setBuy] = useState(null); const name = (state.prefs.name || "").trim();
@@ -3482,12 +3607,6 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <ul class="plan-pts">${p.points.map((x, i) => html`<li key=${i}><${Icon} name="check" size=${16} /><span>${x}</span></li>`)}</ul>
         <button class=${"btn wide " + (p.id === cur.id ? "ghost" : p.id === "free" ? "ghost" : "primary")} disabled=${p.id === cur.id} onClick=${() => choose(p)}>${p.id === cur.id ? "Current plan" : p.price === 0 ? "Switch to Free" : (rank(p.id) > rank(cur.id) ? "Upgrade to " : "Switch to ") + p.name}</button>
       </section>`)}</div>
-      <section class="card"><div class="card-head"><h2>Good to know</h2></div>
-        <div class="learn flat">
-          <div><${Icon} name="shield" /><span>The checkout is a demo. It never asks for card details and no money moves.</span></div>
-          <div><${Icon} name="wand" /><span>Ultra switches on the AI icon maker on the <a href="#icons">Icons</a> page. Everything else in Tempo works the same on every plan.</span></div>
-        </div>
-      </section>
       ${buy ? html`<${CheckoutSheet} plan=${buy} prefs=${state.prefs} onClose=${() => setBuy(null)} onDone=${(r) => { dispatch({ type: "setPrefs", patch: { plan: r.plan, planMethod: r.method, planSince: Date.now() } }); setBuy(null); toast("You are on Tempo " + buy.name + (r.plan === "ultra" ? ". The AI icon maker is unlocked." : ".")); }} />` : null}
     </${React.Fragment}>`;
   }
@@ -3496,7 +3615,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   function AiIconMaker({ state, dispatch, toast, caps, onEdit }) {
     const ultra = planOf(state.prefs).id === "ultra"; const [desc, setDesc] = useState(""); const [busy, setBusy] = useState(false); const [res, setRes] = useState(null); const alive = useRef(true);
     useEffect(() => () => { alive.current = false; }, []);
-    const bgFor = (text) => T.HIGHLIGHTS[T.hash(text) % T.HIGHLIGHTS.length];
+    const catFor = (text) => T.tintFor({ title: text || "icon", category: T.guessCategory(text || "") });
     const make = async (e) => {
       if (e) e.preventDefault(); const text = desc.trim(); if (!text || busy) return; setBusy(true); setRes(null); let out = null;
       const ai = caps && caps.sample && !caps.sampleOff && !caps.needsCode;
@@ -3508,9 +3627,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         } catch (err) { out = null; }
       }
       if (!out) { const f = T.iconFromDescription(text); out = { markup: f.markup, name: f.name, hint: text.slice(0, 160), source: ai ? "fallback" : "local" }; }
-      if (!alive.current) return; setRes({ ...out, fg: "#FFFFFF", bg: bgFor(text) }); setBusy(false);
+      if (!alive.current) return; setRes({ ...out, cat: catFor(text + " " + out.name) }); setBusy(false);
     };
-    const save = () => { dispatch({ type: "saveIcon", icon: { id: T.uid("ci"), name: res.name, hint: res.hint, els: [res.markup], markup: res.markup, fg: res.fg, bg: res.bg, bgImage: null, ai: true, updatedAt: Date.now() } }); setRes(null); setDesc(""); toast("Icon saved. Tempo will use it for matching tasks."); };
+    const save = () => { dispatch({ type: "saveIcon", icon: { id: T.uid("ci"), name: res.name, hint: res.hint, els: [res.markup], markup: res.markup, cat: res.cat, bgImage: null, ai: true, updatedAt: Date.now() } }); setRes(null); setDesc(""); toast("Icon saved. Tempo will use it for matching tasks."); };
     if (!ultra) return html`<section class="card aimaker locked" aria-label="AI icon maker">
       <div class="intel-head"><div class="orb"><${Icon} name="wand" /></div><h2>AI icon maker</h2><span class="st"><${Pill} kind="accent" icon="lock">Ultra</${Pill}></span></div>
       <p class="quiet">Describe an icon in a few words and Tempo draws it for you. This is part of Tempo Ultra.</p>
@@ -3524,12 +3643,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       </form>
       ${busy ? html`<div class="ai-wait" role="status"><div class="spin"></div><span>Tempo is drawing your icon…</span></div>` : null}
       ${res ? html`<div class="ai-res">
-        <div class="tile big" style=${{ color: res.fg, background: res.bg }}><${Glyph} markup=${res.markup} size=${44} /></div>
+        <div class="tile big" style=${catStyle(res.cat)}><${Glyph} markup=${res.markup} size=${44} /></div>
         <div class="ai-meta">
           <b>${res.name}</b>
           <span>${res.source === "ai" ? "Drawn by the assistant." : res.source === "fallback" ? "The assistant could not draw this one, so this is the closest built-in shape." : "The AI server is not connected here, so this is the closest built-in shape."}</span>
-          <div class="swatches" role="group" aria-label="Background colour">${T.HIGHLIGHTS.map((c) => html`<button key=${c} type="button" class=${"sw" + (res.bg === c ? " on" : "")} style=${{ background: c }} aria-label=${"Background " + c} onClick=${() => setRes({ ...res, bg: c })}></button>`)}</div>
-          <div class="ai-acts"><button class="btn sm primary" onClick=${save}><${Icon} name="check" />Save icon</button><button class="btn sm ghost" onClick=${() => make()}><${Icon} name="refresh" />Try again</button><button class="btn sm ghost" onClick=${() => { onEdit({ seed: "ai" + Date.now(), name: res.name, hint: res.hint, markup: res.markup, fg: res.fg, bg: res.bg }); setRes(null); }}><${Icon} name="edit" />Edit by hand</button></div>
+          <div class="ai-acts"><button class="btn sm primary" onClick=${save}><${Icon} name="check" />Save icon</button><button class="btn sm ghost" onClick=${() => make()}><${Icon} name="refresh" />Try again</button><button class="btn sm ghost" onClick=${() => { onEdit({ seed: "ai" + Date.now(), name: res.name, hint: res.hint, markup: res.markup, fg: "#FFFFFF", bg: "#7C3AED" }); setRes(null); }}><${Icon} name="edit" />Edit by hand</button></div>
         </div>
       </div>` : null}
     </section>`;
@@ -3557,7 +3675,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const [f, setF] = useState(() => ({
       title: task.title || "", category: task.category || "other", priority: task.priority || "medium", estimatedMinutes: task.estimatedMinutes || prefs.defaultMinutes || 30,
       date: task.date || date, start: task.start != null ? T.toHHMM(task.start) : "", fixed: !!task.fixed, bullets: (task.bullets || []).join("\n"), status: task.status === "in_progress" ? "upcoming" : task.status || "upcoming",
-      icon: task.icon || "", color: task.color || "", notes: task.notes || "",
+      icon: task.icon || "", color: task.color || "", notes: task.notes || "", repeat: task.repeat || "",
     }));
     const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
     const submit = (e) => {
@@ -3565,7 +3683,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const start = f.start ? T.parseHHMM(f.start) : null; const est = Math.max(5, parseInt(f.estimatedMinutes, 10) || 30); const prot = f.status === "protected";
       const status = prot || f.status === "completed" ? f.status : task.status === "in_progress" && f.status === "upcoming" ? "in_progress" : f.status === "postponed" && start == null ? "postponed" : "upcoming";
       onSave({ ...task, title: f.title.trim() || "Untitled task", category: f.category, priority: f.priority, estimatedMinutes: est, date: T.isDayKey(f.date) ? f.date : date, start: start ?? undefined, end: start != null ? start + est : undefined, fixed: prot ? true : f.fixed, status,
-        bullets: f.bullets.split("\n").map((s) => s.trim()).filter(Boolean), icon: f.icon || undefined, color: f.color || undefined, notes: f.notes.trim() || undefined });
+        bullets: f.bullets.split("\n").map((s) => s.trim()).filter(Boolean), icon: f.icon || undefined, color: f.color || undefined, notes: f.notes.trim() || undefined, repeat: f.repeat || null });
     };
     useEscape(onClose);
     const look = iconLook({ title: f.title, category: f.category, icon: f.icon || undefined, status: f.status });
@@ -3594,6 +3712,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="grid2">
           <div class="field"><label for="ed-start">Start time (optional)</label><input id="ed-start" class="in num" type="time" value=${f.start} onInput=${set("start")} /></div>
           <div class="field"><label>Highlight colour</label><div class="swatches"><button type="button" class=${"sw none" + (!f.color ? " on" : "")} aria-label="No highlight" title="None" onClick=${() => setF((x) => ({ ...x, color: "" }))}></button>${T.HIGHLIGHTS.map((c) => html`<button type="button" key=${c} class=${"sw" + (f.color === c ? " on" : "")} style=${{ background: c }} aria-label=${"Highlight " + c} onClick=${() => setF((x) => ({ ...x, color: c }))}></button>`)}</div></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="ed-rep">Repeat</label><select id="ed-rep" class="in" value=${f.repeat} onChange=${set("repeat")}><option value="">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="weekly">Every week</option><option value="twicedaily">Twice a day</option></select></div>
+          <div class="field">${f.repeat ? html`<p class="note acc" style=${{ marginTop: 22 }}>Tempo creates the next week of occurrences by itself. Changing this changes the whole series.</p>` : null}</div>
         </div>
         ${f.status !== "protected" ? html`<label class="chk-inline"><input id="ed-fixed" type="checkbox" checked=${f.fixed} onChange=${set("fixed")} /> Fixed commitment (Tempo never moves it)</label>` : html`<p class="note acc">Protected time is reserved for you. The planner never puts work inside it unless you ask.</p>`}
         <div class="field"><label for="ed-bul">Steps, one per line${steps ? "" : " (shown as a checklist only for tasks of " + (prefs.stepsMinMinutes ?? 15) + " minutes or more)"}</label><textarea id="ed-bul" class="in" value=${f.bullets} onInput=${set("bullets")} placeholder=${"Gather the receipts\nFill in the form\nSend it"}></textarea></div>
@@ -3936,7 +4058,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const route = useHashRoute(); const clock = useClock(); const nowMin = T.minutesNow(clock); const today = T.dayKey(clock);
     const [viewDateRaw, setViewDate] = useState(null); const viewDate = viewDateRaw || today;
     const [editing, setEditing] = useState(null); const [toastMsg, setToastMsg] = useState(null); const [pop, setPop] = useState(false); const [sheet, setSheet] = useState(null);
-    const [focusId, setFocusId] = useState(null); const [fx, setFx] = useState(null);
+    const [focusId, setFocusId] = useState(null); const [fx, setFx] = useState(null); const focusRef = useRef(null); focusRef.current = focusId;
     const [caps, setCaps] = useState({ db: null, user: null, uid: null, sample: null, sampleOff: false, setSampleOff: (v) => setCaps((c) => ({ ...c, sampleOff: v })), setNeedsCode: (v) => setCaps((c) => ({ ...c, needsCode: v })) });
     const [busy, setBusy] = useState(false); const [secs, setSecs] = useState(0); const [engineForced, setEngineForced] = useState(null);
     const stateRef = useRef(state); stateRef.current = state; const capsRef = useRef(caps); capsRef.current = caps; const forcedRef = useRef(engineForced); forcedRef.current = engineForced;
@@ -3991,6 +4113,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       saveTimer.current = setTimeout(() => { const snapshot = { ...stateRef.current, history: [] }; const ref = caps.db.doc("data/users/" + caps.uid + "/state"); saving.current = saving.current.then(() => ref.set(snapshot)).then(() => { lastSaved.current = snapshot.updatedAt; }).catch(() => {}); }, 900);
       return () => clearTimeout(saveTimer.current);
     }, [state.updatedAt, caps.db, caps.uid]);
+
+    /* repeating tasks: keep a week of future occurrences materialised (cheap no-op when there is nothing new) */
+    useEffect(() => { dispatch({ type: "materialize", today }); }, [today, state.updatedAt]);
 
     /* one place where the whole task list is replaced, with an undo snapshot */
     const commit = useCallback((tasksArr, note, source, dayMeta) => { const revisionId = T.uid("rev"); dispatch({ type: "commit", tasks: tasksArr, revisionId, note, source, dayMeta }); return revisionId; }, []);
@@ -4080,7 +4205,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           const dayWork = Object.values(st.tasks).filter((x) => x.date === t.date && isWork(x) && !x.fixed && x.status !== "postponed");
           const allDone = dayWork.length >= 2 && dayWork.some((x) => x.id === id) && dayWork.every((x) => x.id === id || x.status === "completed");
           if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
-          if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, rect, key: Date.now() });
+          if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, rect, key: Date.now() });
           toast(allDone ? "Everything for the day is done" : "Marked as completed" + shiftMsg, () => dispatch({ type: "undo" }));
           if (st.prefs.autoStartNext && !allDone) { const next = dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0]; if (next) dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); }
         } else if (status === "in_progress") toast("Focus timer started");
@@ -4211,7 +4336,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${focusTask ? html`<${UI.FocusMode} task=${focusTask} next=${focusNext} prefs=${state.prefs} onStatus=${actions.onStatus} onToggleBullet=${actions.onToggleBullet} onNotes=${(id, notes) => dispatch({ type: "setNotes", id, notes })} onExtend=${(id, m) => dispatch({ type: "updateTask", id, patch: { estimatedMinutes: state.tasks[id].estimatedMinutes + m }, note: "adding focus time" })} onClose=${() => setFocusId(null)} />` : null}
       ${editing ? html`<${TaskEditor} task=${editing} date=${viewDate} prefs=${state.prefs} icons=${state.icons} onSave=${onSave} onClose=${() => setEditing(null)} onDelete=${actions.onDelete} />` : null}
       ${sheet ? html`<${ImpactSheet} ...${sheet} onClose=${() => setSheet(null)} />` : null}
-      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} title=${fx.title} rect=${fx.rect} onDone=${() => setFx(null)} />` : null}
+      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} rect=${fx.rect} onDone=${() => setFx(null)} />` : null}
       ${toastMsg ? html`<div class="toast" role="status"><span>${toastMsg.text}</span>${toastMsg.undo ? html`<button onClick=${() => { toastMsg.undo(); setToastMsg(null); }}>${toastMsg.label || "Undo"}</button>` : null}</div>` : null}
     </div>`;
   }

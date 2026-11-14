@@ -39,6 +39,17 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 - Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
 - Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
 
+## Co doszło w wersji 5
+
+- **Zadania powtarzalne**: w edytorze zadania jest pole "Repeat" (codziennie, dni robocze, co tydzień, dwa razy dziennie). Działa też dla czasu chronionego, np. "Chill" co wieczór. Tempo samo tworzy wystąpienia na tydzień do przodu, a usunięte wystąpienie nie wraca. Asystent też to umie: "Add Chill at 9 PM as protected time every day".
+- **Tempo Intelligence**: liczby są spójne (kafelki Free / Work / Spare liczą się z tego samego wzoru), a tempo dnia pojawia się dopiero po dwóch zmierzonych zadaniach i nie przesadza z procentami.
+- **Płatność**: bez formularza z danymi. Wybierasz metodę, przechodzisz captchę "Press the mouse" (liczy się mysz zwierzę i myszka od komputera), potem odcisk palca albo narysowanie pokazanego wzoru. Napisy o "demo" zniknęły.
+- **Ikony z AI** mają teraz takie samo tło jak wbudowane (kolor kategorii), więc nie odstają.
+- **Asystent**: nowy mikrofon i spokojniejsze ostrzeżenia zamiast żółtych pasków. Rozumie "Improve my day" i podobne ("optimize", "make it better").
+- **Animacje**: litery tytułu płynnie unoszą się i rozpływają w światło, z którego wyrasta dżungla. W trybie Focus (także na pełnym ekranie) animacja gra na całym ekranie; naprawiony błąd, przez który na pełnym ekranie nie było jej widać.
+- **Harmonogram**: ukończone zadania zwijają się do kompaktowych wierszy, nagłówek sprintu pokazuje ile zostało i na ile godzin.
+- Dźwięk: każdy dźwięk zakolejkowany przed pierwszym kliknięciem odtworzy się, gdy przeglądarka pozwoli na audio. Jeśli nadal nic nie słychać, sprawdź suwak głośności w Preferences i wycisz karty w przeglądarce.
+
 ## Co doszło w wersji 4
 
 - **Timer na bieżącym zadaniu**: zadanie, które właśnie trwa, ma odliczanie co sekundę, pasek postępu i przycisk startu timera.
