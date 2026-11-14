@@ -961,6 +961,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .checks { margin-top: 6px; } .ck .tx { font-size: 13.5px; }
 .note-line { font-size: 13px; }
 @media (max-width: 420px) { .row-inner, .shell.compact .row-inner { grid-template-columns: 44px minmax(0, 1fr) auto auto; } .tile { width: 44px; height: 44px; border-radius: 13px; } .tile svg { width: 19px; height: 19px; } }
+
+/* ---------- v7: timers only on demand ---------- */
+.startbox { margin-top: 9px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 8px 7px 12px; border-radius: 12px; background: var(--card); border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--card)); }
+.startbox .sb-t { flex: 1 1 140px; min-width: 0; font-size: 12.5px; color: var(--muted); } .startbox .sb-t b { color: var(--accent-text); font-weight: 700; }
+.startbox.over { border-color: color-mix(in srgb, var(--warn) 50%, var(--card)); } .startbox.over .sb-t b { color: var(--warn); }
+.btn.xs.primary { background: var(--accent); color: var(--accent-fg); }
+.toast.wide { display: flex; align-items: center; gap: 12px; border-radius: 16px; max-width: min(560px, calc(100vw - 24px)); width: max-content; }
+.toast.wide > span { flex: 1 1 auto; min-width: 0; }
+.toast .tx-main { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; background: var(--accent); color: #fff; padding: 6px 11px; border-radius: 999px; }
+.toast .tx-main svg { width: 13px; height: 13px; }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -2452,12 +2462,24 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     "The icon to draw: " + String(desc || "").slice(0, 200),
   ].join("\n");
 
-  /* ---------- sound: two short, soft cues made with Web Audio (no files) ---------- */
+  /* ---------- sound: short, soft cues synthesised in code (no files) ----------
+     Two engines. Chrome, Firefox and Edge use Web Audio. Safari and every browser on iPhone/iPad use a single
+     <audio> element playing WAVs rendered from the same notes, because there Web Audio obeys the ring/silent
+     switch and falls asleep after a pause, while a media element that was unlocked by one tap keeps working
+     (also for sounds that play a moment later, like the payment chime). If Web Audio cannot wake up, the
+     media element is the fallback everywhere. */
   T.sound = (() => {
-    let ctx = null, out = null, queued = null;
+    let ctx = null, out = null, queued = null, el = null, elReady = false; const cache = {};
+    const nav = window.navigator || {}; const ua = nav.userAgent || "";
+    const iOS = /iP(hone|ad|od)/.test(ua) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+    const safari = /^((?!chrome|chromium|android|crios|fxios|edg|opr).)*safari/i.test(ua);
+    const AC = () => window.AudioContext || window.webkitAudioContext;
+    const preferMedia = iOS || safari;
+    const session = () => { try { if (nav.audioSession && nav.audioSession.type !== "playback") nav.audioSession.type = "playback"; } catch (e) { /* older WebKit */ } };
     const ensure = () => {
-      if (ctx) return ctx; const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
-      ctx = new AC(); const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3400; out = ctx.createGain(); out.gain.value = 1; out.connect(lp); lp.connect(ctx.destination); return ctx;
+      if (ctx) return ctx; const A = AC(); if (!A) return null;
+      try { ctx = new A(); } catch (e) { return null; }
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3400; out = ctx.createGain(); out.gain.value = 1; out.connect(lp); lp.connect(ctx.destination); return ctx;
     };
     const tone = (c, f, at, dur, type, gain) => { const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, at); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(gain, at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, at + dur); o.connect(g); g.connect(out); o.start(at); o.stop(at + dur + 0.05); };
     const SCORES = {
@@ -2467,17 +2489,76 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       tap: [[880, 0, 0.07, "sine", 0.03]],
       all: [[523.25, 0, 0.5, "triangle", 0.07], [659.25, 0.09, 0.5, "triangle", 0.07], [783.99, 0.18, 0.5, "triangle", 0.07], [1046.5, 0.27, 0.9, "triangle", 0.08], [1318.5, 0.36, 1.1, "sine", 0.05], [130.81, 0.27, 1.0, "sine", 0.06]],
     };
-    const run = (kind, volume) => { const c = ctx; const t0 = c.currentTime + 0.02; const v = Math.max(0, Math.min(1, volume ?? 0.6)); if (v <= 0) return; for (const [f, at, dur, type, gain] of SCORES[kind] || []) tone(c, f, t0 + at, dur, type, gain * v * 1.6); };
+    const run = (kind, v) => { const c = ctx; const t0 = c.currentTime + 0.02; for (const [f, at, dur, type, gain] of SCORES[kind] || []) tone(c, f, t0 + at, dur, type, gain * v * 1.6); };
+
+    // the same notes rendered to a 16-bit mono WAV; volume is baked in because iOS ignores audio.volume
+    const SR = 22050;
+    const wav = (buf) => {
+      const n = buf.length; const bytes = new Uint8Array(44 + n * 2); const dv = new DataView(bytes.buffer);
+      const str = (o, s) => { for (let i = 0; i < s.length; i++) bytes[o + i] = s.charCodeAt(i); };
+      str(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, SR, true); dv.setUint32(28, SR * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); str(36, "data"); dv.setUint32(40, n * 2, true);
+      for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, buf[i])) * 32767), true);
+      let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return "data:audio/wav;base64," + btoa(bin);
+    };
+    const render = (kind, v) => {
+      const key = kind + ":" + Math.round(v * 20); if (cache[key]) return cache[key];
+      const notes = SCORES[kind] || []; const end = Math.max(0.05, ...notes.map((x) => x[1] + x[2])) + 0.08; const N = Math.ceil(end * SR); const buf = new Float32Array(N);
+      for (const [f, at, dur, type, gain] of notes) {
+        const g0 = gain * v * 1.6; const s0 = Math.floor((at + 0.01) * SR); const n = Math.ceil(dur * SR); const floor = 0.0001 / Math.max(g0, 0.0002);
+        for (let i = 0; i < n && s0 + i < N; i++) {
+          const t = i / SR; const ph = f * t;
+          const w = type === "triangle" ? 1 - 4 * Math.abs(Math.round(ph) - ph) : Math.sin(2 * Math.PI * ph);
+          const env = t < 0.015 ? t / 0.015 : Math.pow(floor, (t - 0.015) / Math.max(0.02, dur - 0.015));
+          buf[s0 + i] += w * g0 * env;
+        }
+      }
+      return (cache[key] = wav(buf));
+    };
+    const silent = () => cache.silent || (cache.silent = wav(new Float32Array(Math.ceil(SR * 0.05))));
+    const fresh = (q) => q && (Date.now() - q.at < 4000 || (q.kind === "load" && Date.now() - q.at < 30000));
+
+    // media engine: one element, unlocked by the first tap, reused for every cue after that
+    const media = (kind, v) => {
+      try {
+        if (!el) { el = new Audio(); el.preload = "auto"; el.setAttribute("playsinline", ""); }
+        el.pause(); el.src = render(kind, v); try { el.currentTime = 0; } catch (e) { /* not loaded yet */ }
+        const p = el.play();
+        if (p && p.then) p.then(() => { elReady = true; }).catch(() => { if (!elReady) queued = { kind, v, at: Date.now() }; }); else elReady = true;
+        return true;
+      } catch (e) { return false; }
+    };
+    const flush = () => { if (!fresh(queued)) { queued = null; return; } const q = queued; queued = null; if (ctx && ctx.state === "running" && !preferMedia) run(q.kind, q.v); else media(q.kind, q.v); };
+
     return {
+      engine: preferMedia ? "media" : "webaudio",
       play(kind, volume) {
-        const c = ensure(); if (!c) return false;
-        if (c.state === "running") { run(kind, volume); return true; }
-        // browsers only allow sound after a user gesture: remember what was asked for and play it the moment audio wakes up
-        queued = { kind, volume, at: Date.now() };
-        c.resume().then(() => { if (c.state === "running" && queued && Date.now() - queued.at < 4000) { const q = queued; queued = null; run(q.kind, q.volume); } }).catch(() => {});
+        const v = Math.max(0, Math.min(1, volume ?? 0.6)); if (v <= 0) return true; session();
+        if (preferMedia || !AC()) return media(kind, v);
+        const c = ensure(); if (!c) return media(kind, v);
+        if (c.state === "running") { run(kind, v); return true; }
+        queued = { kind, v, at: Date.now() };
+        try { c.resume().then(() => { if (c.state === "running") flush(); else if (elReady) flush(); }).catch(() => { if (elReady) flush(); }); } catch (e) { /* very old webkitAudioContext */ }
         return false;
       },
-      unlock() { const c = ensure(); if (!c) return; c.resume().then(() => { if (queued && c.state === "running" && Date.now() - queued.at < 4000) { const q = queued; queued = null; run(q.kind, q.volume); } }).catch(() => {}); },
+      /* Call on every tap, click and key press: cheap once audio is awake, and it wakes it again after iOS put it to sleep. */
+      unlock() {
+        session();
+        if (preferMedia || !AC()) {
+          if (elReady && !fresh(queued)) return;
+          if (fresh(queued)) { const q = queued; queued = null; media(q.kind, q.v); return; }
+          try { if (!el) { el = new Audio(); el.preload = "auto"; el.setAttribute("playsinline", ""); } el.src = silent(); const p = el.play(); if (p && p.then) p.then(() => { elReady = true; }).catch(() => {}); else elReady = true; } catch (e) { /* no media support */ }
+          return;
+        }
+        const c = ensure(); if (!c) return;
+        if (c.state !== "running") {
+          try { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) { /* ignore */ }
+          try { c.resume().then(() => { if (c.state === "running") flush(); }).catch(() => {}); } catch (e) { /* ignore */ }
+        } else if (fresh(queued)) flush();
+        if (!elReady) { try { if (!el) { el = new Audio(); el.preload = "auto"; } el.src = silent(); const p = el.play(); if (p && p.then) p.then(() => { elReady = true; }).catch(() => {}); } catch (e) { /* ignore */ } } // ready as a fallback
+      },
+      _render: render,
     };
   })();
 })();
@@ -2652,6 +2733,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const dur = Math.max(1, task.end - task.start);
     if (nowMin < task.start) { const until = task.start - nowMin; return { tone: until <= 10 ? "warn" : "good", frac: 1, label: sd(until), sub: "to start", tip: "Time until this task starts" }; }
     if (nowMin < task.end) { const left = task.end - nowMin; const frac = left / dur; return { tone: frac < 0.25 ? "warn" : "good", frac, label: sd(left), sub: "left", tip: "Time left in this block" }; }
+    if (task.fixed || task.status === "protected") return { tone: "idle", frac: 0, label: "Past", sub: "", tip: "This commitment is behind you" }; // a dinner that happened is not "late"
     return { tone: "bad", frac: 0, label: sd(nowMin - task.end), sub: "late", tip: "This block ended and the task is not marked done" };
   }
   function TaskClock({ info }) {
@@ -2670,13 +2752,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const sched = task.start != null && task.end != null; const done = task.status === "completed";
     const live = isToday && sched && isActive(task) && nowMin >= task.start && nowMin < task.end;
     const cur = !done && task.status !== "postponed" && (task.status === "in_progress" || live || !!current); // the task you are on right now
-    const tick = useTick(cur || (task.status === "in_progress" && !!task.startedAt)); const tm = timerOf(task, tick);
+    const tick = useTick(task.status === "in_progress" && !!task.startedAt); const tm = timerOf(task, tick); // only a started timer ticks
     const leave = (fn, dir) => { setLeaving(dir || "r"); setTimeout(fn, 250); };
-    // live countdown for the current task: the focus timer if it is running, otherwise the time left in its block
-    let nt = null;
-    if (cur) {
-      if (tm.running || tm.elapsed > 0) nt = { ms: tm.left, pct: tm.pct, lbl: tm.running ? "left on the focus timer" : "left, timer paused" };
-      else if (sched && isToday) { const d = new Date(tick); const nowMs = d.getHours() * 3600000 + d.getMinutes() * 60000 + d.getSeconds() * 1000; const a = task.start * 60000, b = task.end * 60000; nt = { ms: b - nowMs, pct: Math.max(0, Math.min(100, ((nowMs - a) / Math.max(1, b - a)) * 100)), lbl: "left in this block" }; }
+    // The timer runs only when you start it. A task whose time has come shows a calm "Start timer" prompt, never a clock
+    // that ticks on its own; commitments such as dinner get no prompt at all.
+    let nt = null, prompt = null;
+    if (cur && !task.fixed) {
+      if (tm.running || tm.elapsed > 0) nt = { ms: tm.left, pct: tm.pct, lbl: tm.running ? "left on the timer" : "left, timer paused" };
+      else if (sched && isToday) prompt = nowMin < task.end ? "on" : "over";
     }
     const liRef = useRef(null); const rowDrag = useRef(false); const hold = useRef(null); const [lift, setLift] = useState(false);
     useEffect(() => { const el = liRef.current; if (!el) return; const stop = (e) => { if (rowDrag.current) e.preventDefault(); }; el.addEventListener("touchmove", stop, { passive: false }); return () => { el.removeEventListener("touchmove", stop); clearTimeout(hold.current); }; }, []);
@@ -2722,12 +2805,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           <div class="dur">${T.fmtDur(task.estimatedMinutes)}${steps ? ` · ${ticked}/${bullets.length} steps` : ""}${task.actualMinutes ? ` · took ${task.actualMinutes} min` : ""}${!sched && task.status !== "postponed" ? " · no time yet" : ""}${task.notes ? " · has notes" : ""}</div>
           ${steps ? html`<div class="checks">${bullets.map((b, i) => { const on = doneB.includes(b); return html`<div class=${"ck " + (on ? "on" : "")} key=${i}><button class="box" role="checkbox" aria-checked=${on} aria-label=${b} onClick=${() => onToggleBullet(task.id, b)}><${Icon} name="check" /></button><span class="tx">${b}</span></div>`; })}</div>`
             : bullets.length ? html`<div class="note-line">${bullets[0]}</div>` : null}
-          ${nt ? html`<div class=${"nowtimer" + (nt.ms < 0 ? " over" : "")} role="timer" aria-label="Time left on the current task">
-            <span class="dot" aria-hidden="true"></span><span class="big num">${nt.ms < 0 ? "+" : ""}${T.fmtClock(Math.abs(nt.ms) / 1000)}</span><span class="lbl">${nt.ms < 0 ? (tm.elapsed || tm.running ? "over the estimate" : "past its planned end") : nt.lbl}</span>
+          ${prompt ? html`<div class=${"startbox" + (prompt === "over" ? " over" : "")}>
+            <span class="sb-t"><b>${prompt === "on" ? "Scheduled now" : "Its time is up"}</b><span class="num"> · ${prompt === "on" ? "until " : "planned until "}${T.fmtTime(task.end, prefs.timeFormat)}</span></span>
+            ${prompt === "over" ? html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "completed")}><${Icon} name="check" />Done</button>` : null}
+            <button class="btn xs primary" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />Start timer</button>
+          </div>` : nt ? html`<div class=${"nowtimer" + (nt.ms < 0 ? " over" : "")} role="timer" aria-label="Time left on the timer">
+            <span class="dot" aria-hidden="true"></span><span class="big num">${nt.ms < 0 ? "+" : ""}${T.fmtClock(Math.abs(nt.ms) / 1000)}</span><span class="lbl">${nt.ms < 0 ? "over the estimate" : nt.lbl}</span>
             <span class="barw"><i style=${{ width: nt.pct + "%" }}></i></span>
-            ${tm.running ? html`<button class="btn xs ghost" onClick=${() => onStatus(task.id, "upcoming")}><${Icon} name="pause" />Pause</button>`
-              : nt.ms < 0 && !tm.elapsed ? html`<${React.Fragment}><button class="btn xs soft" onClick=${() => onStatus(task.id, "completed")}><${Icon} name="check" />Done</button><button class="btn xs ghost" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />Start timer</button></${React.Fragment}>`
-              : html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />${tm.elapsed > 0 ? "Resume" : "Start timer"}</button>`}
+            ${tm.running ? html`<button class="btn xs ghost" onClick=${() => onStatus(task.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class="btn xs soft" onClick=${() => onStatus(task.id, "in_progress")}><${Icon} name="play" />Resume</button>`}
           </div>` : !done && (tm.running || tm.elapsed > 0) ? html`<div class=${"timer " + (tm.left < 0 ? "over" : "")}><span class="barw"><i style=${{ width: tm.pct + "%" }}></i></span>${tm.running ? html`<span>focus timer running</span>` : html`<span>timer paused</span>`}</div>` : null}
           ${showMeta ? html`<div class="meta">
             ${showStatus ? html`<${Pill} kind=${pk}>${label}</${Pill}>` : null}
@@ -3041,17 +3126,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="tile" style=${look.style}><${Glyph} markup=${look.markup} /></div>
         <div class="nc-body">
           <div class="nc-title">${cur.title}</div>
-          <div class="nc-sub num">${T.fmtRange(cur.start, cur.end, fmt)} · <b class=${info.tone === "bad" ? "late" : ""}>${info.label} ${info.sub}</b></div>
+          <div class="nc-sub num">${T.fmtRange(cur.start, cur.end, fmt)} · ${tm && (tm.running || tm.elapsed > 0) ? html`<b class=${tm.left < 0 ? "late" : ""}>${info.label} ${info.sub}${tm.running ? "" : ", paused"}</b>` : overdue.includes(cur) ? html`<b class="late">ran past its time</b>` : cur.fixed ? html`<b>on now</b>` : html`<b>scheduled now · timer not started</b>`}</div>
         </div>
         ${cur.fixed ? null : html`<div class="nc-acts">
-          ${cur.status === "in_progress" ? html`<button class="btn sm ghost" onClick=${() => onStatus(cur.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class="btn sm ghost" onClick=${() => onStatus(cur.id, "in_progress")}><${Icon} name="play" />${tm && tm.elapsed > 0 ? "Resume" : "Start"}</button>`}
+          ${cur.status === "in_progress" ? html`<button class="btn sm ghost" onClick=${() => onStatus(cur.id, "upcoming")}><${Icon} name="pause" />Pause</button>` : html`<button class=${"btn sm " + (tm && tm.elapsed > 0 ? "ghost" : "soft")} onClick=${() => onStatus(cur.id, "in_progress")}><${Icon} name="play" />${tm && tm.elapsed > 0 ? "Resume" : "Start timer"}</button>`}
           <button class="btn sm ghost" onClick=${() => onFocus(cur.id)} aria-label="Focus mode"><${Icon} name="expand" /></button>
           <button class="btn sm primary" onClick=${() => onStatus(cur.id, "completed")}><${Icon} name="check" />Done</button>
         </div>`}
       </div>` : next ? html`<div class="nc-main">
         <div class="tile" style=${iconLook(next).style}><${Glyph} markup=${iconLook(next).markup} /></div>
         <div class="nc-body"><div class="nc-title">${next.title}</div><div class="nc-sub num">${T.fmtRange(next.start, next.end, fmt)} · starts in ${T.fmtShortDur(Math.max(1, next.start - nowMin))}</div></div>
-        <div class="nc-acts"><button class="btn sm ghost" onClick=${() => onStatus(next.id, "in_progress")}><${Icon} name="play" />Start now</button><button class="btn sm ghost" onClick=${() => onFocus(next.id)} aria-label="Focus mode"><${Icon} name="expand" /></button></div>
+        <div class="nc-acts"><button class="btn sm soft" onClick=${() => onStatus(next.id, "in_progress")}><${Icon} name="play" />Start timer</button><button class="btn sm ghost" onClick=${() => onFocus(next.id)} aria-label="Focus mode"><${Icon} name="expand" /></button></div>
       </div>` : html`<div class="nc-main"><div class="nc-body"><div class="nc-title">${work.length && !open.length ? "Everything on the sprint is done." : open.length ? "Remaining work has no time yet." : "Nothing planned yet."}</div><div class="nc-sub">${work.length && !open.length ? "The rest of the day is yours." : open.length ? "Re-plan to give it times." : "Add a task below, or ask the assistant."}</div></div>${open.length && onReplan ? html`<div class="nc-acts"><button class="btn sm soft" onClick=${onReplan}><${Icon} name="sparkles" />Re-plan</button></div>` : null}</div>`}
       ${cur && next ? html`<div class="nc-next">Then <b>${next.title}</b> <span class="num">${ft(next.start)}</span>${nextFixed && nextFixed.start < next.start ? html` · <b>${nextFixed.title}</b> <span class="num">${ft(nextFixed.start)}</span>` : null}</div>` : cur && nextFixed ? html`<div class="nc-next">Then <b>${nextFixed.title}</b> <span class="num">${ft(nextFixed.start)}</span></div>` : null}
       ${moreLate ? html`<div class="nc-late"><${Icon} name="alert" size=${14} /><span>${moreLate + (overdue.includes(cur) ? 1 : 0)} task${moreLate + (overdue.includes(cur) ? 1 : 0) > 1 ? "s" : ""} ran past ${moreLate + (overdue.includes(cur) ? 1 : 0) > 1 ? "their times" : "its time"}.</span>${onReplan ? html`<button class="btn xs ghost" onClick=${onReplan}>Re-plan from now</button>` : null}</div>` : null}
@@ -4199,7 +4284,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="grid2" style=${{ marginTop: 12 }}>${numIn("pf-steps", "Checklists for tasks from (min)", "stepsMinMinutes", 5, 120, 5)}<div></div></div>
         <div class="switches">
           ${sw("pf-adjust", "autoAdjust", "Adjust times when I tick a task off", "Finish early and the next blocks move up. Run over and they move back. Fixed commitments stay put.", true)}
-          ${sw("pf-next", "autoStartNext", "Start the next timer automatically", "When you complete a task, the focus timer of the next one starts.", false)}
+          ${sw("pf-next", "autoStartNext", "Start the next timer automatically", "Off: when you complete a task, Tempo only suggests starting the next timer. On: it starts it for you.", false)}
         </div>
       </section>
       <section class="card"><div class="card-head"><h2>Priorities</h2><button class="btn sm soft" onClick=${() => set({ priorities: [...pri, { id: T.uid("p"), label: "New priority", color: "#0D9488", rank: 1 }] })}><${Icon} name="plus" />Add priority</button></div>
@@ -4248,8 +4333,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const [busy, setBusy] = useState(false); const [secs, setSecs] = useState(0); const [engineForced, setEngineForced] = useState(null);
     const stateRef = useRef(state); stateRef.current = state; const capsRef = useRef(caps); capsRef.current = caps; const forcedRef = useRef(engineForced); forcedRef.current = engineForced;
     const viewRef = useRef(viewDate); viewRef.current = viewDate; const busyRef = useRef(false); const ctl = useRef(null);
-    const toast = useCallback((text, undo, label) => setToastMsg({ text, undo, label, id: Date.now() }), []);
-    useEffect(() => { if (!toastMsg) return; const id = setTimeout(() => setToastMsg(null), 5000); return () => clearTimeout(id); }, [toastMsg]);
+    const toast = useCallback((text, undo, label, extra) => setToastMsg({ text, undo, label, extra, id: Date.now() }), []);
+    useEffect(() => { if (!toastMsg) return; const id = setTimeout(() => setToastMsg(null), toastMsg.extra ? 9000 : 5000); return () => clearTimeout(id); }, [toastMsg]);
     useEffect(() => { if (!busy) { setSecs(0); return; } const t0 = Date.now(); const id = setInterval(() => setSecs(Math.floor((Date.now() - t0) / 1000)), 1000); return () => clearInterval(id); }, [busy]);
 
     // first run: a realistic sample day so the page opens in a working state
@@ -4257,9 +4342,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     // the opening chime. Browsers only allow sound after a first tap, so it is queued until then.
     useEffect(() => {
       if (stateRef.current.prefs.sound !== false) T.sound.play("load", stateRef.current.prefs.volume);
-      const unlock = () => { T.sound.unlock(); document.removeEventListener("pointerdown", unlock); document.removeEventListener("keydown", unlock); };
-      document.addEventListener("pointerdown", unlock); document.addEventListener("keydown", unlock);
-      return () => { document.removeEventListener("pointerdown", unlock); document.removeEventListener("keydown", unlock); };
+      // every gesture keeps audio awake: iOS only unlocks on touchend/click, and it can put audio back to sleep later
+      const unlock = () => T.sound.unlock(); const EV = ["pointerdown", "touchend", "click", "keydown"];
+      for (const e of EV) document.addEventListener(e, unlock, { capture: true, passive: true });
+      return () => { for (const e of EV) document.removeEventListener(e, unlock, { capture: true }); };
     }, []);
     // theme
     useEffect(() => { const root = document.documentElement; if (state.prefs.theme === "system") { if (root.dataset.tempoTheme) { root.removeAttribute("data-theme"); delete root.dataset.tempoTheme; } } else { root.setAttribute("data-theme", state.prefs.theme); root.dataset.tempoTheme = "1"; } }, [state.prefs.theme]);
@@ -4382,8 +4468,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onStatus: (id, status) => {
         const st = stateRef.current; const t = st.tasks[id]; if (!t) return; let rect = null;
         if (status === "completed") { const el = document.querySelector(`li[data-id="${id}"] .row-inner`); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0) rect = { left: r.left, top: r.top, width: r.width, height: r.height }; } }
-        let adjust = false, shiftMsg = "";
-        if (status === "completed" && st.prefs.autoAdjust !== false && t.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(st.tasks).filter((x) => x.date === t.date), t, T.minutesNow()); if (sh.moved) { adjust = true; shiftMsg = `. The next ${sh.moved > 1 ? sh.moved + " blocks" : "block"} moved ${sh.delta < 0 ? "up" : "back"} ${T.fmtShortDur(Math.abs(sh.delta))}`; track("autoslot"); } }
+        let adjust = false, shiftMsg = ""; const newStart = new Map();
+        if (status === "completed" && st.prefs.autoAdjust !== false && t.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(st.tasks).filter((x) => x.date === t.date), t, T.minutesNow()); if (sh.moved) { adjust = true; for (const x of sh.tasks) newStart.set(x.id, x.start); shiftMsg = `. The next ${sh.moved > 1 ? sh.moved + " blocks" : "block"} moved ${sh.delta < 0 ? "up" : "back"} ${T.fmtShortDur(Math.abs(sh.delta))}`; track("autoslot"); } }
         dispatch({ type: "setStatus", id, status, adjust });
         if (status === "completed") {
           // the sprint is the flexible work of the day: commitments such as dinner do not hold the celebration back
@@ -4391,8 +4477,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           const allDone = dayWork.length >= 2 && dayWork.some((x) => x.id === id) && dayWork.every((x) => x.id === id || x.status === "completed");
           if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
           if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, rect, key: Date.now() });
-          toast(allDone ? "Everything for the day is done" : "Marked as completed" + shiftMsg, () => dispatch({ type: "undo" }));
-          if (st.prefs.autoStartNext && !allDone) { const next = dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0]; if (next) dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); }
+          const next = allDone ? null : dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0];
+          if (next && st.prefs.autoStartNext) { dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); toast(`Done. Timer started for “${next.title}”` + shiftMsg, () => dispatch({ type: "undo" })); }
+          else if (next) toast(`Done${shiftMsg}. Next: “${next.title}” at ${T.fmtTime(newStart.get(next.id) ?? next.start, st.prefs.timeFormat)}`, () => dispatch({ type: "undo" }), null, { label: "Start timer", fn: () => dispatch({ type: "setStatus", id: next.id, status: "in_progress" }) });
+          else toast(allDone ? "Everything for the day is done" : "Marked as completed" + shiftMsg, () => dispatch({ type: "undo" }));
         } else if (status === "in_progress") toast("Focus timer started");
       },
       onEdit: (task) => setEditing(task),
@@ -4406,7 +4494,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onPark: (id) => { dispatch({ type: "postpone", id }); toast("Postponed, no time set", () => dispatch({ type: "undo" })); },
       onDelete: (id) => { if (!stateRef.current.tasks[id]) return; dispatch({ type: "deleteTask", id }); setEditing(null); toast("Task deleted", () => dispatch({ type: "undo" })); },
       onMove: (task) => setEditing(task),
-      onFocus: (id) => { const t = stateRef.current.tasks[id]; if (!t) return; if (t.status !== "completed" && t.status !== "in_progress") dispatch({ type: "setStatus", id, status: "in_progress" }); setFocusId(id); },
+      onFocus: (id) => { const t = stateRef.current.tasks[id]; if (!t) return; setFocusId(id); }, // Focus mode opens with a Start button; it never starts the timer by itself
       onDuplicate: (id) => { const t = stateRef.current.tasks[id]; if (!t) return; const copy = { ...t, id: T.uid(), title: t.title + " (copy)", status: "upcoming", start: undefined, end: undefined, doneBullets: [], spentMs: 0, startedAt: undefined, completedAt: undefined, actualMinutes: undefined, createdAt: Date.now(), updatedAt: Date.now() }; dispatch({ type: "addTask", task: copy }); toast("Duplicated, without a time yet", () => dispatch({ type: "undo" })); },
       onToggleBullet: (id, text) => {
         const t = stateRef.current.tasks[id]; dispatch({ type: "toggleBullet", id, text, silent: true }); if (!t || t.status === "completed") return;
@@ -4536,7 +4624,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${editing ? html`<${TaskEditor} task=${editing} date=${viewDate} prefs=${state.prefs} icons=${state.icons} onSave=${onSave} onClose=${() => setEditing(null)} onDelete=${actions.onDelete} />` : null}
       ${sheet ? html`<${ImpactSheet} ...${sheet} onClose=${() => setSheet(null)} />` : null}
       ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} rect=${fx.rect} onDone=${() => setFx(null)} />` : null}
-      ${toastMsg ? html`<div class="toast" role="status"><span>${toastMsg.text}</span>${toastMsg.undo ? html`<button onClick=${() => { toastMsg.undo(); setToastMsg(null); }}>${toastMsg.label || "Undo"}</button>` : null}</div>` : null}
+      ${toastMsg ? html`<div class=${"toast" + (toastMsg.extra ? " wide" : "")} role="status"><span>${toastMsg.text}</span>${toastMsg.extra ? html`<button class="tx-main" onClick=${() => { toastMsg.extra.fn(); setToastMsg(null); }}><${Icon} name="play" size=${14} />${toastMsg.extra.label}</button>` : null}${toastMsg.undo ? html`<button onClick=${() => { toastMsg.undo(); setToastMsg(null); }}>${toastMsg.label || "Undo"}</button>` : null}</div>` : null}
     </div>`;
   }
 

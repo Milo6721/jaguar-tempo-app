@@ -39,6 +39,13 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 - Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
 - Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
 
+## Co doszło w wersji 7
+
+- **Timer tylko na Twoje kliknięcie**: zadanie, którego godzina właśnie nadeszła, pokazuje w swoim wierszu ramkę "Scheduled now" z przyciskiem **Start timer**. Nic nie odlicza samo i otwarcie trybu Focus też niczego nie startuje.
+- **Po odhaczeniu**: Tempo podpowiada następne zadanie ("Next: Biology at 8:49 PM") z przyciskiem **Start timer** obok "Undo". Automatyczny start dalej istnieje jako opcja w Preferences, domyślnie wyłączona.
+- **Dźwięk w Safari i na iPhonie**: tam dźwięki grają przez zwykły element audio, który nie jest wyciszany przełącznikiem trybu cichego i działa także dla dźwięków odtwarzanych chwilę później (np. po płatności). Audio budzi się przy każdym dotknięciu, nie tylko przy pierwszym. W pozostałych przeglądarkach zostaje Web Audio, z tym samym elementem jako zapasem.
+- Stały punkt dnia, który już minął (np. kolacja), pokazuje "Past" zamiast czerwonego "LATE".
+
 ## Co doszło w wersji 6
 
 - **Nowy ekran Today**: na górze karta "Now" (co robisz teraz, odliczanie, Start / Focus / Done, co dalej, jedyna pigułka "Done by", pierścień "1 of 8 tasks · 13% of the time" i przyciski spóźnienia), zaraz pod nią harmonogram, a Suggestions i Tempo Intelligence są zwinięte w jedną kartę "Suggestions & Intelligence". Wiersze zadań są mniejsze i spokojniejsze.
