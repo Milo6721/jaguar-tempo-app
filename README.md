@@ -39,6 +39,13 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 - Pole "Quick add" rozumie np. `Call the accountant 20 min`, `Gym 1h tomorrow at 6pm !high`.
 - Strzałka cofania przy tytule harmonogramu cofa ostatnią akcję. Menu "⋯" obok ma: re-plan, sortowanie po priorytecie, przerwę, ochronę czasu, przeniesienie reszty na jutro, czyszczenie ukończonych, kopiowanie planu i "Delete all tasks".
 
+## Co doszło w wersji 8
+
+- **Chill zamiast czasu chronionego**: na końcu harmonogramu każdego dnia jest stały blok **Chill**, bez godziny i bez przedziału czasu. Ma przycisk "I took it", który zapamiętuje, że danego dnia się zrelaksowałeś. Wyłączysz go w Preferences ("Show Chill on every day").
+- Stare bloki "Chill evening" / "Chill" z godziną usuwają się same przy pierwszym uruchomieniu nowej wersji. Inne zarezerwowane bloki z godziną, jeśli jakieś masz, zostają i pokazują się w środku karty Chill z opcjami Edit i Remove.
+- Zniknęły przycisk "Protect time", pozycja w menu "⋯" i sugestia "Protect your evening".
+- Nowi użytkownicy od razu dostają układ z harmonogramem na górze.
+
 ## Co doszło w wersji 7
 
 - **Timer tylko na Twoje kliknięcie**: zadanie, którego godzina właśnie nadeszła, pokazuje w swoim wierszu ramkę "Scheduled now" z przyciskiem **Start timer**. Nic nie odlicza samo i otwarcie trybu Focus też niczego nie startuje.

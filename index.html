@@ -971,6 +971,33 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .toast.wide > span { flex: 1 1 auto; min-width: 0; }
 .toast .tx-main { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; background: var(--accent); color: #fff; padding: 6px 11px; border-radius: 999px; }
 .toast .tx-main svg { width: 13px; height: 13px; }
+
+/* ---------- v8: Chill, on the schedule every day ---------- */
+.chill { position: relative; overflow: hidden; margin-top: 16px; border-radius: 20px; padding: 16px; color: #F5F3FF;
+  background: radial-gradient(120% 140% at 85% -10%, rgba(167, 139, 250, .55), transparent 55%), linear-gradient(135deg, #2A1563 0%, #1E0F45 55%, #150A2E 100%);
+  box-shadow: 0 10px 30px rgba(30, 15, 69, .28); isolation: isolate; }
+.chill::after { content: ""; position: absolute; inset: auto -10% -60% -10%; height: 120%; background: radial-gradient(60% 50% at 30% 0%, rgba(196, 181, 253, .14), transparent 70%); z-index: -1; animation: chillDrift 9s ease-in-out infinite alternate; }
+.ch-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ch-art { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+.ch-moon { position: absolute; inset: 0; border-radius: 16px; display: grid; place-items: center; background: rgba(245, 243, 255, .1); box-shadow: inset 0 0 0 1px rgba(245, 243, 255, .18); color: #EDE9FE; }
+.ch-moon svg { width: 24px; height: 24px; filter: drop-shadow(0 0 8px rgba(221, 214, 254, .7)); animation: chillBreathe 5s ease-in-out infinite; }
+.ch-art i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #EDE9FE; box-shadow: 0 0 6px #C4B5FD; animation: chillTwinkle 3s ease-in-out infinite; }
+.ch-art .s1 { top: -3px; right: -6px; } .ch-art .s2 { bottom: 2px; left: -7px; width: 3px; height: 3px; animation-delay: 1.1s; } .ch-art .s3 { top: 14px; right: -12px; width: 2px; height: 2px; animation-delay: 2s; }
+.ch-body { flex: 1 1 170px; min-width: 0; }
+.ch-k { font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #C4B5FD; }
+.ch-t { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; }
+.ch-s { font-size: 13px; color: rgba(237, 233, 254, .78); margin-top: 2px; }
+.ch-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border-radius: 999px; font-weight: 700; font-size: 13px; color: #F5F3FF; background: rgba(245, 243, 255, .12); box-shadow: inset 0 0 0 1px rgba(245, 243, 255, .28); transition: background .2s, transform .15s; }
+.ch-btn:hover { background: rgba(245, 243, 255, .2); } .ch-btn:active { transform: scale(.96); }
+.ch-btn.on { background: #F5F3FF; color: #4C1D95; box-shadow: none; }
+.chill.done .ch-moon { background: rgba(245, 243, 255, .2); }
+.ch-res { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(245, 243, 255, .14); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: rgba(237, 233, 254, .82); }
+.ch-res > div { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; } .ch-res > div > span { flex: 1 1 160px; min-width: 0; }
+.ch-res .linkbtn { color: #DDD6FE; font-size: 12.5px; padding: 2px 4px; }
+@keyframes chillBreathe { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes chillTwinkle { 0%, 100% { opacity: .25; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes chillDrift { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+@media (max-width: 420px) { .ch-btn { width: 100%; justify-content: center; } }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -2119,8 +2146,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     { id: "low", label: "Low", color: "#2563EB", rank: 2 },
   ];
   Object.assign(T.DEFAULT_PREFS, {
-    priorities: T.DEFAULT_PRIORITIES, sound: true, volume: 0.6, animations: true, confirmAI: "major", autoStartNext: false, hideCompleted: false, autoAdjust: true, plan: "free", dash: { quick: true, suggestions: true, intel: true, progress: true }, dashOrder: "cards",
-    compact: false, weekStart: 1, defaultMinutes: 30, stepsMinMinutes: 15, memoryEnabled: true, suggestProtect: true, protectFrom: 20 * 60, protectMinutes: 90,
+    priorities: T.DEFAULT_PRIORITIES, sound: true, volume: 0.6, animations: true, confirmAI: "major", autoStartNext: false, hideCompleted: false, autoAdjust: true, plan: "free", dash: { quick: true, suggestions: true, intel: true, progress: true }, dashOrder: "schedule", dashVer: 3,
+    compact: false, weekStart: 1, defaultMinutes: 30, stepsMinMinutes: 15, memoryEnabled: true, suggestProtect: false, protectFrom: 20 * 60, protectMinutes: 90, chill: true,
   });
   T.priorityOf = (prefs, id) => (prefs.priorities || T.DEFAULT_PRIORITIES).find((p) => p.id === id) || { id, label: cap(String(id || "medium")), color: "", rank: 1 };
   T.showSteps = (task, prefs) => (task.bullets || []).length >= 2 && task.estimatedMinutes >= (prefs.stepsMinMinutes ?? 15);
@@ -2229,7 +2256,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       }
     }
     // protect the evening
-    if (prefs.suggestProtect !== false && an.remainingCount > 0 && !dayT.some((t) => t.status === "protected")) {
+    if (prefs.suggestProtect === true && prefs.chill === false && an.remainingCount > 0 && !dayT.some((t) => t.status === "protected")) {
       const start = Math.max(roundUp(an.lastEnd || 0, 15), prefs.protectFrom ?? 1200, isToday ? roundUp(now, 15) : 0); const mins = Math.min(prefs.protectMinutes || 90, prefs.bedTime - start);
       if (mins >= 30) add({ id: "protect:" + date, icon: "moon", text: `Protect your evening from ${fmtTime(start, fmt)}, so nothing gets planned into it?`, action: { type: "protect", start, minutes: mins } });
     }
@@ -2585,10 +2612,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     switch (a.type) {
       case "hydrate": {
         const d = a.state || {}; const days = {}; const tasks = {};
-        for (const [k, v] of Object.entries(d.days || {})) if (v) days[k] = { date: k, title: v.title, targetFinish: v.targetFinish, carryDismissed: v.carryDismissed, dismissed: Array.isArray(v.dismissed) ? v.dismissed : [], allDoneSeen: v.allDoneSeen };
-        for (const [k, v] of Object.entries(d.tasks || {})) if (v && v.id && T.isDayKey(v.date)) tasks[k] = { bullets: [], priority: "medium", estimatedMinutes: 30, status: "upcoming", ...v, category: T.CATEGORIES.includes(v.category) ? v.category : "other" };
+        for (const [k, v] of Object.entries(d.days || {})) if (v) days[k] = { date: k, title: v.title, targetFinish: v.targetFinish, carryDismissed: v.carryDismissed, dismissed: Array.isArray(v.dismissed) ? v.dismissed : [], allDoneSeen: v.allDoneSeen, chill: !!v.chill };
+        const oldVer = (d.prefs && d.prefs.dashVer) || 0;
+        const retired = (v) => oldVer < 3 && v.status === "protected" && /^chill(?:\s+evening)?$/i.test(String(v.title || "").trim()); // v8: Chill lives on every day without a time
+        for (const [k, v] of Object.entries(d.tasks || {})) if (v && v.id && T.isDayKey(v.date) && !retired(v)) tasks[k] = { bullets: [], priority: "medium", estimatedMinutes: 30, status: "upcoming", ...v, category: T.CATEGORIES.includes(v.category) ? v.category : "other" };
         const prefs = { ...T.DEFAULT_PREFS, ...(d.prefs || {}) }; if (!Array.isArray(prefs.priorities) || !prefs.priorities.length) prefs.priorities = T.DEFAULT_PRIORITIES;
         if ((prefs.dashVer || 0) < 2) { prefs.dashOrder = "schedule"; prefs.dashVer = 2; } // v6: the schedule sits near the top, insights fold below it
+        if (prefs.dashVer < 3) { prefs.dashVer = 3; prefs.suggestProtect = false; } // v8: Chill replaces timed protected evenings
         const arr = (v) => (Array.isArray(v) ? v : []);
         return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id), events: arr(d.events), series: d.series && typeof d.series === "object" ? d.series : {} };
       }
@@ -2662,7 +2692,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       case "deleteIcon": return touch({ ...s, icons: s.icons.filter((x) => x.id !== a.id) });
       case "loadSample": {
         const date = T.dayKey(); const sample = T.buildSampleDay(date); const rest = Object.values(s.tasks).filter((t) => t.date !== date);
-        return reduce({ ...s, seeded: true }, { type: "commit", tasks: [...rest, ...sample.tasks], revisionId: T.uid("rev"), note: "loading the sample day", source: "seed", dayMeta: { date, title: sample.title, targetFinish: sample.targetFinish } });
+        return reduce({ ...s, seeded: true }, { type: "commit", tasks: [...rest, ...sample.tasks.filter((t) => t.status !== "protected")], revisionId: T.uid("rev"), note: "loading the sample day", source: "seed", dayMeta: { date, title: sample.title, targetFinish: sample.targetFinish } });
       }
       case "materialize": {
         const r = T.nextRepeats(Object.values(s.tasks), s.series || {}, a.today);
@@ -2848,6 +2878,23 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </li>`;
   }
 
+  /* ---------- Chill: on the schedule every day, with no clock attached ---------- */
+  function ChillCard({ day, prefs, reserved, onToggle, onEdit, onDelete }) {
+    const done = !!(day && day.chill);
+    return html`<section class=${"chill" + (done ? " done" : "")} aria-label="Chill">
+      <div class="ch-main">
+        <div class="ch-art" aria-hidden="true"><span class="ch-moon"><${Icon} name="moon" /></span><i class="s1"></i><i class="s2"></i><i class="s3"></i></div>
+        <div class="ch-body">
+          <div class="ch-k">Every day · any time</div>
+          <div class="ch-t">Chill</div>
+          <div class="ch-s">${done ? "You took your chill today. Good." : "No clock, no plan. Take it whenever you need it."}</div>
+        </div>
+        ${onToggle ? html`<button class=${"ch-btn" + (done ? " on" : "")} aria-pressed=${done} onClick=${onToggle}>${done ? html`<${Icon} name="check" size=${15} />Chilled` : "I took it"}</button>` : null}
+      </div>
+      ${reserved && reserved.length ? html`<div class="ch-res">${reserved.map((t) => html`<div key=${t.id}><${Icon} name="lock" size=${13} /><span>${t.title}${t.start != null ? " · " + T.fmtRange(t.start, t.end, prefs.timeFormat) : ""} · kept free</span><button class="linkbtn" onClick=${() => onEdit(t)}>Edit</button><button class="linkbtn" onClick=${() => onDelete(t.id)}>Remove</button></div>`)}</div>` : null}
+    </section>`;
+  }
+
   /* ---------- protected time card: deliberately not a task card ---------- */
   function ProtectedCard({ task, prefs, onEdit, onDelete }) {
     const [open, setOpen] = useState(false); const ref = useRef(null); useOutside(ref, useCallback(() => setOpen(false), []));
@@ -2964,7 +3011,6 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
               ${hasOpen ? mi("sort", "Sort by priority", "prioritize") : null}
               ${isToday ? mi("coffee", "Add a break now", "breakNow") : null}
               ${hasBreaks ? mi("x", "Remove all breaks", "noBreaks") : null}
-              ${mi("moon", "Protect time", "protect")}
               ${hasOpen ? mi("forward", "Move unfinished to tomorrow", "moveRest") : null}
               ${hasDone ? mi("check", "Clear completed", "clearDone") : null}
               ${count ? mi("copy", "Copy plan as text", "copy") : null}
@@ -2981,9 +3027,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         ${sprint.length ? html`<div class="sec-lbl">Jaguar Sprint<span class="cnt num">${(() => { const l = sprint.filter((t) => isActive(t) && isWork(t)); return l.length ? l.length + " left · " + T.fmtShortDur(l.reduce((a, t) => a + t.estimatedMinutes, 0)) : "all done"; })()}</span></div><ul class="rows" ref=${listRef}>${sprint.map((t, i) => html`<${TaskRow} key=${t.id} task=${t} prefs=${prefs} nowMin=${nowMin} isToday=${isToday} ...${actions}
           grab=${onReorder && movable(t) ? grab : null} onNudge=${onReorder ? nudge : null} current=${!!overdue && overdue.id === t.id} dragStyle=${styleFor(i)} dragClass=${drag ? (drag.from === i ? "dragging" : "shift") : ""} />`)}</ul>` : null}
         ${doneCount ? html`<button class="btn sm ghost donetoggle" aria-pressed=${hideDone} onClick=${toggleDone}><${Icon} name=${hideDone ? "eye" : "eyeoff"} />${hideDone ? `Show ${doneCount} completed` : "Hide completed"}</button>` : null}
-        ${prots.length ? html`<div class="sec-lbl prot-lbl">Protected time</div><div class="prots">${prots.map((t) => html`<${ProtectedCard} key=${t.id} task=${t} prefs=${prefs} onEdit=${actions.onEdit} onDelete=${actions.onDelete} />`)}</div>` : null}
       </div>` : null}
-      ${onAdd ? html`<div style=${{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}><button class="btn sm ghost" onClick=${() => onAdd()}><${Icon} name="plus" />Add task</button><button class="btn sm ghost" onClick=${() => onAdd({ status: "protected", category: "free", title: "Free time", fixed: true, estimatedMinutes: 60 })}><${Icon} name="moon" />Protect time</button></div>` : null}
+      ${prefs.chill !== false ? html`<${ChillCard} day=${day} prefs=${prefs} reserved=${prots} onToggle=${onDayAction ? () => onDayAction("chill") : null} onEdit=${actions.onEdit} onDelete=${actions.onDelete} />`
+        : prots.length ? html`<div class="sec-lbl prot-lbl">Kept free</div><div class="prots">${prots.map((t) => html`<${ProtectedCard} key=${t.id} task=${t} prefs=${prefs} onEdit=${actions.onEdit} onDelete=${actions.onDelete} />`)}</div>` : null}
+      ${onAdd ? html`<div style=${{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}><button class="btn sm ghost" onClick=${() => onAdd()}><${Icon} name="plus" />Add task</button></div>` : null}
     </section>`;
   }
 
@@ -3957,7 +4004,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         </div>` : null}
         <div class="grid2">
           <div class="field"><label for="ed-cat">Category</label><select id="ed-cat" class="in" value=${f.category} onChange=${set("category")}>${T.CATEGORIES.map((c) => html`<option key=${c} value=${c}>${T.CAT[c].label}</option>`)}</select></div>
-          <div class="field"><label for="ed-status">Kind</label><select id="ed-status" class="in" value=${f.status} onChange=${set("status")}><option value="upcoming">Task</option><option value="protected">Protected time</option><option value="postponed">Postponed</option><option value="completed">Completed</option></select></div>
+          <div class="field"><label for="ed-status">Kind</label><select id="ed-status" class="in" value=${f.status} onChange=${set("status")}><option value="upcoming">Task</option>${task.status === "protected" ? html`<option value="protected">Kept free</option>` : null}<option value="postponed">Postponed</option><option value="completed">Completed</option></select></div>
         </div>
         <div class="field"><label>Priority</label><div class="chips">${(prefs.priorities || T.DEFAULT_PRIORITIES).map((p) => html`<button type="button" key=${p.id} class=${"pchip" + (f.priority === p.id ? " on" : "")} style=${p.color ? { "--pc": p.color } : null} aria-pressed=${f.priority === p.id} onClick=${() => setF((x) => ({ ...x, priority: p.id }))}><i></i>${p.label}</button>`)}</div></div>
         <div class="grid2">
@@ -4299,8 +4346,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       <section class="card"><div class="card-head"><h2>Your hours</h2></div>
         <div class="grid2">${timeIn("pf-wake", "Wake up", "wakeTime")}${timeIn("pf-bed", "Bedtime (nothing is planned past it)", "bedTime")}</div>
         <div class="grid2" style=${{ marginTop: 12 }}>${timeIn("pf-ws", "Working hours start", "workdayStart")}${timeIn("pf-we", "Working hours end", "workdayEnd")}</div>
-        <div class="switches">${sw("pf-prot", "suggestProtect", "Suggest protecting my evening", "Tempo offers to reserve free time when a day has none.", true)}</div>
-        <div class="grid2" style=${{ marginTop: 12 }}>${timeIn("pf-pf", "Protected evening starts", "protectFrom")}${numIn("pf-pm", "Protected length (min)", "protectMinutes", 30, 300, 15)}</div>
+        <div class="switches">${sw("pf-chill", "chill", "Show Chill on every day", "A calm Chill block at the end of each day's schedule. No time, no plan, just a reminder to slow down.", true)}</div>
       </section>
       <section class="card"><div class="card-head"><h2>Assistant and intelligence</h2></div>
         <div class="field"><label>When the assistant changes my plan</label>${seg("confirmAI", [["major", "Ask for big changes"], ["always", "Always ask first"]], "major")}</div>
@@ -4563,7 +4609,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onDayAction: (date, kind) => {
         const st = stateRef.current; const all = Object.values(st.tasks); const dayT = all.filter((t) => t.date === date); const ts = Date.now(); const fmt = st.prefs.timeFormat;
         if (kind === "undo") return undoLast();
-        if (kind === "protect") return h.onAdd(date, { status: "protected", category: "free", title: "Free time", fixed: true, estimatedMinutes: 60 });
+        if (kind === "chill") { const was = !!(st.days[date] && st.days[date].chill); dispatch({ type: "setDayMeta", date, patch: { chill: !was } }); if (!was) toast("Chill noted. Enjoy it."); return; }
         if (kind === "copy") { const text = T.planText(dayT, date, st.prefs); const fail = () => toast("Copying is not available in this browser"); try { navigator.clipboard.writeText(text).then(() => toast("Plan copied as text"), fail); } catch { fail(); } return; }
         if (kind === "deleteAll") { const rev = commit(all.filter((t) => t.date !== date), "deleting the whole day", "manual"); return toast(`Deleted ${dayT.length} item${dayT.length === 1 ? "" : "s"}`, () => undo(rev)); }
         if (kind === "clearDone") { const n = dayT.filter((t) => t.status === "completed").length; const rev = commit(all.filter((t) => !(t.date === date && t.status === "completed")), "clearing completed tasks", "manual"); return toast(`Cleared ${n} completed task${n === 1 ? "" : "s"}`, () => undo(rev)); }
