@@ -999,6 +999,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 @keyframes chillDrift { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
 @media (max-width: 420px) { .ch-btn { width: 100%; justify-content: center; } }
 .fx-chill { z-index: 95; background: #0B0418; animation: fade .3s ease-out; }
+.sw.tint { display: grid; place-items: center; } .sw.tint i { width: 9px; height: 9px; border-radius: 3px; background: currentColor; }
+.fx-task.inline { inset: 0; display: block; pointer-events: none; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; animation: none; }
+.fx-task.inline .fx-stage { position: fixed; pointer-events: auto; cursor: pointer; border-radius: 20px; overflow: hidden; background: transparent; box-shadow: none; animation: none; will-change: clip-path, top; }
+.jmark { display: block; flex-shrink: 0; cursor: default; }
+.nav .brand .b1, .topbar .b1 { gap: 9px; }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -1655,23 +1660,36 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
 /* =====================================================================
    Tempo · celebration animations · one task done
-   TempoScenes.task(W, H, title) → { duration, draw(c, t), at(t) }
-   The task's title holds for a beat, its letters lift and dissolve into
-   light while plants grow out of them; the camera eases into a run, the
-   jaguar gallops in, gathers, leaps a fallen trunk, lands and runs on.
-   The gallop is measured against the scrolling ground, so paws stay planted.
+   TempoScenes.task(W, H, title, opts) → { duration, draw(c, t), at(t) }
+   opts.text   { x, y, size, weight, family, color }  where the task's real title is drawn
+               (stage pixels): the letters lift off exactly there
+   opts.inline true when it plays on the task's own row (starts see-through, ends see-through)
+
+   The film, beat by beat:
+   - the title holds, then a wave runs through it: each letter lifts, sways and dissolves into light
+     while a plant grows out of the same spot and roots itself in the ground
+   - the jaguar gallops in from the left at a steady cadence (about 3 strides a second)
+   - as it reaches its mark the camera takes over smoothly: the jungle starts to scroll and the cat
+     holds its place on screen, still galloping, paws planted on the moving ground
+   - it gathers, leaps a fallen trunk, stretches, reaches and lands in a burst of leaves
+   - the camera eases to a stop while the cat lengthens into a sprint and runs out of frame
+   Every position is an integral of a smooth velocity (no jumps), and the stride count is the distance
+   travelled divided by the stride length, so the legs never skate.
    ===================================================================== */
 (function () {
   "use strict";
   const S = window.TempoScenes; const C = window.TempoChill;
-  const { TAU, clamp, lerp, span, smooth, smoother, easeOut, easeIn, easeOutBack, hash1, rng, V, rgba, ell } = C.util;
+  const { TAU, clamp, lerp, span, smooth, easeOut, easeOutBack, hash1, rng, V, ell } = C.util;
   const { tree, vine, plant } = S.scenery; const B = C.body;
   const hashStr = (str) => { let h = 2166136261; for (const ch of String(str || "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  /** ∫ smoothstep from 0 to u (u in units of the ramp): position under a velocity that eases from 0 to 1 */
+  const I = (u) => (u <= 0 ? 0 : u >= 1 ? u - 0.5 : u * u * u - (u * u * u * u) / 2);
+  const mix = (a, b, k) => { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16); const ch = (p, s) => (p >> s) & 255; const m = (s) => Math.round(lerp(ch(pa, s), ch(pb, s), k)); return `rgb(${m(16)},${m(8)},${m(0)})`; };
 
-  S.task = function (W, H, title) {
-    const R = rng(hashStr(title) || 7); const ground = H - 24; const text = String(title || "Done").slice(0, 46); let letters = null;
-    const font = `700 ${Math.round(clamp(H * 0.085, 15, 26))}px "Plus Jakarta Sans", system-ui, sans-serif`;
-    const s = clamp(Math.min(H / 150, W / 300), 0.9, 2) * 0.86; // jaguar units → px
+  S.task = function (W, H, title, opts) {
+    const o = opts || {}; const inline = !!o.inline;
+    const R = rng(hashStr(title) || 7); const ground = H - (inline ? 20 : clamp(H * 0.25 - 56, 24, 220)); /* on a big screen the ground sits higher, with a dark foreground below */ const text = String(title || "Done").slice(0, 60); let letters = null;
+    const s = (inline ? clamp(Math.min(H / 160, W / 400), 0.68, 1.4) : clamp(Math.min(H / 150, W / 300), 0.9, 2.8)) * 0.86; // jaguar units → px (a little smaller on a narrow row)
     const span2 = W * 2.6; const wrap = (v) => ((v % span2) + span2) % span2 - W * 0.3;
     const farTrees = Array.from({ length: 11 }, (_, i) => ({ x: (i / 11) * span2 + R() * 40, h: H * (0.7 + R() * 0.35), kind: R() > 0.72 ? 1 : 0, p: R() * TAU }));
     const midTrees = Array.from({ length: 8 }, (_, i) => ({ x: (i / 8) * span2 + R() * 60, h: H * (0.95 + R() * 0.4), kind: R() > 0.6 ? 1 : 0, p: R() * TAU }));
@@ -1679,24 +1697,38 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const front = Array.from({ length: 13 }, (_, i) => ({ x: (i / 13) * span2 + R() * 30, h: 30 + R() * 36, k: Math.floor(R() * 4), p: R() * TAU }));
     const motes = Array.from({ length: 22 }, () => ({ x: R() * W, y: R() * H * 0.8, p: R() * TAU, r: 0.8 + R() * 1.4 }));
     const burst = Array.from({ length: 30 }, () => ({ a: -Math.PI * R(), v: 50 + R() * 150, r: 2 + R() * 3.5, sp: (R() - 0.5) * 9, col: R() > 0.5 ? V.soft : R() > 0.5 ? V.pale : V.bright }));
-    const T_IN = 1.0, T_LEAP = 2.3, T_LAND = 2.95, T_OUT = 3.15, T_END = 4.3;
 
-    // the camera eases into its pace (no jolt), then holds it
-    const camV = W * 0.42, RAMP = 0.7, CAM0 = T_IN - 0.25;
-    const cam = (t) => { if (t <= CAM0) return 0; const u = (t - CAM0) / RAMP; if (u < 1) return camV * RAMP * (u * u * u - (u * u * u * u) / 2); return camV * RAMP * 0.5 + camV * (t - CAM0 - RAMP); };
-    // the jaguar on screen: runs in, holds its place while the world scrolls, then runs out ahead of the camera
-    const jx = (t) => lerp(-130 * s, W * 0.36, easeOut(span(t, T_IN, T_IN + 0.85))) + easeIn(span(t, T_OUT, T_END - 0.15)) * W * 0.9;
-    const world = (t) => jx(t) + cam(t); const W0 = world(T_IN); const strideWorld = 96 * s;
-    const cycAt = (t) => Math.max(0, (world(t) - W0) / strideWorld);
+    /* ---- the timeline, worked out from the stage size so every screen gets the same film ---- */
+    const CAD = 3.0, STRIDE = 96 * s, VEL = CAD * STRIDE;          // cadence (strides/s), stride (px), ground speed (px/s)
+    const T_IN = 0.55, X0 = -84 * s, X1 = W * (inline ? 0.3 : 0.34); // it enters just off the left edge and holds at X1
+    const R1 = 0.6, R2 = 0.55, SPRINT = 0.4;                       // camera pick-up, camera let-go, extra speed on the way out
+    const TA = T_IN + (X1 - X0) / VEL - R1 / 2;                     // the camera starts so the cat arrives at X1 just as it matches speed
+    const T_LEAP = TA + R1 + 0.22, AIR = 0.62, T_LAND = T_LEAP + AIR, T_OUT = T_LAND + 0.3;
+    const xw = (t) => X0 + VEL * (t - T_IN) + SPRINT * VEL * R2 * I((t - T_OUT) / R2);     // the cat, in world pixels
+    const cam = (t) => VEL * R1 * I((t - TA) / R1) - VEL * R2 * I((t - T_OUT) / R2);        // the camera, in world pixels
+    const camV = (t) => smooth(span(t, TA, TA + R1)) - smooth(span(t, T_OUT, T_OUT + R2)); // 0..1, for the speed streaks
+    const jx = (t) => xw(t) - cam(t);
+    // when it has left the frame (bisection on its screen position)
+    const T_EXIT = (() => { let lo = T_OUT, hi = T_OUT + 6; const goal = W + 90 * s; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (jx(m) < goal) lo = m; else hi = m; } return hi; })();
+    const T_END = Math.max(T_EXIT + 0.05, T_LAND + 1.65);
+    const cycAt = (t) => (xw(t) - xw(T_IN)) / STRIDE;
     const jumpAt = (t) => ({ w: smooth(span(t, T_LEAP - 0.14, T_LEAP + 0.02)) * (1 - smooth(span(t, T_LAND - 0.03, T_LAND + 0.18))), u: span(t, T_LEAP, T_LAND) });
-    const logWorld = world((T_LEAP + T_LAND) / 2);
-    const poseAt = (t) => S.rig.pose({ t, cyc: cycAt(t), amp: smooth(span(t, T_IN - 0.05, T_IN + 0.25)), stride: 96, jump: jumpAt(t) });
+    const logWorld = xw((T_LEAP + T_LAND) / 2) + 6 * s;
+    const poseAt = (t) => S.rig.pose({ t, cyc: cycAt(t), amp: 1, stride: 96, jump: jumpAt(t) });
     /** the moment the gallop reached stride count c (for footfall dust) */
-    const timeAtCycle = (cy) => { let lo = T_IN, hi = T_END; for (let i = 0; i < 32; i++) { const mid = (lo + hi) / 2; if (cycAt(mid) < cy) lo = mid; else hi = mid; } return (lo + hi) / 2; };
+    const timeAtCycle = (cy) => { let lo = T_IN - 0.5, hi = T_END + 1; for (let i = 0; i < 34; i++) { const mid = (lo + hi) / 2; if (cycAt(mid) < cy) lo = mid; else hi = mid; } return (lo + hi) / 2; };
+
+    /* ---- the title: on the row it is the row's own text; on a card it is centred ---- */
+    const tx = o.text; const size = tx ? clamp(tx.size, 11, 30) : Math.round(clamp(H * 0.075, 15, 46));
+    const font = tx ? `${tx.weight || 700} ${size}px ${tx.family || '"Plus Jakarta Sans", system-ui, sans-serif'}` : `700 ${size}px "Plus Jakarta Sans", system-ui, sans-serif`;
+    const ink0 = tx && /^#|^rgb/.test(tx.color || "") ? tx.color : null; // the row's text colour, to cross-fade from
+    const ink0hex = ink0 && ink0[0] === "#" && ink0.length === 7 ? ink0 : null;
+    const rgbHex = (str) => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(str || ""); return m ? "#" + [m[1], m[2], m[3]].map((v) => (+v).toString(16).padStart(2, "0")).join("") : null; };
+    const fromHex = ink0hex || rgbHex(ink0) || V.glow;
 
     return { duration: T_END, at: (t) => [jx(t), ground + 5, s], draw(c, t) {
       const dpr = c._dpr || 1; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
-      const j = smooth(t / 0.75); const fade = 1 - smooth(span(t, T_END - 0.5, T_END)); const cm = cam(t); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * fade; };
+      const j = smooth(t / (inline ? 0.55 : 0.75)); const fade = 1 - smooth(span(t, T_END - 0.5, T_END)); const cm = cam(t); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * fade; };
       A(j); const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.plum); bg.addColorStop(0.55, V.dusk); bg.addColorStop(1, V.night); c.fillStyle = bg; c.fillRect(0, 0, W, H);
       A(j * 0.5); const moon = c.createRadialGradient(W * 0.74, H * 0.2, 2, W * 0.74, H * 0.2, H * 0.75); moon.addColorStop(0, V.soft); moon.addColorStop(1, "rgba(167,139,250,0)"); c.fillStyle = moon; c.fillRect(0, 0, W, H);
       // shafts of light, drifting with the far layer
@@ -1713,44 +1745,53 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       { const lx = logWorld - cm; const sc = s / 0.86; if (lx > -120 && lx < W + 120) { A(j); c.fillStyle = V.ink; c.beginPath(); c.moveTo(lx - 46 * sc, ground + 6); c.quadraticCurveTo(lx - 40 * sc, ground - 15 * sc, lx, ground - 16 * sc); c.quadraticCurveTo(lx + 40 * sc, ground - 15 * sc, lx + 48 * sc, ground + 6); c.fill(); c.strokeStyle = V.ink; c.lineWidth = 4 * sc; c.lineCap = "round"; c.beginPath(); c.moveTo(lx + 14 * sc, ground - 14 * sc); c.lineTo(lx + 30 * sc, ground - 34 * sc); c.moveTo(lx - 20 * sc, ground - 14 * sc); c.lineTo(lx - 28 * sc, ground - 27 * sc); c.stroke(); A(j * 0.5); c.strokeStyle = V.core; c.lineWidth = 1; c.beginPath(); c.moveTo(lx - 38 * sc, ground - 12 * sc); c.quadraticCurveTo(lx, ground - 18.5 * sc, lx + 40 * sc, ground - 12 * sc); c.stroke(); } }
       // the letters of the task turn into plants
       c.font = font; c.textBaseline = "alphabetic";
-      if (!letters) { letters = []; let x = Math.max(18, (W - c.measureText(text).width) / 2); for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
-      const baseY = Math.min(ground - 8, H * 0.46);
+      if (!letters) {
+        letters = []; let x = tx ? tx.x : Math.max(18, (W - c.measureText(text).width) / 2);
+        for (const ch of text) { const w = c.measureText(ch).width; if (x + w > W - 6) break; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: inline ? 12 + R() * H * 0.26 : Math.min(H * 0.4, (22 + R() * 96) * (s / 0.86)), tone: R(), p: R() * TAU }); x += w; }
+      }
+      const baseY = tx ? tx.y : Math.min(ground - 8, H * 0.46); const n = Math.max(1, letters.length); const wave = Math.min(0.04, 0.6 / n); // long titles ripple faster
       letters.forEach((L, i) => {
-        // the title holds for a beat, then a wave runs through it: each letter lifts, sways and dissolves into
-        // light while its plant grows out of the same spot and roots itself in the ground
-        const grow = easeOutBack((t - 0.5 - i * 0.04) / 0.9, 1.70158); const lw = 1 - smooth((t - 0.4 - i * 0.045) / 0.95);
-        if (L.ch.trim() && t > 0.5 + i * 0.04) { const y0 = lerp(baseY, ground + 6, smooth((t - 0.4) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3), y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
+        const d = i * wave; const grow = easeOutBack((t - 0.5 - d) / 0.9, 1.70158); const lw = 1 - smooth((t - 0.4 - d) / 0.8);
+        if (L.ch.trim() && t > 0.5 + d) { const y0 = lerp(baseY, ground + 6, smooth((t - 0.4 - d * 0.5) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3), y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
         if (lw > 0 && L.ch.trim()) {
           const rise = (1 - lw) * (1 - lw) * -26; const wob = Math.sin(t * 2.6 + L.p) * 3 * (1 - lw);
-          A(lw); c.fillStyle = V.glow; c.fillText(L.ch, L.x + wob, baseY + rise);
-          A(lw * 0.45); c.fillStyle = V.soft; c.fillText(L.ch, L.x + wob * 1.6, baseY + rise + 4);
+          // the letter starts in the row's own colour and turns to light as the jungle comes up behind it
+          A(lw); c.fillStyle = tx ? mix(fromHex, V.glow, j) : V.glow; c.fillText(L.ch, L.x + wob, baseY + rise);
+          A(lw * 0.45 * j); c.fillStyle = V.soft; c.fillText(L.ch, L.x + wob * 1.6, baseY + rise + 4);
           if (lw < 0.55) { A((0.55 - lw) * 1.1); ell(c, L.x + L.w / 2 + wob, baseY + rise - 7, 1.6 + (1 - lw) * 2, 1.6 + (1 - lw) * 2, V.mist); }
         }
       });
       // the jaguar
-      if (t > T_IN - 0.05 && t < T_END) {
+      if (t > T_IN - 0.3 && t < T_EXIT + 0.1) {
         const ps = poseAt(t); const x = jx(t); const gy = ground + 5;
         // shadow: smaller and lighter while it is in the air
-        A(0.35 * (1 - Math.min(1, ps.lift / 60))); ell(c, x, gy + 1, 58 * s * (1 - Math.min(0.5, ps.lift / 100)), 3, V.ink);
+        A(0.35 * j * (1 - Math.min(1, ps.lift / 60))); ell(c, x, gy + 1, 58 * s * (1 - Math.min(0.5, ps.lift / 100)), 3, V.ink);
         // star dust where each paw lands
+        const cyNow = cycAt(t);
         C.LEGS.forEach((leg, li) => {
-          const cyNow = cycAt(t);
-          for (let n = Math.floor(cyNow) - 2; n <= Math.floor(cyNow) + 1; n++) {
-            const c0 = n - leg.off; if (c0 < 0 || c0 > cyNow) continue; const tk = timeAtCycle(c0); const age = t - tk; if (age < 0 || age > 0.6 || jumpAt(tk).w > 0.3) continue;
-            const footW = world(tk) + s * (-(leg.u - 0.42) * B.L + 96 * C.DUTY * 0.5 - leg.dx); const fx = footW - cm; const life = age / 0.6;
-            for (let k = 0; k < 4; k++) { const h1 = hash1(n * 31 + li * 7 + k), h2 = hash1(n * 17 + li * 13 + k * 3); A((1 - life) * 0.6 * (0.5 + h2 * 0.5)); ell(c, fx - life * (10 + h2 * 16) * s, gy - life * (4 + h1 * 12) * s + life * life * 5 * s, (0.9 + h1 * 1.5) * s * 0.7, (0.9 + h1 * 1.5) * s * 0.7, h2 > 0.5 ? V.pale : V.mist); }
+          for (let k2 = Math.floor(cyNow) - 2; k2 <= Math.floor(cyNow) + 1; k2++) {
+            const c0 = k2 - leg.off; if (c0 < 0 || c0 > cyNow) continue; const tk = timeAtCycle(c0); const age = t - tk; if (age < 0 || age > 0.6 || jumpAt(tk).w > 0.3) continue;
+            const footW = xw(tk) + s * (-(leg.u - 0.42) * B.L + 96 * C.DUTY * 0.5 - leg.dx); const fx = footW - cm; const life = age / 0.6;
+            for (let q = 0; q < 4; q++) { const h1 = hash1(k2 * 31 + li * 7 + q), h2 = hash1(k2 * 17 + li * 13 + q * 3); A((1 - life) * 0.6 * (0.5 + h2 * 0.5) * j); ell(c, fx - life * (10 + h2 * 16) * s, gy - life * (4 + h1 * 12) * s + life * life * 5 * s, (0.9 + h1 * 1.5) * s * 0.7, (0.9 + h1 * 1.5) * s * 0.7, h2 > 0.5 ? V.pale : V.mist); }
           }
         });
-        // a whisper of speed behind it
-        A(0.3 * (1 - jumpAt(t).w * 0.6)); c.strokeStyle = V.pale; c.lineWidth = 1.1; c.lineCap = "round"; for (let i = 0; i < 4; i++) { const sy = gy - (22 + i * 10) * s; const sx = x - (82 + i * 10 + ((t * 300 + i * 40) % 30)) * s; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - (18 + i * 6) * s, sy); c.stroke(); }
+        // streaks of speed behind it, only while the camera is moving with it
+        const sv = camV(t); if (sv > 0.02) { A(0.3 * sv * (1 - jumpAt(t).w * 0.6)); c.strokeStyle = V.pale; c.lineWidth = 1.1; c.lineCap = "round"; for (let i = 0; i < 4; i++) { const sy = gy - (22 + i * 10) * s; const sx = x - (82 + i * 10 + ((t * 300 + i * 40) % 30)) * s; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - (18 + i * 6) * s * sv, sy); c.stroke(); } }
         c.save(); c.translate(x, gy); c.scale(-s, s); S.rig.draw(c, ps, S.rig.fur(c), fade); c.restore();
       }
       // leaves kicked up where it lands
-      if (t >= T_LAND) { const u = t - T_LAND; const lx = world(T_LAND) - cm + 20 * s, ly = ground + 2; for (const p of burst) { const d = p.v * (1 - Math.exp(-u * 3)); A(1 - u / 1.0); c.save(); c.translate(lx + Math.cos(p.a) * d, ly + Math.sin(p.a) * d * 0.7 + u * u * 70); c.rotate(u * p.sp); ell(c, 0, 0, p.r * 1.7, p.r * 0.7, p.col); c.restore(); } }
+      if (t >= T_LAND) { const u = t - T_LAND; const lx = xw(T_LAND) - cm + 20 * s, ly = ground + 2; for (const p of burst) { const d = p.v * (1 - Math.exp(-u * 3)) * (s / 0.86); A(1 - u / 1.0); c.save(); c.translate(lx + Math.cos(p.a) * d, ly + Math.sin(p.a) * d * 0.7 + u * u * 70); c.rotate(u * p.sp); ell(c, 0, 0, p.r * 1.7, p.r * 0.7, p.col); c.restore(); } }
       // foreground: dark leaves rushing past
-      A(j); for (const f of front) plant(c, wrap(f.x - cm * 1.7), H + 6, f.h * 1.6 * (s / 0.86), f.k, Math.sin(t * 2.6 + f.p) * 0.12, V.ink);
+      A(j); for (const f of front) plant(c, wrap(f.x - cm * 1.7), H + 6, f.h * (inline ? 1.1 : 1.6) * (s / 0.86), f.k, Math.sin(t * 2.6 + f.p) * 0.12, V.ink);
       for (const m of motes) { A(j * (0.35 + 0.4 * Math.sin(t * 3 + m.p))); ell(c, ((m.x - cm * 0.3 + Math.sin(t + m.p) * 8) % W + W) % W, m.y + Math.cos(t * 0.8 + m.p) * 6, m.r, m.r, V.mist); }
-      if (t > T_LAND + 0.25) { const u = easeOut((t - T_LAND - 0.25) / 0.45); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14; const fs = Math.round(clamp(H * 0.16, 22, 46)); c.font = `800 ${fs}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, H * 0.4 + (1 - u) * 8); c.font = `600 ${Math.round(clamp(H * 0.065, 13, 18))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(text, W / 2, H * 0.4 + fs * 0.72); c.shadowBlur = 0; c.textAlign = "start"; }
+      if (t > T_LAND + 0.2) {
+        const u = easeOut((t - T_LAND - 0.2) / 0.5); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14;
+        const fs = Math.round(clamp(H * 0.14, 22, 80)); const ty = inline ? H * 0.3 : H * 0.4;
+        c.font = `800 ${fs}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, ty + (1 - u) * 8);
+        c.font = `600 ${Math.round(clamp(H * 0.035 + 6, 12, 30))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale;
+        let sub = text; while (sub.length > 4 && c.measureText(sub).width > W - 40) sub = sub.slice(0, -2); if (sub !== text) sub = sub.replace(/\s*\S?$/, "") + "…";
+        c.fillText(sub, W / 2, ty + fs * 0.74 + (1 - u) * 5); c.shadowBlur = 0; c.textAlign = "start";
+      }
       c.globalAlpha = 1;
     } };
   };
@@ -1790,7 +1831,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       A(0.4); c.fillStyle = V.vivid; c.beginPath(); c.moveTo(cx - W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.55, H + 30); c.lineTo(cx - W * 0.55, H + 30); c.fill();
       for (let i = 0; i < 3; i++) { A(0.1); ell(c, cx + Math.sin(t * 0.5 + i * 2) * W * 0.12, cy + i * H * 0.07, W * (0.45 + i * 0.12), H * 0.035, V.pale); }
       // trees rushing past on both sides
-      const run = t * (post > 0 ? 0.15 : 0.5); const order = trees.map((tr) => ({ tr, d: (tr.d + run) % 1 })).sort((a, b) => a.d - b.d);
+      const run = post > 0 ? 0.5 * IMPACT + 0.5 * (1 - Math.exp(-post * 3)) / 3 : 0.5 * t; // the forest stops rushing past smoothly after the hit (no jump) const order = trees.map((tr) => ({ tr, d: (tr.d + run) % 1 })).sort((a, b) => a.d - b.d);
       for (const { tr, d } of order) { const px = cx + tr.side * (W * 0.07 + d * d * W * 0.66); const baseY = cy - H * 0.03 + d * d * H * 0.62; const th = H * (0.2 + d * 1.25); A(0.35 + d * 0.65); tree(c, px, baseY, th, d > 0.7 ? V.ink : d > 0.4 ? V.night : V.deep, Math.sin(t * 1.3 + tr.p) * 0.4, tr.kind); }
       for (const m of motes) { A(0.3 + 0.4 * Math.sin(t * 3 + m.p)); ell(c, m.x + Math.sin(t + m.p) * 12, m.y + Math.cos(t * 0.7 + m.p) * 8, m.r, m.r, V.mist); }
       // the jaguar: the same sleek runner, charging out of the forest and smashing the glass paw-first.
@@ -1844,6 +1885,75 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       c.globalAlpha = 1;
     } };
   };
+})();
+
+/* =====================================================================
+   Tempo · celebration animations · the jaguar logo
+   The same jaguar, small, as Tempo's mark. It gallops in place when the
+   page opens, when you point at it and when a task is done, then eases
+   into its resting stride (the "flying" moment of the gallop) and holds.
+   TempoScenes.logo.draw(c, w, h, cyc, opts)  one frame, cyc = stride count
+   TempoScenes.logo.mount(canvas, opts)       a small player: run(), stop()
+   TempoScenes.logo.favicon(size)             a PNG data URL for the tab icon
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = window.TempoScenes; const C = window.TempoChill; const { clamp, V } = C.util;
+  // bounds of the jaguar over a whole stride (facing right, paws on y = 0), measured from the renderer
+  const BX0 = -100, BX1 = 76, BY0 = -75, BY1 = 3; const REST = 0.4; // the resting frame: forelegs reaching far forward, a lunge
+
+  const shade = (c, h, a, b) => { const g = c.createLinearGradient(0, BY0, 0, BY1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+
+  /** draws one frame centred in a w × h box (CSS pixels; the caller sets the device scale) */
+  const draw = (c, w, h, cyc, opts) => {
+    const o = opts || {}; const pad = o.pad ?? 1; const k = Math.min((w - pad * 2) / (BX1 - BX0), (h - pad * 2) / (BY1 - BY0));
+    const amp = o.amp ?? 1; const ps = S.rig.pose({ t: o.t || 0, cyc, amp, stride: 96 });
+    c.save(); c.translate(w / 2 - ((BX0 + BX1) / 2) * k, h / 2 - ((BY0 + BY1) / 2) * k); c.scale(-k, k); // the rig faces left: mirror it
+    const fill = o.fill || shade(c, h, o.top || V.bright, o.bottom || V.royal);
+    S.rig.draw(c, ps, fill, 1); c.restore();
+  };
+
+  /**
+   * A tiny player for the mark. opts: { w, h, top, bottom, still } (still = reduced motion: never animates)
+   * run(seconds) gallops for a while and settles into the resting frame; the canvas is redrawn only while it moves.
+   */
+  const mount = (canvas, opts) => {
+    const o = opts || {}; const ctx = canvas.getContext("2d"); let raf = 0, cyc = REST, live = true, plan = null;
+    const CAD = 2.6; // strides per second, the same pace as the celebrations
+    const size = () => { const dpr = Math.min(3, window.devicePixelRatio || 1); const w = o.w || 46, h = o.h || 22; if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); } return { dpr, w, h }; };
+    const paint = () => { const { dpr, w, h } = size(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h); draw(ctx, w, h, cyc, o); };
+    // Stride count over time: speeds up (smoothstep), holds the cadence, then slows (smoothstep) so it lands exactly
+    // on a resting frame. Velocity is continuous throughout, so the legs never jump or stutter.
+    const I = (u) => (u <= 0 ? 0 : u >= 1 ? u - 0.5 : u * u * u - (u * u * u * u) / 2); // ∫ smoothstep
+    const pos = (p, t) => {
+      const { from, Ta, t1, Td } = p; if (t <= 0) return from;
+      if (t < Ta) return from + CAD * Ta * I(t / Ta);
+      const a = from + CAD * Ta * 0.5; if (t < Ta + t1) return a + CAD * (t - Ta);
+      const b = a + CAD * t1; const u = Math.min(1, (t - Ta - t1) / Td); return b + CAD * Td * (u - I(u));
+    };
+    const tick = (now) => { if (!live || !plan) return; const t = (now - plan.t0) / 1000; cyc = pos(plan, t); paint(); if (t < plan.end) raf = requestAnimationFrame(tick); else { cyc = plan.to; paint(); raf = 0; plan = null; } };
+    const run = (seconds) => {
+      if (o.still || !live) { paint(); return; }
+      const moving = !!plan; const s = Math.max(0.6, seconds || 1.6); const from = cyc; const Ta = moving ? 0 : 0.3, Td = 0.85;
+      // the next resting frame we can reach after about `s` seconds of running
+      const min = from + CAD * (Ta / 2 + Math.max(0, s - Ta - Td) + Td / 2); const to = Math.ceil(min - REST) + REST;
+      const t1 = (to - from) / CAD - Ta / 2 - Td / 2; plan = { from, to, Ta, t1, Td, end: Ta + t1 + Td, t0: performance.now() };
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+    };
+    paint();
+    return { run, paint, stop() { live = false; cancelAnimationFrame(raf); } };
+  };
+
+  /** the tab icon: the jaguar in pale lilac on a violet tile */
+  const favicon = (px) => {
+    const n = px || 64; const cv = document.createElement("canvas"); cv.width = n; cv.height = n; const c = cv.getContext("2d"); if (!c) return null;
+    const r = n * 0.22; c.beginPath(); c.moveTo(r, 0); c.arcTo(n, 0, n, n, r); c.arcTo(n, n, 0, n, r); c.arcTo(0, n, 0, 0, r); c.arcTo(0, 0, n, 0, r); c.closePath();
+    const g = c.createLinearGradient(0, 0, n, n); g.addColorStop(0, V.vivid); g.addColorStop(1, V.royal); c.fillStyle = g; c.fill();
+    draw(c, n, n * 0.92, REST, { pad: n * 0.08, fill: V.glow });
+    try { return cv.toDataURL("image/png"); } catch (e) { return null; }
+  };
+
+  S.logo = { draw, mount, favicon, REST };
 })();
 
 /* =====================================================================
@@ -3354,20 +3464,76 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const inner = (h >> 3) % 3 === 0 ? '<circle cx="12" cy="12" r="2.6"/>' : (h >> 3) % 3 === 1 ? '<path d="M12 8.5v7M8.5 12h7"/>' : '<path d="M9 12.5l2 2 4-4.5"/>';
     return { markup: `<polygon points="${pts.join(" ")}"/>${inner}`, fg, name: cap(String(desc).trim().slice(0, 28)) || "Emblem", source: "emblem" };
   };
-  /* Turns the model's list of primitives into safe SVG markup. Anything unknown is dropped. */
+  /* Turns the model's list of primitives into safe SVG markup. Anything unknown is dropped.
+     The drawing is then fitted to the same 24 grid the built-in icons use (centred, about 18 units across),
+     so an AI icon is as big, bold and firm as a built-in one and sits on the same tile colours. */
   T.shapesToMarkup = function (shapes) {
-    const num = (v, lo = 0, hi = 24) => { const x = Number(v); return Number.isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : null; };
-    const out = [];
+    const num = (v, lo = 0, hi = 24) => { const x = Number(v); return Number.isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 100) / 100)) : null; };
+    const r1 = (x) => Math.round(x * 10) / 10;
+    const list = [];
     for (const s of Array.isArray(shapes) ? shapes.slice(0, 14) : []) {
-      if (!s || typeof s !== "object") continue; const fill = s.fill === true ? ' fill="currentColor" stroke="none"' : "";
-      if (s.type === "line") { const a = [num(s.x1), num(s.y1), num(s.x2), num(s.y2)]; if (a.every((x) => x != null)) out.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${a[2]}" y2="${a[3]}"/>`); }
-      else if (s.type === "circle") { const a = [num(s.cx), num(s.cy), num(s.r, 0.3, 12)]; if (a.every((x) => x != null)) out.push(`<circle cx="${a[0]}" cy="${a[1]}" r="${a[2]}"${fill}/>`); }
-      else if (s.type === "rect") { const a = [num(s.x), num(s.y), num(s.w, 0.5, 24), num(s.h, 0.5, 24)]; const rx = num(s.rx, 0, 12) || 0; if (a.every((x) => x != null)) out.push(`<rect x="${a[0]}" y="${a[1]}" width="${a[2]}" height="${a[3]}" rx="${rx}"${fill}/>`); }
-      else if (s.type === "ellipse") { const a = [num(s.cx), num(s.cy), num(s.rx, 0.3, 12), num(s.ry, 0.3, 12)]; if (a.every((x) => x != null)) out.push(`<ellipse cx="${a[0]}" cy="${a[1]}" rx="${a[2]}" ry="${a[3]}"${fill}/>`); }
-      else if (s.type === "polyline" || s.type === "polygon") { const pts = (Array.isArray(s.points) ? s.points : []).slice(0, 24).map((p) => (Array.isArray(p) ? [num(p[0]), num(p[1])] : [null, null])).filter((p) => p[0] != null && p[1] != null); if (pts.length >= 2) out.push(`<${s.type} points="${pts.map((p) => p.join(",")).join(" ")}"${fill}/>`); }
-      else if (s.type === "path" && typeof s.d === "string" && s.d.length <= 400 && /^[MmLlHhVvCcSsQqTtAaZz0-9\s,.\-]+$/.test(s.d)) out.push(`<path d="${s.d.trim()}"${fill}/>`);
+      if (!s || typeof s !== "object") continue; const fill = s.fill === true;
+      if (s.type === "line") { const a = [num(s.x1), num(s.y1), num(s.x2), num(s.y2)]; if (a.every((x) => x != null)) list.push({ type: "line", a }); }
+      else if (s.type === "circle") { const a = [num(s.cx), num(s.cy), num(s.r, 0.3, 12)]; if (a.every((x) => x != null)) list.push({ type: "circle", a, fill }); }
+      else if (s.type === "rect") { const a = [num(s.x), num(s.y), num(s.w, 0.5, 24), num(s.h, 0.5, 24), num(s.rx, 0, 12) || 0]; if (a.slice(0, 4).every((x) => x != null)) list.push({ type: "rect", a, fill }); }
+      else if (s.type === "ellipse") { const a = [num(s.cx), num(s.cy), num(s.rx, 0.3, 12), num(s.ry, 0.3, 12)]; if (a.every((x) => x != null)) list.push({ type: "ellipse", a, fill }); }
+      else if (s.type === "polyline" || s.type === "polygon") { const pts = (Array.isArray(s.points) ? s.points : []).slice(0, 24).map((p) => (Array.isArray(p) ? [num(p[0]), num(p[1])] : [null, null])).filter((p) => p[0] != null && p[1] != null); if (pts.length >= 2) list.push({ type: s.type, pts, fill }); }
+      else if (s.type === "path" && typeof s.d === "string" && s.d.length <= 400 && /^[MmLlHhVvCcSsQqTtAaZz0-9\s,.\-]+$/.test(s.d)) { const p = T.parsePath(s.d); if (p) list.push({ type: "path", p, fill }); }
     }
-    return out.join("");
+    // the bounding box of everything (a path counts its end and control points)
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const add = (x, y, r) => { r = r || 0; x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r); };
+    for (const s of list) {
+      if (s.type === "line") { add(s.a[0], s.a[1]); add(s.a[2], s.a[3]); }
+      else if (s.type === "circle") add(s.a[0], s.a[1], s.a[2]);
+      else if (s.type === "ellipse") { add(s.a[0] - s.a[2], s.a[1] - s.a[3]); add(s.a[0] + s.a[2], s.a[1] + s.a[3]); }
+      else if (s.type === "rect") { add(s.a[0], s.a[1]); add(s.a[0] + s.a[2], s.a[1] + s.a[3]); }
+      else if (s.type === "path") for (const q of s.p.abs) add(q[0], q[1]);
+      else for (const q of s.pts) add(q[0], q[1]);
+    }
+    let k = 1, cx = 12, cy = 12;
+    if (list.length && x1 > x0 - 1) { const size = Math.max(x1 - x0, y1 - y0, 0.5); k = Math.max(0.6, Math.min(3, 18 / size)); cx = (x0 + x1) / 2; cy = (y0 + y1) / 2; }
+    const X = (x) => r1(12 + (x - cx) * k), Y = (y) => r1(12 + (y - cy) * k), L = (v) => r1(v * k);
+    const F = (s) => (s.fill ? ' fill="currentColor" stroke="none"' : "");
+    return list.map((s) => {
+      if (s.type === "line") return `<line x1="${X(s.a[0])}" y1="${Y(s.a[1])}" x2="${X(s.a[2])}" y2="${Y(s.a[3])}"/>`;
+      if (s.type === "circle") return `<circle cx="${X(s.a[0])}" cy="${Y(s.a[1])}" r="${Math.max(0.6, L(s.a[2]))}"${F(s)}/>`;
+      if (s.type === "ellipse") return `<ellipse cx="${X(s.a[0])}" cy="${Y(s.a[1])}" rx="${Math.max(0.6, L(s.a[2]))}" ry="${Math.max(0.6, L(s.a[3]))}"${F(s)}/>`;
+      if (s.type === "rect") return `<rect x="${X(s.a[0])}" y="${Y(s.a[1])}" width="${L(s.a[2])}" height="${L(s.a[3])}" rx="${L(s.a[4])}"${F(s)}/>`;
+      if (s.type === "path") return `<path d="${s.p.write(X, Y, L)}"${F(s)}/>`;
+      return `<${s.type} points="${s.pts.map((p) => X(p[0]) + "," + Y(p[1])).join(" ")}"${F(s)}/>`;
+    }).join("");
+  };
+  /* A small SVG path reader: the absolute points (for sizing) and a writer that moves and scales it. */
+  T.parsePath = function (d) {
+    const toks = String(d).match(/[MmLlHhVvCcSsQqTtAaZz]|-?(?:\d+\.?\d*|\.\d+)/g); if (!toks || !/^[Mm]$/.test(toks[0])) return null;
+    const ARGS = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0 };
+    const segs = []; let i = 0, cmd = null;
+    while (i < toks.length) {
+      if (/[A-Za-z]/.test(toks[i])) { cmd = toks[i++]; if (/[Zz]/.test(cmd)) { segs.push({ c: cmd, v: [] }); continue; } }
+      if (!cmd) return null; const n = ARGS[cmd.toUpperCase()]; const v = toks.slice(i, i + n).map(Number); if (v.length < n || v.some((x) => !Number.isFinite(x))) return null;
+      segs.push({ c: cmd, v }); i += n; if (cmd === "M") cmd = "L"; else if (cmd === "m") cmd = "l";
+      if (segs.length > 200) return null;
+    }
+    const abs = []; let px = 0, py = 0, sx = 0, sy = 0;
+    for (const s of segs) {
+      const C = s.c.toUpperCase(), rel = s.c !== C; const v = s.v;
+      if (C === "Z") { px = sx; py = sy; continue; }
+      if (C === "H") { px = rel ? px + v[0] : v[0]; abs.push([px, py]); continue; }
+      if (C === "V") { py = rel ? py + v[0] : v[0]; abs.push([px, py]); continue; }
+      if (C === "A") { const ex = rel ? px + v[5] : v[5], ey = rel ? py + v[6] : v[6]; abs.push([ex, ey]); abs.push([(px + ex) / 2, (py + ey) / 2]); px = ex; py = ey; continue; }
+      for (let j = 0; j < v.length; j += 2) abs.push([rel ? px + v[j] : v[j], rel ? py + v[j + 1] : v[j + 1]]);
+      px = abs[abs.length - 1][0]; py = abs[abs.length - 1][1]; if (C === "M") { sx = px; sy = py; }
+    }
+    const write = (X, Y, L) => segs.map((s) => {
+      const C = s.c.toUpperCase(), rel = s.c !== C; const v = s.v;
+      if (C === "Z") return s.c;
+      if (C === "H") return s.c + (rel ? L(v[0]) : X(v[0]));
+      if (C === "V") return s.c + (rel ? L(v[0]) : Y(v[0]));
+      if (C === "A") return s.c + [L(v[0]), L(v[1]), v[2], v[3] ? 1 : 0, v[4] ? 1 : 0, rel ? L(v[5]) : X(v[5]), rel ? L(v[6]) : Y(v[6])].join(" ");
+      const out = []; for (let j = 0; j < v.length; j += 2) out.push(rel ? L(v[j]) + " " + L(v[j + 1]) : X(v[j]) + " " + Y(v[j + 1]));
+      return s.c + out.join(" ");
+    }).join("");
+    return { abs, write };
   };
   T.iconPrompt = (desc) => [
     "You design one small line icon for a planning app. The icon is drawn on a 24 by 24 grid with a 2 unit round stroke, in the plain outline style of Lucide or Feather icons.",
@@ -3493,6 +3659,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   const { isActive, isPinned, isWork } = T;
 
   /* ---------- store ---------- */
+  /* Icons made before v9 got a dark purple tile with a white glyph by default. They now wear the built-in look
+     (a light tint with a darker glyph); icons whose colours were picked by hand keep them. */
+  const oldIconLook = (i) => (!i.bgImage && !i.cat && String(i.fg || "").toUpperCase() === "#FFFFFF" && String(i.bg || "").toUpperCase() === "#7C3AED" ? { ...i, fg: null, bg: null, cat: T.tintFor({ title: (i.name || "") + " " + (i.hint || ""), category: T.guessCategory((i.name || "") + " " + (i.hint || "")) }) } : i);
   const initialState = () => ({ tasks: {}, days: {}, prefs: { ...T.DEFAULT_PREFS }, messages: [], intel: T.EMPTY_INTEL, history: [], memory: [], icons: [], events: [], series: {}, seeded: false, updatedAt: 0 });
   const touch = (s) => ({ ...s, updatedAt: Date.now() });
   const snap = (s, note, source, id) => [...s.history.slice(-14), { id: id || T.uid("rev"), at: Date.now(), note, source: source || "manual", tasks: s.tasks, days: s.days }];
@@ -3510,7 +3679,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         if ((prefs.dashVer || 0) < 2) { prefs.dashOrder = "schedule"; prefs.dashVer = 2; } // v6: the schedule sits near the top, insights fold below it
         if (prefs.dashVer < 3) { prefs.dashVer = 3; prefs.suggestProtect = false; } // v8: Chill replaces timed protected evenings
         const arr = (v) => (Array.isArray(v) ? v : []);
-        return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id), events: arr(d.events), series: d.series && typeof d.series === "object" ? d.series : {} };
+        return { ...initialState(), ...d, tasks, days, prefs, intel: { ...T.EMPTY_INTEL, ...(d.intel || {}) }, history: arr(d.history).filter((h) => h && h.tasks && h.id), messages: arr(d.messages), memory: arr(d.memory).filter((m) => m && m.text), icons: arr(d.icons).filter((i) => i && i.id).map(oldIconLook), events: arr(d.events), series: d.series && typeof d.series === "object" ? d.series : {} };
       }
       case "addTask": return touch({ ...s, tasks: { ...s.tasks, [a.task.id]: a.task }, seeded: true });
       case "updateTask": {
@@ -4130,32 +4299,67 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* Scene C (Chill) lives in its own folder now: chill-animation/ (window.TempoChill.scene). */
 
+  /* Where the task animation plays: right on the task that was ticked off (its row, or the Now card), a little
+     taller than the row so the jaguar has room, and it follows the row if the page scrolls. */
+  const anchorBox = (sel) => {
+    const el = sel ? document.querySelector(sel) : null; if (!el) return null; const r = el.getBoundingClientRect(); if (!(r.width > 40 && r.height > 10)) return null;
+    const vw = window.innerWidth, vh = window.innerHeight; if (r.bottom < 0 || r.top > vh) return null;
+    const padX = vw < 520 ? 6 : 12; const left = Math.max(6, r.left - padX), right = Math.min(vw - 6, r.right + padX);
+    const h = Math.round(Math.min(vh * 0.6, Math.max(r.height + 28, vw < 520 ? 150 : 168)));
+    return { el, left: Math.round(left), width: Math.round(right - left), height: h, rowTop: r.top, rowH: r.height };
+  };
+  /* where the task's own title is drawn inside the stage, so the letters can lift off the real title */
+  const titleSpot = (el, stage) => {
+    const t = el && el.querySelector(".title, .nc-title, h2, h3"); if (!t) return null;
+    let node = null; for (const n of t.childNodes) if (n.nodeType === 3 && n.textContent.trim()) node = n; // the task name (after the time range)
+    const r = (() => { if (!node) return t.getBoundingClientRect(); const rg = document.createRange(); rg.selectNodeContents(node); const rs = rg.getClientRects(); return rs.length ? rs[0] : rg.getBoundingClientRect(); })();
+    const cs = getComputedStyle(t); const size = parseFloat(cs.fontSize) || 16;
+    return { x: r.left - stage.left, y: r.top - stage.top + (r.height + size * 0.72) / 2, size, weight: cs.fontWeight || "700", color: cs.color, family: cs.fontFamily };
+  };
+
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
-  function Celebration({ kind, title, onDone, full }) {
-    /* The big one fills the screen. The task one plays on a stage in the middle of the screen, above everything
-       (also above Focus mode), so it looks the same wherever the task was ticked off. */
-    const ref = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
+  function Celebration({ kind, title, onDone, full, anchor }) {
+    /* "Day done" and "Chill" fill the screen. "Task done" plays on the task itself; in Focus mode (or real full
+       screen) it fills the screen instead. If the task is not on screen it plays on a card in the middle. */
+    const ref = useRef(null); const stageRef = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const big = kind === "day" || kind === "chill" || !!full; // in Focus mode (and real full screen) every celebration fills the screen
-    const box = big ? { width: vw, height: vh } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
+    const big = kind === "day" || kind === "chill" || !!full;
+    const [spot] = useState(() => (big ? null : anchorBox(anchor)));
+    const box = big ? { width: vw, height: vh } : spot ? { width: spot.width, height: spot.height } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
     useEffect(() => {
       const cv = ref.current; if (!cv) return;
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
       cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
       const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const scene = kind === "day" ? window.TempoScenes.day(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : window.TempoScenes.task(box.width, box.height, title);
+      // on a row: the stage sits centred on the row; the letters start exactly where the real title is
+      const place = () => { if (!spot) return null; const r = spot.el.isConnected ? spot.el.getBoundingClientRect() : null; const top = r ? r.top + r.height / 2 - box.height / 2 : spot.rowTop + spot.rowH / 2 - box.height / 2; return { top: Math.round(top), left: spot.left, rowH: r ? r.height : spot.rowH }; };
+      let at = place(); const st = stageRef.current; if (at && st) { st.style.top = at.top + "px"; st.style.left = at.left + "px"; }
+      const text = spot && st ? titleSpot(spot.el, { left: at.left, top: at.top }) : null;
+      const scene = kind === "day" ? window.TempoScenes.day(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : window.TempoScenes.task(box.width, box.height, title, { text, inline: !!spot });
       let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
       const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
-      const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
-      try { frame(0); } catch (e) { /* the loop reports it */ }
+      // the stage opens from the row's own height to its full height, and closes back onto the row at the end
+      const shape = (t) => {
+        if (!spot || !st) return; at = place() || at; st.style.top = at.top + "px";
+        const open = 1 - Math.pow(1 - Math.min(1, t / 0.42), 3), close = Math.max(0, Math.min(1, (t - (scene.duration - 0.45)) / 0.45)); const k = open * (1 - close * close * (3 - 2 * close));
+        const inset = Math.max(0, (box.height - at.rowH) / 2) * (1 - k); st.style.clipPath = `inset(${inset.toFixed(1)}px 0px ${inset.toFixed(1)}px 0px round ${Math.round(16 + 4 * k)}px)`;
+        st.style.boxShadow = `0 ${Math.round(18 * k)}px ${Math.round(46 * k)}px rgba(11,4,24,${(0.45 * k).toFixed(2)})`;
+      };
+      const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { shape(t); frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
+      try { shape(0); frame(0); } catch (e) { /* the loop reports it */ }
       raf = requestAnimationFrame(loop); const guard = setTimeout(finish, scene.duration * 1000 + 1500); // tabs in the background get no frames
       return () => { finished = true; cancelAnimationFrame(raf); clearTimeout(guard); };
     }, []);
     useEscape(useCallback(() => doneRef.current(), []));
-    const el = html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : kind === "chill" ? "Chill. A jaguar runs across the night sky, curls up and becomes the moon." : "Task done. Celebration animation."}>
-      <div class="fx-stage" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
-      <span class="fx-skip">Tap anywhere to skip</span>
-    </div>`;
+    const label = kind === "day" ? "All tasks done. Celebration animation." : kind === "chill" ? "Chill. A jaguar runs across the night sky, curls up and becomes the moon." : "Task done. Celebration animation.";
+    const el = spot
+      ? html`<div class="fx fx-task inline" role="img" aria-label=${label}>
+          <div class="fx-stage" ref=${stageRef} onClick=${() => doneRef.current()} title="Tap to skip" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
+        </div>`
+      : html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${label}>
+          <div class="fx-stage" ref=${stageRef} style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
+          <span class="fx-skip">Tap anywhere to skip</span>
+        </div>`;
     // rendered into the fullscreen element when one is active, otherwise the overlay would be invisible behind it
     return ReactDOM.createPortal(el, document.fullscreenElement || document.body);
   }
@@ -4199,7 +4403,22 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </div>`;
   }
 
-  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene: (W, H, t) => window.TempoScenes.task(W, H, t), dayScene: (W, H, t) => window.TempoScenes.day(W, H, t), chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
+  /* ---------- the jaguar logo: gallops when the page opens, when you point at it and when a task is done ---------- */
+  function JaguarMark({ w, h, label }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const cv = ref.current; if (!cv || !window.TempoScenes || !window.TempoScenes.logo) return;
+      let still = false; try { still = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { still = false; }
+      const p = window.TempoScenes.logo.mount(cv, { w: w || 46, h: h || 22, still }); const start = setTimeout(() => p.run(1.8), 250);
+      const go = () => p.run(1.4); window.addEventListener("tempo:jaguar", go);
+      return () => { clearTimeout(start); window.removeEventListener("tempo:jaguar", go); p.stop(); };
+    }, []);
+    return html`<canvas ref=${ref} class="jmark" style=${{ width: (w || 46) + "px", height: (h || 22) + "px" }} role=${label ? "img" : undefined} aria-label=${label || undefined} aria-hidden=${label ? undefined : "true"} onPointerEnter=${() => window.dispatchEvent(new Event("tempo:jaguar"))}></canvas>`;
+  }
+  /* the browser tab shows the jaguar too */
+  const setFavicon = () => { try { const url = window.TempoScenes && window.TempoScenes.logo && window.TempoScenes.logo.favicon(64); if (!url) return; let l = document.querySelector('link[rel="icon"]'); if (!l) { l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); } l.type = "image/png"; l.href = url; } catch (e) { /* keep the static icon */ } };
+
+  Object.assign(UI, { Celebration, FocusMode, JaguarMark, setFavicon, fx: { taskScene: (W, H, t) => window.TempoScenes.task(W, H, t), dayScene: (W, H, t) => window.TempoScenes.day(W, H, t), chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
 })();
 </script>
 <script>
@@ -4340,11 +4559,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   /* ---------- Icons studio: draw your own icons, tell Tempo when to use them ---------- */
   const r1 = (n) => Math.round(n * 10) / 10;
   const BG_SWATCHES = ["#7C3AED", "#2563EB", "#0D9488", "#16A34A", "#D97706", "#EA580C", "#DC2626", "#DB2777", "#171717", "#F4F4F5"];
+  const TINT_SWATCHES = ["free", "writing", "math", "reading", "chemistry", "science", "exercise", "coding", "meal", "break", "admin", "family", "work"];
   const FG_SWATCHES = ["#FFFFFF", "#171717", "#7C3AED", "#2563EB", "#16A34A", "#DC2626", "#FDE047"];
   function IconEditor({ icon, onSave, onCancel, onDelete }) {
     const [name, setName] = useState(icon.name || ""); const [hint, setHint] = useState(icon.hint || "");
     const [els, setEls] = useState(() => (icon.els ? icon.els.slice() : icon.markup ? [icon.markup] : []));
-    const [fg, setFg] = useState(icon.fg || "#FFFFFF"); const [bg, setBg] = useState(icon.bg || "#7C3AED"); const [bgImage, setBgImage] = useState(icon.bgImage || null);
+    const [fg, setFgRaw] = useState(icon.fg || "#FFFFFF"); const [bg, setBgRaw] = useState(icon.bg || "#7C3AED");
+    /* by default an icon wears the same tile colours as the built-in ones (light tint, darker icon); custom colours are opt-in */
+    const [cat, setCat] = useState(icon.cat || (icon.fg || icon.bg || icon.bgImage ? null : "free"));
+    const setFg = (v) => { setFgRaw(v); setCat(null); }; const setBg = (v) => { setBgRaw(v); setCat(null); }; const [bgImage, setBgImage] = useState(icon.bgImage || null);
     const [tool, setTool] = useState("pen"); const [sw, setSw] = useState(2); const [fill, setFill] = useState(false); const [draft, setDraft] = useState(""); const [msg, setMsg] = useState("");
     const svg = useRef(null); const st = useRef(null);
     const pt = (e) => { const r = svg.current.getBoundingClientRect(); return [r1(Math.max(0.5, Math.min(23.5, ((e.clientX - r.left) / r.width) * 24))), r1(Math.max(0.5, Math.min(23.5, ((e.clientY - r.top) / r.height) * 24)))]; };
@@ -4366,8 +4589,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const fr = new FileReader(); fr.onload = () => { const img = new Image(); img.onload = () => { const S = 128; const cv = document.createElement("canvas"); cv.width = S; cv.height = S; const c = cv.getContext("2d"); const k = Math.max(S / img.width, S / img.height); const w = img.width * k, hh = img.height * k; c.drawImage(img, (S - w) / 2, (S - hh) / 2, w, hh); try { setBgImage(cv.toDataURL("image/jpeg", 0.82)); setMsg("Background image set."); } catch { setMsg("That image could not be used."); } }; img.onerror = () => setMsg("That image could not be read."); img.src = fr.result; }; fr.readAsDataURL(file);
     };
     useEffect(() => { const onPaste = (e) => { const items = (e.clipboardData && e.clipboardData.items) || []; for (const it of items) if (it.kind === "file" && /^image\//.test(it.type)) { e.preventDefault(); takeImage(it.getAsFile()); return; } }; document.addEventListener("paste", onPaste); return () => document.removeEventListener("paste", onPaste); }, []);
-    const markup = T.safeMarkup(els.join("")); const preview = { color: fg, background: bgImage ? `center / cover no-repeat url("${bgImage}")` : bg };
-    const save = () => { if (!els.length) { setMsg("Draw something first."); return; } if (!name.trim()) { setMsg("Give the icon a name."); return; } onSave({ id: icon.id || T.uid("ci"), name: name.trim().slice(0, 40), hint: hint.trim().slice(0, 160), els, markup, fg, bg, bgImage, updatedAt: Date.now() }); };
+    const markup = T.safeMarkup(els.join("")); const preview = cat && !bgImage ? catStyle(cat) : { color: fg, background: bgImage ? `center / cover no-repeat url("${bgImage}")` : bg };
+    const save = () => { if (!els.length) { setMsg("Draw something first."); return; } if (!name.trim()) { setMsg("Give the icon a name."); return; } onSave({ id: icon.id || T.uid("ci"), name: name.trim().slice(0, 40), hint: hint.trim().slice(0, 160), els, markup, ...(cat && !bgImage ? { cat, fg: null, bg: null } : { cat: null, fg, bg }), bgImage, updatedAt: Date.now() }); };
     const TOOLS = [["pen", "Draw", "pen"], ["line", "Line", "arrow"], ["rect", "Box", "stop"], ["circle", "Circle", "circle"], ["triangle", "Triangle", "play"]];
     return html`<section class="card studio" aria-label="Icon editor">
       <div class="card-head"><h2>${icon.id ? "Edit icon" : "New icon"}</h2><div class="head-tools"><button class="btn sm ghost" onClick=${onCancel}>Cancel</button><button class="btn sm primary" onClick=${save}>Save icon</button></div></div>
@@ -4387,8 +4610,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="studio-side">
           <div class="field"><label for="ic-name">Name</label><input id="ic-name" class="in" value=${name} onInput=${(e) => setName(e.target.value)} placeholder="Client call" /></div>
           <div class="field"><label for="ic-hint">When should Tempo use it?</label><textarea id="ic-hint" class="in" value=${hint} onInput=${(e) => setHint(e.target.value)} placeholder="Calls and meetings with clients"></textarea></div>
-          <div class="field"><label>Icon colour</label><div class="swatches">${FG_SWATCHES.map((cx) => html`<button key=${cx} class=${"sw" + (fg === cx ? " on" : "")} style=${{ background: cx }} aria-label=${"Icon colour " + cx} onClick=${() => setFg(cx)}></button>`)}<input type="color" class="colorin" value=${fg} onInput=${(e) => setFg(e.target.value)} aria-label="Custom icon colour" /></div></div>
-          <div class="field"><label>Background</label><div class="swatches">${BG_SWATCHES.map((cx) => html`<button key=${cx} class=${"sw" + (!bgImage && bg === cx ? " on" : "")} style=${{ background: cx }} aria-label=${"Background " + cx} onClick=${() => { setBg(cx); setBgImage(null); }}></button>`)}<input type="color" class="colorin" value=${bg} onInput=${(e) => { setBg(e.target.value); setBgImage(null); }} aria-label="Custom background colour" /></div>
+          <div class="field"><label>Tile colours</label><div class="swatches">${TINT_SWATCHES.map((t) => html`<button key=${t} class=${"sw tint" + (cat === t && !bgImage ? " on" : "")} style=${catStyle(t)} aria-label=${"Tempo colours: " + t} title="Same colours as the built-in icons" onClick=${() => { setCat(t); setBgImage(null); }}><i></i></button>`)}</div><p class="quiet nomargin" style=${{ marginTop: 6 }}>Light tile, darker icon: the same look as the built-in icons. Pick your own colours below if you prefer.</p></div>
+          <div class="field"><label>Icon colour</label><div class="swatches">${FG_SWATCHES.map((cx) => html`<button key=${cx} class=${"sw" + (!cat && fg === cx ? " on" : "")} style=${{ background: cx }} aria-label=${"Icon colour " + cx} onClick=${() => setFg(cx)}></button>`)}<input type="color" class="colorin" value=${fg} onInput=${(e) => setFg(e.target.value)} aria-label="Custom icon colour" /></div></div>
+          <div class="field"><label>Background</label><div class="swatches">${BG_SWATCHES.map((cx) => html`<button key=${cx} class=${"sw" + (!cat && !bgImage && bg === cx ? " on" : "")} style=${{ background: cx }} aria-label=${"Background " + cx} onClick=${() => { setBg(cx); setBgImage(null); }}></button>`)}<input type="color" class="colorin" value=${bg} onInput=${(e) => { setBg(e.target.value); setBgImage(null); }} aria-label="Custom background colour" /></div>
             <div class="tools" style=${{ marginTop: 8 }}><label class="btn sm ghost filebtn">Upload image<input type="file" accept="image/*" onChange=${(e) => { takeImage(e.target.files[0]); e.target.value = ""; }} /></label>${bgImage ? html`<button class="btn sm ghost" onClick=${() => setBgImage(null)}>Remove image</button>` : null}<span class="quiet nomargin">or paste an image (Ctrl/Cmd + V)</span></div></div>
           <div class="field"><label>How it looks in a task</label><div class="previewrow"><div class="tile" style=${preview}><${Glyph} markup=${markup} /></div><div class="tile sm" style=${preview}><${Glyph} markup=${markup} size=${18} /></div><span class="quiet nomargin">${name || "Your icon"}</span></div></div>
           ${msg ? html`<p class="note" role="status">${msg}</p>` : null}
@@ -4410,7 +4634,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
           : html`<div class="empty"><${Icon} name="shapes" size=${28} /><div class="big">No custom icons yet</div><p>Draw one with shapes or freehand, pick a background, and describe when it fits. Tempo and the assistant will use it in your schedule.</p><button class="btn primary" onClick=${() => setEditing({})}><${Icon} name="plus" />New icon</button></div>`}
       </section>
       <section class="card" aria-label="Built-in icons"><div class="card-head"><h2>Built-in icons</h2><span class="quiet nomargin">Tap one to use it as a starting point.</span></div>
-        <div class="icongrid small">${T.ICON_INFO.map(([id, label]) => html`<button key=${id} class="iconcell" onClick=${() => { setEditing({ seed: id + Date.now(), name: "", hint: "", markup: T.ICONS[id], fg: "#FFFFFF", bg: "#7C3AED" }); window.scrollTo({ top: 0, behavior: "smooth" }); }} title=${"Start from " + label}><div class="tile sm" style=${catStyle(T.tintFor({ title: label, category: "other" }))}><${Glyph} markup=${T.ICONS[id]} size=${18} /></div><span>${label}</span></button>`)}</div>
+        <div class="icongrid small">${T.ICON_INFO.map(([id, label]) => html`<button key=${id} class="iconcell" onClick=${() => { setEditing({ seed: id + Date.now(), name: "", hint: "", markup: T.ICONS[id], cat: T.tintFor({ title: label, category: "other" }) }); window.scrollTo({ top: 0, behavior: "smooth" }); }} title=${"Start from " + label}><div class="tile sm" style=${catStyle(T.tintFor({ title: label, category: "other" }))}><${Glyph} markup=${T.ICONS[id]} size=${18} /></div><span>${label}</span></button>`)}</div>
       </section>
     </${React.Fragment}>`;
   }
@@ -4636,7 +4860,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         <div class="ai-meta">
           <b>${res.name}</b>
           <span>${res.source === "ai" ? "Drawn by the assistant." : res.source === "fallback" ? "The assistant could not draw this one, so this is the closest built-in shape." : "The AI server is not connected here, so this is the closest built-in shape."}</span>
-          <div class="ai-acts"><button class="btn sm primary" onClick=${save}><${Icon} name="check" />Save icon</button><button class="btn sm ghost" onClick=${() => make()}><${Icon} name="refresh" />Try again</button><button class="btn sm ghost" onClick=${() => { onEdit({ seed: "ai" + Date.now(), name: res.name, hint: res.hint, markup: res.markup, fg: "#FFFFFF", bg: "#7C3AED" }); setRes(null); }}><${Icon} name="edit" />Edit by hand</button></div>
+          <div class="ai-acts"><button class="btn sm primary" onClick=${save}><${Icon} name="check" />Save icon</button><button class="btn sm ghost" onClick=${() => make()}><${Icon} name="refresh" />Try again</button><button class="btn sm ghost" onClick=${() => { onEdit({ seed: "ai" + Date.now(), name: res.name, hint: res.hint, markup: res.markup, cat: res.cat }); setRes(null); }}><${Icon} name="edit" />Edit by hand</button></div>
         </div>
       </div>` : null}
     </section>`;
@@ -5062,7 +5286,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const route = useHashRoute(); const clock = useClock(); const nowMin = T.minutesNow(clock); const today = T.dayKey(clock);
     const [viewDateRaw, setViewDate] = useState(null); const viewDate = viewDateRaw || today;
     const [editing, setEditing] = useState(null); const [toastMsg, setToastMsg] = useState(null); const [pop, setPop] = useState(false); const [sheet, setSheet] = useState(null);
-    const [focusId, setFocusId] = useState(null); const [fx, setFx] = useState(null); const focusRef = useRef(null); focusRef.current = focusId;
+    const [focusId, setFocusId] = useState(null); const [fx, setFx] = useState(null); useEffect(() => { UI.setFavicon(); }, []); const focusRef = useRef(null); focusRef.current = focusId;
     const [caps, setCaps] = useState({ db: null, user: null, uid: null, sample: null, sampleOff: false, setSampleOff: (v) => setCaps((c) => ({ ...c, sampleOff: v })), setNeedsCode: (v) => setCaps((c) => ({ ...c, needsCode: v })) });
     const [busy, setBusy] = useState(false); const [secs, setSecs] = useState(0); const [engineForced, setEngineForced] = useState(null);
     const stateRef = useRef(state); stateRef.current = state; const capsRef = useRef(caps); capsRef.current = caps; const forcedRef = useRef(engineForced); forcedRef.current = engineForced;
@@ -5128,11 +5352,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const undoLast = useCallback(() => { const st = stateRef.current; const last = st.history[st.history.length - 1]; if (!last) { toast("Nothing to undo"); return; } dispatch({ type: "undo" }); toast("Undid " + last.note); }, [toast]);
     const track = (kind) => dispatch({ type: "event", kind });
     const celebrate = (before, res) => {
-      const st = stateRef.current; const names = res.summary.completed || []; if (!names.length) return;
+      const st = stateRef.current; const names = res.summary.completed || []; if (!names.length) return; window.dispatchEvent(new Event("tempo:jaguar"));
+      const prev = new Map(before.map((x) => [x.id, x.status])); const doneNow = res.tasks.find((x) => x.status === "completed" && prev.get(x.id) !== "completed");
       const day0 = T.dayKey(); const sprint = (list) => list.filter((x) => x.date === day0 && isWork(x) && !x.fixed && x.status !== "postponed");
       const was = sprint(before), now = sprint(res.tasks); const allDone = now.length >= 2 && now.every((x) => x.status === "completed") && !was.every((x) => x.status === "completed");
       if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
-      if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${now.length} tasks for today are done.` : names[0], key: Date.now() });
+      if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${now.length} tasks for today are done.` : names[0], anchor: doneNow ? `li[data-id="${doneNow.id}"] .row-inner` : null, key: Date.now() });
     };
     const commitPlan = (plan, res, note) => { track("plan"); celebrate(Object.values(stateRef.current.tasks), res); return commit(res.tasks, "the assistant's change", "ai", { date: T.dayKey(), title: plan.dayTitle || undefined, targetFinish: plan.targetFinish ? T.parseHHMM(plan.targetFinish) : undefined }); };
 
@@ -5200,17 +5425,19 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     /* ----- task actions shared by every view ----- */
     const actions = useMemo(() => ({
       onStatus: (id, status) => {
-        const st = stateRef.current; const t = st.tasks[id]; if (!t) return; let rect = null;
-        if (status === "completed") { const el = document.querySelector(`li[data-id="${id}"] .row-inner`); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0) rect = { left: r.left, top: r.top, width: r.width, height: r.height }; } }
+        const st = stateRef.current; const t = st.tasks[id]; if (!t) return;
+        // the task animation plays where the task was ticked off: on the Now card when the click came from there, otherwise on its row
+        const from = document.activeElement; const anchor = from && from.closest && from.closest(".nowcard") ? ".nowcard" : `li[data-id="${id}"] .row-inner`;
         let adjust = false, shiftMsg = ""; const newStart = new Map();
         if (status === "completed" && st.prefs.autoAdjust !== false && t.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(st.tasks).filter((x) => x.date === t.date), t, T.minutesNow()); if (sh.moved) { adjust = true; for (const x of sh.tasks) newStart.set(x.id, x.start); shiftMsg = `. The next ${sh.moved > 1 ? sh.moved + " blocks" : "block"} moved ${sh.delta < 0 ? "up" : "back"} ${T.fmtShortDur(Math.abs(sh.delta))}`; track("autoslot"); } }
         dispatch({ type: "setStatus", id, status, adjust });
+        if (status === "completed") window.dispatchEvent(new Event("tempo:jaguar"));
         if (status === "completed") {
           // the sprint is the flexible work of the day: commitments such as dinner do not hold the celebration back
           const dayWork = Object.values(st.tasks).filter((x) => x.date === t.date && isWork(x) && !x.fixed && x.status !== "postponed");
           const allDone = dayWork.length >= 2 && dayWork.some((x) => x.id === id) && dayWork.every((x) => x.id === id || x.status === "completed");
           if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
-          if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, rect, key: Date.now() });
+          if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, anchor, key: Date.now() });
           const next = allDone ? null : dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0];
           if (next && st.prefs.autoStartNext) { dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); toast(`Done. Timer started for “${next.title}”` + shiftMsg, () => dispatch({ type: "undo" })); }
           else if (next) toast(`Done${shiftMsg}. Next: “${next.title}” at ${T.fmtTime(newStart.get(next.id) ?? next.start, st.prefs.timeFormat)}`, () => dispatch({ type: "undo" }), null, { label: "Start timer", fn: () => dispatch({ type: "setStatus", id: next.id, status: "in_progress" }) });
@@ -5349,12 +5576,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
     return html`<div class=${"shell" + (state.prefs.compact ? " compact" : "")}>
       <header class="topbar" aria-label="Tempo">
-        <div class="b1"><i></i>Tempo</div>
+        <div class="b1"><${UI.JaguarMark} w=${40} h=${19} />Tempo</div>
         <a class="tb-a" href="#plan" aria-label="Your account and plan">${(state.prefs.name || "").trim() ? html`<span class="av">${(state.prefs.name || "").trim().charAt(0).toUpperCase()}</span>` : html`<span class="av"><${Icon} name="user" /></span>`}</a>
       </header>
       <nav class="nav" aria-label="Main">
         <div class="nav-inner">
-          <div class="brand"><div class="b1"><i></i>Tempo</div></div>
+          <div class="brand"><div class="b1"><${UI.JaguarMark} w=${46} h=${22} />Tempo</div></div>
           ${NAV.map(([r, label, short, icon, only]) => html`<a key=${r} href=${"#" + r} class=${(active(r) ? "on " : "") + (only === "d" ? "d-only" : only === "m" ? "m-only" : "")} aria-current=${route === r ? "page" : undefined}><${Icon} name=${icon} /><span class="lg">${label}</span><span class="sm">${short}</span></a>`)}
           <${UI.AccountButton} prefs=${state.prefs} active=${route === "plan"} />
         </div>
@@ -5364,7 +5591,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${focusTask ? html`<${UI.FocusMode} task=${focusTask} next=${focusNext} prefs=${state.prefs} onStatus=${actions.onStatus} onToggleBullet=${actions.onToggleBullet} onNotes=${(id, notes) => dispatch({ type: "setNotes", id, notes })} onExtend=${(id, m) => dispatch({ type: "updateTask", id, patch: { estimatedMinutes: state.tasks[id].estimatedMinutes + m }, note: "adding focus time" })} onClose=${() => setFocusId(null)} />` : null}
       ${editing ? html`<${TaskEditor} task=${editing} date=${viewDate} prefs=${state.prefs} icons=${state.icons} onSave=${onSave} onClose=${() => setEditing(null)} onDelete=${actions.onDelete} />` : null}
       ${sheet ? html`<${ImpactSheet} ...${sheet} onClose=${() => setSheet(null)} />` : null}
-      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} rect=${fx.rect} onDone=${() => setFx(null)} />` : null}
+      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} anchor=${fx.anchor} onDone=${() => setFx(null)} />` : null}
       ${toastMsg ? html`<div class=${"toast" + (toastMsg.extra ? " wide" : "")} role="status"><span>${toastMsg.text}</span>${toastMsg.extra ? html`<button class="tx-main" onClick=${() => { toastMsg.extra.fn(); setToastMsg(null); }}><${Icon} name="play" size=${14} />${toastMsg.extra.label}</button>` : null}${toastMsg.undo ? html`<button onClick=${() => { toastMsg.undo(); setToastMsg(null); }}>${toastMsg.label || "Undo"}</button>` : null}</div>` : null}
     </div>`;
   }
