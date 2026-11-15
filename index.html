@@ -998,6 +998,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 @keyframes chillTwinkle { 0%, 100% { opacity: .25; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes chillDrift { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
 @media (max-width: 420px) { .ch-btn { width: 100%; justify-content: center; } }
+.fx-chill { z-index: 95; background: #0B0418; animation: fade .3s ease-out; }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -2514,6 +2515,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       done: [[659.25, 0, 0.22, "triangle", 0.08], [783.99, 0.075, 0.22, "triangle", 0.08], [1046.5, 0.15, 0.5, "triangle", 0.08], [2093, 0.15, 0.35, "sine", 0.02]],
       pay: [[1318.5, 0, 0.16, "sine", 0.07], [1975.5, 0.11, 0.55, "sine", 0.075], [3951, 0.11, 0.3, "sine", 0.012], [987.77, 0.11, 0.5, "triangle", 0.02]],
       tap: [[880, 0, 0.07, "sine", 0.03]],
+      chill: [[392, 0, 1.6, "sine", 0.045], [493.88, 0.35, 1.6, "sine", 0.04], [587.33, 0.7, 1.8, "sine", 0.035], [783.99, 1.1, 2.2, "sine", 0.025], [1174.66, 1.5, 2.4, "sine", 0.012]],
       all: [[523.25, 0, 0.5, "triangle", 0.07], [659.25, 0.09, 0.5, "triangle", 0.07], [783.99, 0.18, 0.5, "triangle", 0.07], [1046.5, 0.27, 0.9, "triangle", 0.08], [1318.5, 0.36, 1.1, "sine", 0.05], [130.81, 0.27, 1.0, "sine", 0.06]],
     };
     const run = (kind, v) => { const c = ctx; const t0 = c.currentTime + 0.02; for (const [f, at, dur, type, gain] of SCORES[kind] || []) tone(c, f, t0 + at, dur, type, gain * v * 1.6); };
@@ -3442,20 +3444,109 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     } };
   }
 
+  /* Scene C (Chill): the same sleek jaguar gallops across the night sky in long bounding leaps, slows down on the
+     left, lies down and curls up asleep, and then, slowly, the curled body rounds off into the moon.
+     Every frame is a pure function of time: the legs follow the distance travelled, the run ends exactly on a
+     stride, and the sleeping shape and the moon are the same outline, so the change is one continuous morph. */
+  function chillScene(W, H) {
+    const R = rng(4711); const s = clamp(Math.min(W * 0.8, H) / 320, 0.75, 2.4);
+    const T_RUN = 0.45, T_CURL = 3.7, T_SLEEP = 4.45, T_MOON = 5.2, T_FULL = 6.9, END = 8.4;
+    const groundY = H * 0.52; const startX = W + 110 * s; const endX = 92 * s + 24;
+    const dist = startX - endX; const stride = dist / Math.max(2, Math.round(dist / (78 * s))); // the run ends on a whole stride: paws together, no snap
+    const cx = endX + 8 * s, cy = groundY - 24 * s; const Rb = 38 * s;
+    const sky = Array.from({ length: 120 }, () => ({ x: R() * W, y: R() * H, r: 0.4 + R() * 1.3, p: R() * TAU, sp: 0.7 + R() * 1.9 }));
+    const motion = (t) => {
+      const u = clamp((t - T_RUN) / (T_CURL - T_RUN), 0, 1); const x = lerp(startX, endX, 1 - Math.pow(1 - u, 2.4)); // eases out into the stop
+      const amp = u <= 0 || u >= 1 ? 0 : Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.15)), 0.6);
+      return { x, amp, phase: (startX - x) / stride };
+    };
+    // the curled sleeper and the moon share one outline: a polar contour whose bumps (head, ears, haunch) flatten into a circle
+    const contour = (m, breath) => {
+      const pts = []; const N = 96; const bump = (th, at, w, a) => { let d = Math.atan2(Math.sin(th - at), Math.cos(th - at)); return a * Math.exp(-(d * d) / (2 * w * w)); };
+      const rx = lerp(1.12, 1, m), ry = lerp(0.8, 1, m); const k = 1 - m;
+      for (let i = 0; i < N; i++) {
+        const th = (i / N) * TAU; let r = 1 / Math.sqrt(Math.pow(Math.cos(th) / rx, 2) + Math.pow(Math.sin(th) / ry, 2));
+        r += k * bump(th, -0.6, 0.5, 0.12); // the haunch
+        if (Math.sin(th) > 0) r *= lerp(0.9, 1, m); // a flat underside while it lies down
+        r *= Rb * breath; pts.push([cx + Math.cos(th) * r, cy + Math.sin(th) * r - m * 26 * s]);
+      }
+      return pts;
+    };
+    const fillPath = (c, pts) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); };
+    return { duration: END, draw(c, t) {
+      c.setTransform(c._dpr || 1, 0, 0, c._dpr || 1, 0, 0); c.clearRect(0, 0, W, H);
+      const out = t > END - 0.7 ? 1 - ease((t - (END - 0.7)) / 0.7) : 1; const inn = ease(t / 0.5);
+      // the night sky
+      c.globalAlpha = inn * out; const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.ink); bg.addColorStop(0.6, V.night); bg.addColorStop(1, V.deep); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+      const hz = c.createRadialGradient(W * 0.5, H * 1.1, 10, W * 0.5, H * 1.1, Math.max(W, H) * 0.8); hz.addColorStop(0, "rgba(124,58,237,.35)"); hz.addColorStop(1, "rgba(124,58,237,0)"); c.fillStyle = hz; c.fillRect(0, 0, W, H);
+      for (const st of sky) { c.globalAlpha = inn * out * (0.25 + 0.45 * (0.5 + 0.5 * Math.sin(t * st.sp + st.p))); ell(c, st.x, st.y, st.r, st.r, V.mist); }
+      const kc = ease((t - T_CURL) / (T_SLEEP - T_CURL)); // run → lying down and curled
+      const m = ease((t - T_MOON) / (T_FULL - T_MOON)); // sleeper → moon, slowly
+      // the runner, mirrored so it heads left, with star dust kicked up behind it
+      if (kc < 1) {
+        const mo = motion(Math.min(t, T_CURL)); const P = TAU * mo.phase;
+        const lift = mo.amp * Math.max(0, Math.sin(P)) * 20 * s; const tilt = mo.amp * Math.sin(P) * 0.12 - kc * 0.05;
+        for (let j = 1; j <= 10 && mo.amp > 0.05; j++) { const tp = t - j * 0.035; if (tp < T_RUN) break; const pm = motion(tp); c.globalAlpha = out * mo.amp * 0.6 * (1 - j / 11); ell(c, pm.x + 55 * s + Math.sin(j * 1.7) * 6 * s, groundY - 4 * s - (j % 3) * 5 * s, 1.4 + (j % 2), 1.4 + (j % 2), V.pale); }
+        c.save(); c.globalAlpha = out * (1 - ease(kc * 2.2)); c.translate(2 * mo.x, 0); c.scale(-1, 1);
+        drawJaguar(c, { x: mo.x, y: groundY - lift + kc * 10 * s, s: s * lerp(1, 0.92, kc), phase: mo.phase, tilt });
+        c.restore();
+      }
+      // the sleeper, fading in where the runner lies down, breathing slowly, then rounding off into the moon
+      if (kc > 0) {
+        const a = out * ease((kc - 0.3) / 0.7); const k = 1 - m; const my = cy - m * 26 * s;
+        const breath = 1 + k * 0.022 * Math.sin((t - T_SLEEP) * 2.2); const grow = lerp(0.86, 1, kc);
+        const body = contour(m, breath * grow);
+        // head resting on the front paws; it sinks into the body as the moon forms
+        const hr = Rb * 0.42 * grow * Math.pow(1 - m, 1.4), hx = lerp(cx - Rb * 0.98, cx, m), hy = lerp(cy + Rb * 0.06, my, m);
+        const ear = (tip, b1, b2) => [[hx + tip[0] * hr, hy + tip[1] * hr], [hx + b1[0] * hr, hy + b1[1] * hr], [hx + b2[0] * hr, hy + b2[1] * hr]];
+        const ears = k > 0.02 ? [ear([-0.3, -1.45 * k - 0.6 * m], [-0.75, -0.55], [-0.05, -0.85]), ear([0.42, -1.35 * k - 0.6 * m], [0.05, -0.88], [0.72, -0.5])] : [];
+        // the tail wraps round the front as one tapered band, tip curling up under the chin
+        const tail = []; if (k > 0.02) { const N = 28; const L = []; const Rr = [];
+          for (let i = 0; i <= N; i++) { const u = (i / N) * lerp(1, 0.4, m); const th = lerp(0.35, Math.PI - 0.5, Math.min(1, u / 0.85)); const curl = u > 0.85 ? (u - 0.85) / 0.15 : 0;
+            const px = cx + Math.cos(th) * Rb * 1.0 * grow - curl * Rb * 0.1, py = cy + Math.sin(th) * Rb * 0.66 * grow - curl * curl * Rb * 0.32; // along the lower flank, in front of the body
+            const w = lerp(0.15, 0.045, u) * Rb * grow; L.push([px, py - w]); Rr.push([px, py + w]); }
+          tail.push(...L, ...Rr.reverse()); }
+        const shape = (fill) => { c.fillStyle = fill; fillPath(c, body); c.fill(); if (hr > 2) { c.beginPath(); c.ellipse(hx, hy, hr * 1.12, hr, -0.1, 0, TAU); c.fill(); } for (const e of ears) { fillPath(c, e); c.fill(); } };
+        if (m > 0) { c.globalAlpha = out * m * 0.75; const halo = c.createRadialGradient(cx, my, Rb * 0.6, cx, my, Rb * 3.2); halo.addColorStop(0, "rgba(196,181,253,.5)"); halo.addColorStop(1, "rgba(196,181,253,0)"); c.fillStyle = halo; c.fillRect(cx - Rb * 3.2, my - Rb * 3.2, Rb * 6.4, Rb * 6.4); }
+        const fur = c.createLinearGradient(cx, my - Rb * 1.2, cx, my + Rb); fur.addColorStop(0, V.pale); fur.addColorStop(0.55, V.bright); fur.addColorStop(1, V.vivid);
+        c.globalAlpha = a; shape(fur);
+        if (m > 0) { const lunar = c.createRadialGradient(cx - Rb * 0.3, my - Rb * 0.35, Rb * 0.1, cx, my, Rb * 1.05); lunar.addColorStop(0, "#FFFFFF"); lunar.addColorStop(0.55, V.glow); lunar.addColorStop(1, V.pale); c.globalAlpha = a * m; shape(lunar); }
+        if (k > 0.02) {
+          // soft shading: where the haunch folds and where the head meets the body
+          c.save(); fillPath(c, body); c.clip(); c.globalAlpha = a * k * 0.35; ell(c, cx + Rb * 0.25, cy + Rb * 0.42, Rb * 0.95, Rb * 0.3, V.core); c.restore();
+          c.globalAlpha = a * k * k; const tf = c.createLinearGradient(cx, cy + Rb * 0.2, cx, cy + Rb * 0.9); tf.addColorStop(0, V.soft); tf.addColorStop(1, V.bright); c.fillStyle = tf; if (tail.length) { fillPath(c, tail); c.fill(); c.strokeStyle = V.core; c.lineWidth = Math.max(0.8, 0.9 * s); c.globalAlpha = a * k * k * 0.45; c.stroke(); }
+          c.globalAlpha = a * k * k * 0.9; c.strokeStyle = V.night; c.lineWidth = Math.max(1, 1.4 * s); c.lineCap = "round"; c.beginPath(); c.arc(hx - hr * 0.35, hy - hr * 0.05, hr * 0.22, 0.25, Math.PI - 0.25); c.stroke(); // a closed, sleeping eye
+          c.globalAlpha = a * k * 0.5; c.strokeStyle = V.glow; c.lineWidth = Math.max(1, 1.1 * s); c.beginPath(); c.ellipse(cx + Rb * 0.08, cy + Rb * 0.04, Rb * 1.0, Rb * 0.66, 0, Math.PI + 0.75, TAU - 0.3); c.stroke(); // light along the back
+        }
+        if (m > 0.55) { c.globalAlpha = out * (m - 0.55) / 0.45 * 0.14; for (const [dx, dy, r] of [[-0.3, 0.1, 0.18], [0.25, -0.2, 0.12], [0.15, 0.35, 0.1], [-0.05, -0.4, 0.07]]) ell(c, cx + dx * Rb, my + dy * Rb, r * Rb, r * Rb, V.soft); }
+        // one soft ripple of light when it is fully the moon
+        const w = t - T_FULL + 0.2; if (w > 0 && w < 1.2) { c.globalAlpha = out * (1 - w / 1.2) * 0.55; c.strokeStyle = V.glow; c.lineWidth = Math.max(1, 2.4 - w * 1.8); c.beginPath(); c.arc(cx, my, Rb * (1.05 + easeOut(w / 1.2) * 0.9), 0, TAU); c.stroke(); }
+      }
+      // a few words, quietly
+      if (t > T_FULL - 0.3) {
+        const k = easeOut((t - T_FULL + 0.3) / 0.7); c.globalAlpha = out * k; c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 18; c.fillStyle = V.glow;
+        c.font = `800 ${Math.round(clamp(Math.min(W, H) * 0.09, 30, 64))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillText("Chill", W / 2, H * 0.8 + (1 - k) * 10);
+        c.font = `600 ${Math.round(clamp(Math.min(W, H) * 0.035, 14, 20))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText("Slow down. You earned it.", W / 2, H * 0.8 + clamp(Math.min(W, H) * 0.06, 26, 44));
+        c.shadowBlur = 0; c.textAlign = "start";
+      }
+      c.globalAlpha = 1;
+    } };
+  }
+
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
   function Celebration({ kind, title, onDone, full }) {
     /* The big one fills the screen. The task one plays on a stage in the middle of the screen, above everything
        (also above Focus mode), so it looks the same wherever the task was ticked off. */
     const ref = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const big = kind === "day" || !!full; // in Focus mode (and real full screen) every celebration fills the screen
+    const big = kind === "day" || kind === "chill" || !!full; // in Focus mode (and real full screen) every celebration fills the screen
     const box = big ? { width: vw, height: vh } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
     useEffect(() => {
       const cv = ref.current; if (!cv) return;
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
       cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
       const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const scene = kind === "day" ? dayScene(box.width, box.height, title) : taskScene(box.width, box.height, title);
+      const scene = kind === "day" ? dayScene(box.width, box.height, title) : kind === "chill" ? chillScene(box.width, box.height) : taskScene(box.width, box.height, title);
       let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
       const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
       const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
@@ -3464,7 +3555,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       return () => { finished = true; cancelAnimationFrame(raf); clearTimeout(guard); };
     }, []);
     useEscape(useCallback(() => doneRef.current(), []));
-    const el = html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : "Task done. Celebration animation."}>
+    const el = html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${kind === "day" ? "All tasks done. Celebration animation." : kind === "chill" ? "Chill. A jaguar runs across the night sky, curls up and becomes the moon." : "Task done. Celebration animation."}>
       <div class="fx-stage" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
       <span class="fx-skip">Tap anywhere to skip</span>
     </div>`;
@@ -3511,7 +3602,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </div>`;
   }
 
-  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene, dayScene } });
+  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene, dayScene, chillScene } });
 })();
 </script>
 <script>
@@ -4609,7 +4700,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       onDayAction: (date, kind) => {
         const st = stateRef.current; const all = Object.values(st.tasks); const dayT = all.filter((t) => t.date === date); const ts = Date.now(); const fmt = st.prefs.timeFormat;
         if (kind === "undo") return undoLast();
-        if (kind === "chill") { const was = !!(st.days[date] && st.days[date].chill); dispatch({ type: "setDayMeta", date, patch: { chill: !was } }); if (!was) toast("Chill noted. Enjoy it."); return; }
+        if (kind === "chill") {
+          const was = !!(st.days[date] && st.days[date].chill); dispatch({ type: "setDayMeta", date, patch: { chill: !was } });
+          if (!was) {
+            if (st.prefs.sound !== false) T.sound.play("chill", st.prefs.volume); // inside the tap, so Safari lets it play
+            if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: "chill", title: "", key: Date.now() }); else toast("Chill noted. Enjoy it.");
+          }
+          return;
+        }
         if (kind === "copy") { const text = T.planText(dayT, date, st.prefs); const fail = () => toast("Copying is not available in this browser"); try { navigator.clipboard.writeText(text).then(() => toast("Plan copied as text"), fail); } catch { fail(); } return; }
         if (kind === "deleteAll") { const rev = commit(all.filter((t) => t.date !== date), "deleting the whole day", "manual"); return toast(`Deleted ${dayT.length} item${dayT.length === 1 ? "" : "s"}`, () => undo(rev)); }
         if (kind === "clearDone") { const n = dayT.filter((t) => t.status === "completed").length; const rev = commit(all.filter((t) => !(t.date === date && t.status === "completed")), "clearing completed tasks", "manual"); return toast(`Cleared ${n} completed task${n === 1 ? "" : "s"}`, () => undo(rev)); }

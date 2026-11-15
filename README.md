@@ -42,6 +42,7 @@ Możesz też otworzyć `twoj-adres.vercel.app/api/plan`. Powinien pokazać JSON 
 ## Co doszło w wersji 8
 
 - **Chill zamiast czasu chronionego**: na końcu harmonogramu każdego dnia jest stały blok **Chill**, bez godziny i bez przedziału czasu. Ma przycisk "I took it", który zapamiętuje, że danego dnia się zrelaksowałeś. Wyłączysz go w Preferences ("Show Chill on every day").
+- **Animacja po "I took it"**: ekran przechodzi w nocne niebo, ten sam jaguar co w animacjach zadań galopuje susami na lewo, zwalnia, kładzie się, zwija w kłębek i powoli zamienia w księżyc. Do tego cichy dźwięk. Stuknięcie w ekran pomija animację, a wyłącza ją ten sam przełącznik animacji w Preferences.
 - Stare bloki "Chill evening" / "Chill" z godziną usuwają się same przy pierwszym uruchomieniu nowej wersji. Inne zarezerwowane bloki z godziną, jeśli jakieś masz, zostają i pokazują się w środku karty Chill z opcjami Edit i Remove.
 - Zniknęły przycisk "Protect time", pozycja w menu "⋯" i sugestia "Protect your evening".
 - Nowi użytkownicy od razu dostają układ z harmonogramem na górze.
