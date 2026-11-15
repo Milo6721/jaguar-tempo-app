@@ -3452,9 +3452,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
      function of time; the gallop keeps an even rhythm and eases out so the run ends exactly on a stride. */
   function chillScene(W, H) {
     const R = rng(4711); const s = clamp(Math.min(W * 0.8, H) / 320, 0.75, 2.4);
-    const T_RUN = 0.4, T_STOP = 3.9, T_CURL0 = 3.95, T_CURL1 = 6.0, T_MOON0 = 6.55, T_MOON1 = 8.6, END = 10.2;
+    const T_RUN = 0.4, T_STOP = 3.9, T_LIE0 = 3.95, T_CURL0 = 5.5, T_CURL1 = 7.1, T_MOON0 = 7.6, T_MOON1 = 9.6, END = 11.2;
     const groundY = H * 0.54; const startX = W + 120 * s; const endX = 88 * s + 30;
-    const dist = startX - endX; const strides = Math.max(2, Math.round(dist / (80 * s)));
+    const dist = startX - endX; const strides = Math.max(2, Math.round(dist / (96 * s))); // long bounds
     // an even gallop: the cadence ramps up, holds, then eases to a stop; the distance follows the cadence
     const env = (t) => (t <= T_RUN || t >= T_STOP ? 0 : Math.min(ease((t - T_RUN) / 0.4), ease((T_STOP - t) / 1.5)));
     const TBL = 480; const cum = new Float64Array(TBL + 1); for (let i = 1; i <= TBL; i++) { const ta = T_RUN + ((i - 0.5) / TBL) * (T_STOP - T_RUN); cum[i] = cum[i - 1] + env(ta); }
@@ -3464,19 +3464,26 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const L = 178, N = 72;
     const prof = (u) => u < 0.05 ? lerp(4.2, 8.2, u / 0.05) : u < 0.13 ? lerp(8.2, 9.4, (u - 0.05) / 0.08) : u < 0.19 ? lerp(9.4, 7.4, (u - 0.13) / 0.06) : u < 0.31 ? lerp(7.4, 13.2, (u - 0.19) / 0.12)
       : u < 0.47 ? lerp(13.2, 11.6, (u - 0.31) / 0.16) : u < 0.55 ? lerp(11.6, 12.6, (u - 0.47) / 0.08) : u < 0.63 ? lerp(12.6, 4.6, ease((u - 0.55) / 0.08)) : lerp(4.6, 1.5, (u - 0.63) / 0.37);
-    const headingRun = (u, arch, t, amp) => {
-      if (u < 0.2) return -0.3 + (u / 0.2) * 0.22; // the head, nose slightly down
-      if (u < 0.62) return -arch * (0.42 - u) / 0.2; // the back flexes with the stride
-      const v = (u - 0.62) / 0.38; return lerp(0.55, -0.85, v) + Math.sin(t * 3 + u * 7) * 0.22 * (0.4 + amp); // the tail droops, then lifts at the tip
+    const headingRun = (u, arch, t, amp, bob, rest, tailDown) => {
+      if (u < 0.2) return -0.3 + (u / 0.2) * 0.22 + bob - rest * 0.28; // the head: steady while it runs, lowered once it rests
+      if (u < 0.62) return -arch * (0.42 - u) / 0.2; // the back gathers and stretches with every bound
+      const v = (u - 0.62) / 0.38; const run = lerp(0.55, -0.85, v) + Math.sin(t * 3 + u * 7) * 0.22 * (0.4 + amp) - amp * 0.25 * v; // streams out behind at speed
+      const lying = lerp(0.42, -0.12, v) + Math.sin(t * 1.6 + u * 5) * 0.06; // then lies along the ground
+      return lerp(run, lying, tailDown);
     };
     // curled the way cats curl, seen from the side: the back is the top arc, the head rests at the front low down with
     // the nose tucked in, the haunch rounds off at the back and the tail runs along the bottom until its tip meets the nose
-    const LEGS = [ // far hind, far front, near hind, near front: gait offsets of a transverse gallop
-      { u: 0.56, l1: 19, l2: 21, w: [7.6, 4.5, 2.8], off: 0.0, front: false, dx: 3, lie: -4 },
-      { u: 0.27, l1: 18, l2: 19, w: [5.6, 3.9, 2.6], off: 0.46, front: true, dx: -2, lie: -16 },
-      { u: 0.54, l1: 19, l2: 21, w: [8.4, 5, 3], off: 0.12, front: false, dx: 3, lie: -7 },
-      { u: 0.29, l1: 18, l2: 19, w: [6, 4.2, 2.8], off: 0.58, front: true, dx: -2, lie: -20 },
+    const LEGS = [ // far hind, far front, near hind, near front: footfalls of a transverse gallop
+      { u: 0.56, l1: 20, l2: 22, w: [7.6, 4.5, 2.8], off: 0.0, front: false, dx: 3, lie: -6 },
+      { u: 0.27, l1: 19, l2: 20, w: [5.6, 3.9, 2.6], off: 0.45, front: true, dx: -2, lie: -17 },
+      { u: 0.54, l1: 20, l2: 22, w: [8.4, 5, 3], off: 0.1, front: false, dx: 3, lie: -9 },
+      { u: 0.29, l1: 19, l2: 20, w: [6, 4.2, 2.8], off: 0.55, front: true, dx: -2, lie: -21 },
     ];
+    // the flight of a paw between steps: lift off behind, fold, swing through, reach far forward, land (front) / push back, tuck, reach (hind)
+    const SWING = { front: [[14, -13], [-8, -17], [-25, -9]], hind: [[22, -9], [6, -16], [-12, -11]] };
+    const cr = (a, b, c2, d, t2) => { const t3 = t2 * t2 * t2, tt = t2 * t2; return 0.5 * (2 * b + (-a + c2) * t2 + (2 * a - 5 * b + 4 * c2 - d) * tt + (-a + 3 * b - 3 * c2 + d) * t3); };
+    const swingAt = (keys, w) => { const n = keys.length - 1; const f = Math.min(n - 1e-6, w * n); const i = Math.floor(f); const t2 = f - i; const g2 = (j) => keys[Math.max(0, Math.min(n, j))];
+      return [cr(g2(i - 1)[0], g2(i)[0], g2(i + 1)[0], g2(i + 2)[0], t2), cr(g2(i - 1)[1], g2(i)[1], g2(i + 1)[1], g2(i + 2)[1], t2)]; };
     const bone = (c, A, B, wa, wb) => { const dx = B[0] - A[0], dy = B[1] - A[1]; const d = Math.hypot(dx, dy) || 1; const nx = -dy / d, ny = dx / d; c.beginPath(); c.moveTo(A[0] + nx * wa, A[1] + ny * wa); c.lineTo(B[0] + nx * wb, B[1] + ny * wb); c.lineTo(B[0] - nx * wb, B[1] - ny * wb); c.lineTo(A[0] - nx * wa, A[1] - ny * wa); c.closePath(); c.fill(); };
     const RX = 27, RY = 27, BALL = 46; // round: the curled outline is a circle of radius BALL
     const curlPt = (u, x0, y0) => {
@@ -3485,23 +3492,27 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       return [x0 + Math.cos(ph) * RX * sc, y0 + Math.sin(ph) * RY * sc];
     };
     const pose = (t) => {
-      const p = prog(t); const x = lerp(startX, endX, p); const amp = env(t); const P = TAU * strides * p;
-      const g = 0.5 + 0.5 * amp * -Math.cos(P);
-      const cyc = strides * p; const lift = amp * (1 - Math.cos(TAU * (cyc - 0.4))) * 3.5; const tilt = amp * Math.sin(TAU * (cyc - 0.15)) * 0.05; const arch = (1 - g) * 0.28 * amp + 0.04;
-      const k = ease((t - T_CURL0) / (T_CURL1 - T_CURL0)); // lying down, then the curl
+      const p = prog(t); const x = lerp(startX, endX, p); const amp = env(t); const cyc = strides * p; const P = TAU * cyc;
+      // gallop: the back gathers (arches) while the hind legs swing under, and stretches while they push; the body
+      // rides highest in the suspension after the front paws push off
+      const arch = 0.05 + amp * 0.34 * Math.cos(TAU * (cyc - 0.88)); const lift = amp * 9 * (1 - Math.cos(TAU * (cyc - 0.4))) / 2;
+      const tilt = amp * 0.06 * Math.sin(TAU * (cyc - 0.2)); const bob = amp * 0.07 * Math.sin(TAU * (cyc - 0.05));
+      // lying down like a cat: the front goes down first (elbows to the ground), then the hindquarters, then the tail and head settle
+      const lieF = ease((t - T_LIE0) / 0.75), lieH = ease((t - T_LIE0 - 0.4) / 0.9), rest = ease((t - T_LIE0 - 0.7) / 0.8), tailDown = ease((t - T_LIE0 - 0.6) / 0.9);
+      const k = ease((t - T_CURL0) / (T_CURL1 - T_CURL0)); // the curl
       const run = []; let px = 0, py = 0; const ds = L / N;
-      for (let i = 0; i <= N; i++) { const a = headingRun(i / N, arch, t, amp) + tilt; run.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
+      for (let i = 0; i <= N; i++) { const a = headingRun(i / N, arch, t, amp, bob, rest, tailDown) + tilt; run.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
       const mid = run[Math.round(N * 0.42)]; const dx = x / s - mid[0], dy = -39 - lift - mid[1];
-      const down = ease(k / 0.35) * 15; // first it lies down
       const X0 = x / s + 2, Y0 = -BALL + 1; // where the ball will rest
       const pts = []; for (let i = 0; i <= N; i++) {
-        const u = i / N; const lead = 0.2 * Math.max(0, 1 - Math.abs(u - 0.375) * 2.6); // head and tail come round first, the shoulders last
-        const kk = ease(clamp((k - 0.22 - lead * 0.6) / (0.78 - lead * 0.6), 0, 1));
+        const u = i / N; const down = 16 * (u < 0.33 ? lieF : u > 0.5 ? lieH : lerp(lieF, lieH, (u - 0.33) / 0.17));
+        const lead = 0.2 * Math.max(0, 1 - Math.abs(u - 0.375) * 2.6); // head and tail come round first, the shoulders last
+        const kk = ease(clamp((k - lead * 0.5) / (1 - lead * 0.5), 0, 1));
         const r = [run[i][0] + dx, run[i][1] + dy + down]; const c2 = curlPt(u, X0, Y0);
         pts.push([lerp(r[0], c2[0], kk), lerp(r[1], c2[1], kk)]);
       }
       const th = pts.map((q, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(N, i + 1)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); });
-      return { pts, th, g: amp > 0 ? g : 0.5, k, amp, P, cyc, stride: dist / strides / s, down01: ease(k / 0.35), center: [X0, Y0] };
+      return { pts, th, g: 0.5, k, amp, P, cyc, stride: dist / strides / s, lieF, lieH, center: [X0, Y0] };
     };
     const outline = (ps) => {
       const up = [], dn = [];
@@ -3515,17 +3526,17 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       c.globalAlpha = alpha; c.fillStyle = fill;
       // Legs like a filmed animal: each paw is planted while the body passes over it (no sliding), then lifts in an arc and
       // lands ahead; the four legs keep a gallop order; the joints are solved from where the paw is, so they bend by themselves.
-      const la = 1 - ease((ps.k - 0.34) / 0.3); // under the body once it starts to curl
+      const la = 1 - ease((ps.k - 0.05) / 0.35); // the legs fold away under the body as it curls
       if (la > 0.01) {
         for (const Lg of LEGS) {
           const i = Math.round(Lg.u * N); const a = ps.th[i]; const root = [ps.pts[i][0] - Math.sin(a) * 3.5, ps.pts[i][1] + Math.cos(a) * 3.5];
-          const S = ps.stride * 0.26 * ps.amp; let rel = 0, py = 0;
+          const duty = 0.3; const S = ps.stride * duty * ps.amp; let rel = 0, py = 0;
           if (ps.amp > 0.001) {
-            const ph = (((ps.cyc + Lg.off) % 1) + 1) % 1; const duty = 0.42;
-            if (ph < duty) rel = lerp(-S / 2, S / 2, ph / duty); // planted: the body moves on, the paw stays
-            else { const w = (ph - duty) / (1 - duty); rel = lerp(S / 2, -S / 2, w * w * (3 - 2 * w)); py = -Math.sin(Math.PI * w) * (Lg.front ? 9 : 11) * ps.amp; }
+            const ph = (((ps.cyc + Lg.off) % 1) + 1) % 1;
+            if (ph < duty) rel = lerp(-S / 2, S / 2, ph / duty); // planted: the body travels over the paw, the paw does not slide
+            else { const w = (ph - duty) / (1 - duty); const keys = [[S / 2, 0], ...SWING[Lg.front ? "front" : "hind"].map(([a, b]) => [a * ps.amp, b * ps.amp]), [-S / 2, 0]]; [rel, py] = swingAt(keys, w); }
           }
-          rel = lerp(rel, Lg.lie, ps.down01); py = lerp(py, 0, ps.down01); // lying down: front paws forward under the chest, hind paws tucked in
+          const lie = Lg.front ? ps.lieF : ps.lieH; rel = lerp(rel, Lg.lie, lie); py = lerp(py, 0, lie); // front paws slide forward under the chest, hind legs fold
           const T = [root[0] + rel + Lg.dx, py];
           // two-bone IK, the joint bending back towards the tail like a cat's elbow and hock
           let dxv = T[0] - root[0], dyv = T[1] - root[1]; let d = Math.hypot(dxv, dyv); const reach = Lg.l1 + Lg.l2 - 0.5;
@@ -3556,7 +3567,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         c.beginPath(); smoothPath(c, dn.slice(0, Math.round(N * 0.16))); c.stroke(); c.restore(); }
       return { up, dn };
     };
-    return { duration: END, draw(c, t) {
+    return { duration: END, at: (t) => [lerp(startX, endX, prog(t)), groundY, s], draw(c, t) {
       c.setTransform(c._dpr || 1, 0, 0, c._dpr || 1, 0, 0); c.clearRect(0, 0, W, H);
       const out = t > END - 0.7 ? 1 - ease((t - (END - 0.7)) / 0.7) : 1; const inn = ease(t / 0.5);
       // the night sky
