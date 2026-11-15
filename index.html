@@ -1350,7 +1350,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    ===================================================================== */
 (function () {
   "use strict";
-  const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, hump, hash1, V, rgba, ell, bone, smoothPath } = C.util; const B = C.body;
+  const C = window.TempoChill; const { TAU, clamp, lerp, lerp2, span, smooth, hump, hash1, V, rgba, ell, bone, smoothPath } = C.util; const B = C.body;
 
   C.makeRenderer = function (run, T) {
     const legRoot = (ps, leg) => { const i = Math.round(leg.u * B.N); const a = ps.th[i]; return [ps.pts[i][0] - Math.sin(a) * 3.5, ps.pts[i][1] + Math.cos(a) * 3.5]; };
@@ -1361,7 +1361,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const root = legRoot(ps, leg); const off = C.pawOffset(leg, ps.cyc, ps.amp, ps.stride);
       const lie = leg.front ? ps.lieF : ps.lieH; // front paws slide forward under the chest, hind legs fold beneath the haunch
       const rel = lerp(off[0], leg.lie, lie), py = lerp(off[1], 0, lie);
-      const target0 = [root[0] + rel + leg.dx, py]; const target = [lerp(root[0], target0[0], keep), lerp(root[1], target0[1], keep)]; // folding: the whole leg draws up into the body
+      let target0 = [root[0] + rel + leg.dx, py];
+      if (ps.jump && ps.jump.w > 0) { // a leap: hind legs push off, front legs reach ahead, hind legs trail, then front and hind come down to land
+        const u = ps.jump.u; const land = smooth(span(u, leg.front ? 0.62 : 0.76, 1));
+        const air = leg.front ? [root[0] - 24 + leg.dx, root[1] + 25] : [root[0] + 27 + leg.dx, root[1] + 17];
+        const touch = leg.front ? [root[0] - 12 + leg.dx, 0] : [root[0] + 8 + leg.dx, 0];
+        let jt = lerp2(air, touch, land); if (!leg.front) jt = lerp2([root[0] + 16 + leg.dx, 0], jt, smooth(span(u, 0, 0.2)));
+        target0 = lerp2(target0, jt, ps.jump.w);
+      }
+      const target = [lerp(root[0], target0[0], keep), lerp(root[1], target0[1], keep)]; // folding: the whole leg draws up into the body
       const [knee, paw] = C.solveLeg(root, target, leg.l1 * keep, leg.l2 * keep);
       const ws = lerp(0.55, 1, keep); const [w0, w1, w2] = leg.w.map((w) => w * ws);
       c.fillStyle = fill; bone(c, root, knee, w0, w1); bone(c, knee, paw, w1, w2);
@@ -1543,6 +1551,342 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       pause() { playing = false; }, resume() { if (t >= scene.duration) t = 0; playing = true; }, toggle() { if (playing) this.pause(); else this.resume(); return playing; },
       seek(x) { t = clamp(x, 0, scene.duration); }, setSpeed(x) { speed = x; }, setDebug(b) { debug = !!b; build(); },
       time() { return t; }, duration() { return scene.duration; }, playing() { return playing; },
+      stop() { stopped = true; cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); },
+    };
+  };
+})();
+
+</script>
+<script>
+/* Tempo · celebration animations · built from celebration-animations/src by build.sh. Edit the sources, not this file. */
+/* =====================================================================
+   Tempo · celebration animations · scenery
+   Trees, palms, vines and small plants in the one-hue purple style,
+   used by the task scene and the day scene. Shared helpers come from
+   chill-animation/src/00-core.js (window.TempoChill.util).
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = (window.TempoScenes = window.TempoScenes || {});
+  const { TAU, lerp, ell } = window.TempoChill.util;
+
+  /* Trees that look like trees: a tapering trunk with roots and branches under a layered crown, or a palm. */
+  function tree(c, x, base, h, col, sway, kind) {
+    c.save(); c.translate(x, base); c.fillStyle = col; c.strokeStyle = col; c.lineCap = "round"; c.lineJoin = "round";
+    if (kind === 1) { // palm
+      const tx = h * 0.1 + sway * 14, ty = -h; c.lineWidth = Math.max(2, h * 0.045); c.beginPath(); c.moveTo(0, 2); c.quadraticCurveTo(h * 0.16, -h * 0.5, tx, ty); c.stroke();
+      for (let i = 0; i < 9; i++) { const a = -Math.PI + (i / 8) * Math.PI + sway * 0.35; const len = h * (0.36 + (i % 3) * 0.05); const ex = tx + Math.cos(a) * len, ey = ty + Math.sin(a) * len * 0.55 + len * 0.42; const mx = tx + Math.cos(a) * len * 0.55, my = ty + Math.sin(a) * len * 0.75 - len * 0.12;
+        c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(mx, my - len * 0.09, ex, ey); c.quadraticCurveTo(mx, my + len * 0.1, tx, ty); c.fill(); }
+      ell(c, tx, ty, h * 0.035, h * 0.035, col);
+    } else { // broadleaf
+      const w = Math.max(3, h * 0.07); c.beginPath(); c.moveTo(-w * 1.5, 2); c.quadraticCurveTo(-w * 0.55, -h * 0.08, -w * 0.42, -h * 0.5); c.lineTo(-w * 0.22, -h * 0.82); c.lineTo(w * 0.22, -h * 0.82); c.lineTo(w * 0.42, -h * 0.5); c.quadraticCurveTo(w * 0.55, -h * 0.08, w * 1.5, 2); c.closePath(); c.fill();
+      c.lineWidth = w * 0.42; c.beginPath(); c.moveTo(-w * 0.2, -h * 0.5); c.quadraticCurveTo(-h * 0.12, -h * 0.62, -h * 0.2, -h * 0.74); c.moveTo(w * 0.2, -h * 0.58); c.quadraticCurveTo(h * 0.13, -h * 0.68, h * 0.2, -h * 0.8); c.stroke();
+      for (const [dx, dy, r] of [[0, -0.92, 0.2], [-0.2, -0.82, 0.17], [0.21, -0.85, 0.17], [-0.1, -1.04, 0.15], [0.12, -1.06, 0.14], [-0.31, -0.72, 0.11], [0.32, -0.74, 0.11]]) ell(c, dx * h + sway * 10 * (-dy), dy * h, r * h * 1.15, r * h, col);
+    }
+    c.restore();
+  }
+  function vine(c, x, len, col, sway) { c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 1.4; c.lineCap = "round"; c.beginPath(); c.moveTo(x, -2); c.quadraticCurveTo(x + sway * 16, len * 0.5, x + sway * 26, len); c.stroke(); for (let i = 1; i <= 5; i++) { const t = i / 5.5; const px = x + sway * 26 * t * t + sway * 16 * 2 * t * (1 - t) * 0.5, py = len * t; ell(c, px + (i % 2 ? 4 : -4), py, 4.2, 1.9, col, i % 2 ? 0.5 : -0.5); } }
+  function plant(c, x, base, h, kind, sway, col) {
+    c.save(); c.translate(x, base); c.strokeStyle = col; c.fillStyle = col; c.lineCap = "round";
+    if (kind === 0) { c.lineWidth = 1.6; for (let k = -2; k <= 2; k++) { const a = k * 0.34 + sway; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(Math.sin(a) * h * 0.5, -h * 0.6, Math.sin(a) * h * 0.9, -h * (1 - Math.abs(k) * 0.14)); c.stroke(); } }
+    else if (kind === 1) { for (let k = -1; k <= 1; k++) { c.save(); c.rotate(k * 0.5 + sway); c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(h * 0.28, -h * 0.35, h * 0.18, -h * 0.85, 0, -h); c.bezierCurveTo(-h * 0.18, -h * 0.85, -h * 0.28, -h * 0.35, 0, 0); c.fill(); c.restore(); } }
+    else if (kind === 2) { c.lineWidth = 2; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(sway * 30, -h * 0.6, h * 0.25 + sway * 40, -h); c.stroke(); c.lineWidth = 1.3; for (let i = 1; i <= 7; i++) { const t = i / 8; const px = lerp(0, h * 0.25 + sway * 40, t * t), py = -h * t; c.beginPath(); c.moveTo(px, py); c.lineTo(px + h * 0.22 * (1 - t * 0.5), py + h * 0.1); c.moveTo(px, py); c.lineTo(px - h * 0.2 * (1 - t * 0.5), py + h * 0.12); c.stroke(); } }
+    else { c.lineWidth = 1.4; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo((k - 2) * 2, 0); c.quadraticCurveTo((k - 2) * 5 + sway * 14, -h * 0.6, (k - 2) * 8 + sway * 26, -h * (0.7 + (k % 2) * 0.3)); c.stroke(); } }
+    c.restore();
+  }
+
+  S.scenery = { tree, vine, plant };
+})();
+
+/* =====================================================================
+   Tempo · celebration animations · the jaguar rig
+   The same jaguar as the Chill animation (one spine, one outline, one
+   colour, legs with solved joints), posed for running and leaping.
+   TempoScenes.rig.pose(q) → a pose the shared renderer can draw.
+   TempoScenes.rig.draw(c, pose, fill, alpha) → draws it (with eye and back light).
+   Poses are in jaguar units, facing left, with the body's middle at x = 0
+   and the paws on y = 0. Mirror with c.scale(-1, 1) to face right.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = window.TempoScenes; const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, smoother } = C.util; const B = C.body;
+  const renderer = C.makeRenderer({}, { speed: 1 });
+
+  /**
+   * q: { t, cyc, amp, stride, jump: { w, u } (optional), extraLift, extraTilt, eyeShut }
+   *   cyc    stride count (from distance travelled, so paws stay planted)
+   *   amp    gallop strength 0..1 (0 = standing)
+   *   jump.w how much of a leap this is 0..1, jump.u progress through the leap 0..1
+   */
+  const pose = (q) => {
+    const amp = q.amp ?? 1; const cyc = q.cyc || 0; const t = q.t || 0; const jw = q.jump ? q.jump.w : 0, ju = q.jump ? q.jump.u : 0;
+    // gallop body motion (as in the Chill run)
+    let arch = 0.05 + amp * 0.34 * Math.cos(TAU * (cyc - 0.88));
+    let lift = amp * 9 * (1 - Math.cos(TAU * (cyc - 0.4))) / 2;
+    let tilt = amp * 0.06 * Math.sin(TAU * (cyc - 0.2));
+    const bob = amp * 0.07 * Math.sin(TAU * (cyc - 0.05)) * (1 - jw);
+    // the leap: crouch, push, stretch out in the air (nose up), gather and reach for the ground (nose down), absorb the landing
+    if (jw > 0) {
+      const crouch = Math.sin(Math.PI * span(ju, -0.12, 0.12)) * (ju < 0.12 ? 1 : 0);
+      const airArch = ju < 0.55 ? lerp(0.05, -0.24, smooth(span(ju, 0, 0.35))) : lerp(-0.24, 0.32, smooth(span(ju, 0.55, 1)));
+      const airLift = 46 * Math.sin(Math.PI * clamp(ju, 0, 1)) - crouch * 5 - Math.sin(Math.PI * span(ju, 0.88, 1.15)) * 6; // up, down, a soft compression on landing
+      const airTilt = lerp(0.24, -0.22, smoother(span(ju, 0.05, 0.95)));
+      arch = lerp(arch, airArch, jw); lift = lerp(lift, airLift, jw); tilt = lerp(tilt, airTilt, jw);
+    }
+    lift += q.extraLift || 0; tilt += q.extraTilt || 0;
+    const h = { arch, amp, bob, rest: 0, lookUp: 0, tailDown: 0, tailFlick: 0, t };
+    const raw = []; let px = 0, py = 0; const ds = B.L / B.N;
+    for (let i = 0; i <= B.N; i++) { const u = i / B.N; let a = B.heading(u, h) + tilt; if (u > B.TAIL) a -= jw * Math.sin(Math.PI * clamp(ju, 0, 1)) * 0.35 * ((u - B.TAIL) / (1 - B.TAIL)); raw.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
+    const mid = raw[Math.round(B.N * 0.42)]; const pts = raw.map(([x, y]) => [x - mid[0], y - mid[1] - 39 - lift]);
+    const th = pts.map((_, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(B.N, i + 1)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); });
+    return { t, x: 0, lift, pts, th, k: 0, fold: 0, amp: amp * (1 - jw), cyc, stride: q.stride || 96, lieF: 0, lieH: 0, rest: 0, breath: 1, eyeShut: q.eyeShut || 0, earFlick: 0, center: [0, 0], seam: 0, jump: jw > 0 ? { w: jw, u: ju } : null };
+  };
+
+  /** the jaguar's colour: lit from above, deeper underneath (one fill for the whole animal) */
+  const fur = (c) => { const g = c.createLinearGradient(0, -80, 0, 6); g.addColorStop(0, C.util.V.pale); g.addColorStop(0.5, C.util.V.bright); g.addColorStop(1, C.util.V.vivid); return g; };
+
+  const draw = (c, ps, fill, alpha) => { const body = renderer.jaguar(c, ps, fill || fur(c), alpha); renderer.eye(c, ps, alpha); renderer.backLight(c, body.up, alpha); return body; };
+
+  /** where the leading front paw is (local units) — the day scene aims it at the glass */
+  const frontPaw = (ps) => { const leg = C.LEGS[3]; const root = renderer.legRoot(ps, leg); return [root[0] - 24 + leg.dx, root[1] + 25]; };
+
+  S.rig = { pose, draw, fur, frontPaw };
+})();
+
+/* =====================================================================
+   Tempo · celebration animations · one task done
+   TempoScenes.task(W, H, title) → { duration, draw(c, t), at(t) }
+   The task's title holds for a beat, its letters lift and dissolve into
+   light while plants grow out of them; the camera eases into a run, the
+   jaguar gallops in, gathers, leaps a fallen trunk, lands and runs on.
+   The gallop is measured against the scrolling ground, so paws stay planted.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = window.TempoScenes; const C = window.TempoChill;
+  const { TAU, clamp, lerp, span, smooth, smoother, easeOut, easeIn, easeOutBack, hash1, rng, V, rgba, ell } = C.util;
+  const { tree, vine, plant } = S.scenery; const B = C.body;
+  const hashStr = (str) => { let h = 2166136261; for (const ch of String(str || "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+
+  S.task = function (W, H, title) {
+    const R = rng(hashStr(title) || 7); const ground = H - 24; const text = String(title || "Done").slice(0, 46); let letters = null;
+    const font = `700 ${Math.round(clamp(H * 0.085, 15, 26))}px "Plus Jakarta Sans", system-ui, sans-serif`;
+    const s = clamp(Math.min(H / 150, W / 300), 0.9, 2) * 0.86; // jaguar units → px
+    const span2 = W * 2.6; const wrap = (v) => ((v % span2) + span2) % span2 - W * 0.3;
+    const farTrees = Array.from({ length: 11 }, (_, i) => ({ x: (i / 11) * span2 + R() * 40, h: H * (0.7 + R() * 0.35), kind: R() > 0.72 ? 1 : 0, p: R() * TAU }));
+    const midTrees = Array.from({ length: 8 }, (_, i) => ({ x: (i / 8) * span2 + R() * 60, h: H * (0.95 + R() * 0.4), kind: R() > 0.6 ? 1 : 0, p: R() * TAU }));
+    const vines = Array.from({ length: 7 }, (_, i) => ({ x: (i / 7) * span2 + R() * 50, len: H * (0.25 + R() * 0.3), p: R() * TAU }));
+    const front = Array.from({ length: 13 }, (_, i) => ({ x: (i / 13) * span2 + R() * 30, h: 30 + R() * 36, k: Math.floor(R() * 4), p: R() * TAU }));
+    const motes = Array.from({ length: 22 }, () => ({ x: R() * W, y: R() * H * 0.8, p: R() * TAU, r: 0.8 + R() * 1.4 }));
+    const burst = Array.from({ length: 30 }, () => ({ a: -Math.PI * R(), v: 50 + R() * 150, r: 2 + R() * 3.5, sp: (R() - 0.5) * 9, col: R() > 0.5 ? V.soft : R() > 0.5 ? V.pale : V.bright }));
+    const T_IN = 1.0, T_LEAP = 2.3, T_LAND = 2.95, T_OUT = 3.15, T_END = 4.3;
+
+    // the camera eases into its pace (no jolt), then holds it
+    const camV = W * 0.42, RAMP = 0.7, CAM0 = T_IN - 0.25;
+    const cam = (t) => { if (t <= CAM0) return 0; const u = (t - CAM0) / RAMP; if (u < 1) return camV * RAMP * (u * u * u - (u * u * u * u) / 2); return camV * RAMP * 0.5 + camV * (t - CAM0 - RAMP); };
+    // the jaguar on screen: runs in, holds its place while the world scrolls, then runs out ahead of the camera
+    const jx = (t) => lerp(-130 * s, W * 0.36, easeOut(span(t, T_IN, T_IN + 0.85))) + easeIn(span(t, T_OUT, T_END - 0.15)) * W * 0.9;
+    const world = (t) => jx(t) + cam(t); const W0 = world(T_IN); const strideWorld = 96 * s;
+    const cycAt = (t) => Math.max(0, (world(t) - W0) / strideWorld);
+    const jumpAt = (t) => ({ w: smooth(span(t, T_LEAP - 0.14, T_LEAP + 0.02)) * (1 - smooth(span(t, T_LAND - 0.03, T_LAND + 0.18))), u: span(t, T_LEAP, T_LAND) });
+    const logWorld = world((T_LEAP + T_LAND) / 2);
+    const poseAt = (t) => S.rig.pose({ t, cyc: cycAt(t), amp: smooth(span(t, T_IN - 0.05, T_IN + 0.25)), stride: 96, jump: jumpAt(t) });
+    /** the moment the gallop reached stride count c (for footfall dust) */
+    const timeAtCycle = (cy) => { let lo = T_IN, hi = T_END; for (let i = 0; i < 32; i++) { const mid = (lo + hi) / 2; if (cycAt(mid) < cy) lo = mid; else hi = mid; } return (lo + hi) / 2; };
+
+    return { duration: T_END, at: (t) => [jx(t), ground + 5, s], draw(c, t) {
+      const dpr = c._dpr || 1; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+      const j = smooth(t / 0.75); const fade = 1 - smooth(span(t, T_END - 0.5, T_END)); const cm = cam(t); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * fade; };
+      A(j); const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.plum); bg.addColorStop(0.55, V.dusk); bg.addColorStop(1, V.night); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+      A(j * 0.5); const moon = c.createRadialGradient(W * 0.74, H * 0.2, 2, W * 0.74, H * 0.2, H * 0.75); moon.addColorStop(0, V.soft); moon.addColorStop(1, "rgba(167,139,250,0)"); c.fillStyle = moon; c.fillRect(0, 0, W, H);
+      // shafts of light, drifting with the far layer
+      A(j * 0.13); c.fillStyle = V.mist; for (let i = 0; i < 5; i++) { const sx = (((i * 0.27 + 0.05) * W - cm * 0.12 + Math.sin(t * 0.6 + i) * 8) % (W * 1.3) + W * 1.3) % (W * 1.3); c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx + 34, 0); c.lineTo(sx - 70, H); c.lineTo(sx - 120, H); c.fill(); }
+      A(j * 0.9); for (const tr of farTrees) tree(c, wrap(tr.x - cm * 0.22), ground + 4, tr.h, V.royal, Math.sin(t * 1.1 + tr.p) * 0.35, tr.kind);
+      A(j * 0.4); const haze = c.createLinearGradient(0, H * 0.35, 0, H); haze.addColorStop(0, "rgba(124,58,237,0)"); haze.addColorStop(1, V.vivid); c.fillStyle = haze; c.fillRect(0, H * 0.35, W, H);
+      A(j); for (const tr of midTrees) tree(c, wrap(tr.x - cm * 0.5), ground + 6, tr.h, V.deep, Math.sin(t * 1.4 + tr.p) * 0.5, tr.kind);
+      for (const v of vines) vine(c, wrap(v.x - cm * 0.5), v.len, V.dusk, Math.sin(t * 1.6 + v.p));
+      c.fillStyle = V.night; c.fillRect(0, ground + 6, W, H - ground);
+      A(j * 0.55); c.fillStyle = V.royal; c.fillRect(0, ground + 5, W, 1.5);
+      // ground pebbles at full camera speed, so the paws visibly grip the ground
+      A(j * 0.35); for (let i = 0; i < 26; i++) { const gx = (((i * 97.3 - cm) % (W + 40)) + W + 40) % (W + 40) - 20; ell(c, gx, ground + 9 + (i % 3) * 3, 1.4 + (i % 2), 0.9, V.plum); }
+      // the fallen trunk it leaps over
+      { const lx = logWorld - cm; const sc = s / 0.86; if (lx > -120 && lx < W + 120) { A(j); c.fillStyle = V.ink; c.beginPath(); c.moveTo(lx - 46 * sc, ground + 6); c.quadraticCurveTo(lx - 40 * sc, ground - 15 * sc, lx, ground - 16 * sc); c.quadraticCurveTo(lx + 40 * sc, ground - 15 * sc, lx + 48 * sc, ground + 6); c.fill(); c.strokeStyle = V.ink; c.lineWidth = 4 * sc; c.lineCap = "round"; c.beginPath(); c.moveTo(lx + 14 * sc, ground - 14 * sc); c.lineTo(lx + 30 * sc, ground - 34 * sc); c.moveTo(lx - 20 * sc, ground - 14 * sc); c.lineTo(lx - 28 * sc, ground - 27 * sc); c.stroke(); A(j * 0.5); c.strokeStyle = V.core; c.lineWidth = 1; c.beginPath(); c.moveTo(lx - 38 * sc, ground - 12 * sc); c.quadraticCurveTo(lx, ground - 18.5 * sc, lx + 40 * sc, ground - 12 * sc); c.stroke(); } }
+      // the letters of the task turn into plants
+      c.font = font; c.textBaseline = "alphabetic";
+      if (!letters) { letters = []; let x = Math.max(18, (W - c.measureText(text).width) / 2); for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
+      const baseY = Math.min(ground - 8, H * 0.46);
+      letters.forEach((L, i) => {
+        // the title holds for a beat, then a wave runs through it: each letter lifts, sways and dissolves into
+        // light while its plant grows out of the same spot and roots itself in the ground
+        const grow = easeOutBack((t - 0.5 - i * 0.04) / 0.9, 1.70158); const lw = 1 - smooth((t - 0.4 - i * 0.045) / 0.95);
+        if (L.ch.trim() && t > 0.5 + i * 0.04) { const y0 = lerp(baseY, ground + 6, smooth((t - 0.4) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3), y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
+        if (lw > 0 && L.ch.trim()) {
+          const rise = (1 - lw) * (1 - lw) * -26; const wob = Math.sin(t * 2.6 + L.p) * 3 * (1 - lw);
+          A(lw); c.fillStyle = V.glow; c.fillText(L.ch, L.x + wob, baseY + rise);
+          A(lw * 0.45); c.fillStyle = V.soft; c.fillText(L.ch, L.x + wob * 1.6, baseY + rise + 4);
+          if (lw < 0.55) { A((0.55 - lw) * 1.1); ell(c, L.x + L.w / 2 + wob, baseY + rise - 7, 1.6 + (1 - lw) * 2, 1.6 + (1 - lw) * 2, V.mist); }
+        }
+      });
+      // the jaguar
+      if (t > T_IN - 0.05 && t < T_END) {
+        const ps = poseAt(t); const x = jx(t); const gy = ground + 5;
+        // shadow: smaller and lighter while it is in the air
+        A(0.35 * (1 - Math.min(1, ps.lift / 60))); ell(c, x, gy + 1, 58 * s * (1 - Math.min(0.5, ps.lift / 100)), 3, V.ink);
+        // star dust where each paw lands
+        C.LEGS.forEach((leg, li) => {
+          const cyNow = cycAt(t);
+          for (let n = Math.floor(cyNow) - 2; n <= Math.floor(cyNow) + 1; n++) {
+            const c0 = n - leg.off; if (c0 < 0 || c0 > cyNow) continue; const tk = timeAtCycle(c0); const age = t - tk; if (age < 0 || age > 0.6 || jumpAt(tk).w > 0.3) continue;
+            const footW = world(tk) + s * (-(leg.u - 0.42) * B.L + 96 * C.DUTY * 0.5 - leg.dx); const fx = footW - cm; const life = age / 0.6;
+            for (let k = 0; k < 4; k++) { const h1 = hash1(n * 31 + li * 7 + k), h2 = hash1(n * 17 + li * 13 + k * 3); A((1 - life) * 0.6 * (0.5 + h2 * 0.5)); ell(c, fx - life * (10 + h2 * 16) * s, gy - life * (4 + h1 * 12) * s + life * life * 5 * s, (0.9 + h1 * 1.5) * s * 0.7, (0.9 + h1 * 1.5) * s * 0.7, h2 > 0.5 ? V.pale : V.mist); }
+          }
+        });
+        // a whisper of speed behind it
+        A(0.3 * (1 - jumpAt(t).w * 0.6)); c.strokeStyle = V.pale; c.lineWidth = 1.1; c.lineCap = "round"; for (let i = 0; i < 4; i++) { const sy = gy - (22 + i * 10) * s; const sx = x - (82 + i * 10 + ((t * 300 + i * 40) % 30)) * s; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - (18 + i * 6) * s, sy); c.stroke(); }
+        c.save(); c.translate(x, gy); c.scale(-s, s); S.rig.draw(c, ps, S.rig.fur(c), fade); c.restore();
+      }
+      // leaves kicked up where it lands
+      if (t >= T_LAND) { const u = t - T_LAND; const lx = world(T_LAND) - cm + 20 * s, ly = ground + 2; for (const p of burst) { const d = p.v * (1 - Math.exp(-u * 3)); A(1 - u / 1.0); c.save(); c.translate(lx + Math.cos(p.a) * d, ly + Math.sin(p.a) * d * 0.7 + u * u * 70); c.rotate(u * p.sp); ell(c, 0, 0, p.r * 1.7, p.r * 0.7, p.col); c.restore(); } }
+      // foreground: dark leaves rushing past
+      A(j); for (const f of front) plant(c, wrap(f.x - cm * 1.7), H + 6, f.h * 1.6 * (s / 0.86), f.k, Math.sin(t * 2.6 + f.p) * 0.12, V.ink);
+      for (const m of motes) { A(j * (0.35 + 0.4 * Math.sin(t * 3 + m.p))); ell(c, ((m.x - cm * 0.3 + Math.sin(t + m.p) * 8) % W + W) % W, m.y + Math.cos(t * 0.8 + m.p) * 6, m.r, m.r, V.mist); }
+      if (t > T_LAND + 0.25) { const u = easeOut((t - T_LAND - 0.25) / 0.45); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14; const fs = Math.round(clamp(H * 0.16, 22, 46)); c.font = `800 ${fs}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, H * 0.4 + (1 - u) * 8); c.font = `600 ${Math.round(clamp(H * 0.065, 13, 18))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(text, W / 2, H * 0.4 + fs * 0.72); c.shadowBlur = 0; c.textAlign = "start"; }
+      c.globalAlpha = 1;
+    } };
+  };
+})();
+
+/* =====================================================================
+   Tempo · celebration animations · the whole day done
+   TempoScenes.day(W, H, title) → { duration, draw(c, t) }
+   Out of the forest the jaguar gallops straight at you, growing with every
+   stride, gathers, leaps, hangs for a heartbeat and drives its front paw
+   into the screen: the glass cracks from the point it touched.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = window.TempoScenes; const C = window.TempoChill;
+  const { TAU, clamp, lerp, span, smooth, easeOut, easeIn, rng, V, ell } = C.util; const ease = smooth;
+  const { tree } = S.scenery;
+
+  S.day = function (W, H, title) {
+    const R = rng(4242); const cx = W / 2, cy = H * 0.52; const base = Math.min(W, H) * 0.2; const IMPACT = 3.05, END = 5.8; const ix = cx, iy = H * 0.42;
+    const trees = Array.from({ length: 16 }, (_, i) => ({ side: i % 2 ? 1 : -1, d: R(), kind: R() > 0.65 ? 1 : 0, p: R() * TAU }));
+    const motes = Array.from({ length: 34 }, () => ({ x: R() * W, y: R() * H, p: R() * TAU, r: 0.8 + R() * 1.6 }));
+    const leaves = Array.from({ length: 26 }, () => ({ a: R() * TAU, d: 0.2 + R() * 0.8, sp: (R() - 0.5) * 8, r: 3 + R() * 6 }));
+    // cracks: jagged rays from the point of impact, joined by broken rings
+    const reach = Math.hypot(W, H); const rays = []; const n = 15;
+    for (let i = 0; i < n; i++) { const a = (i / n) * TAU + (R() - 0.5) * 0.3; const pts = [[ix, iy]]; let r = 0, ang = a; while (r < reach) { r += 26 + R() * 70; ang += (R() - 0.5) * 0.22; pts.push([ix + Math.cos(ang) * r, iy + Math.sin(ang) * r]); } rays.push({ a, pts }); }
+    const branches = []; for (const ray of rays) for (let k = 2; k < ray.pts.length - 1; k += 2) { if (R() > 0.55) continue; const [bx, by] = ray.pts[k]; let ang = ray.a + (R() > 0.5 ? 1 : -1) * (0.5 + R() * 0.6); const pts = [[bx, by]]; let r = 0; const len = 40 + R() * 150; while (r < len) { r += 18 + R() * 34; ang += (R() - 0.5) * 0.3; pts.push([bx + Math.cos(ang) * r, by + Math.sin(ang) * r]); } branches.push(pts); }
+    const rings = [0.07, 0.16, 0.3].map((f) => { const rr = Math.min(W, H) * f; return rays.map((ray) => { const jr = rr * (0.85 + R() * 0.3); return [ix + Math.cos(ray.a) * jr, iy + Math.sin(ray.a) * jr, R() > 0.22]; }); });
+    const shards = Array.from({ length: 9 }, () => { const i = Math.floor(R() * n); const a = rings[1][i], b = rings[1][(i + 1) % n], c2 = rings[R() > 0.5 ? 0 : 2][i]; return { pts: [a, b, c2], al: 0.05 + R() * 0.1 }; });
+    const path = (c, pts, upTo) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); const m = Math.max(1, Math.floor((pts.length - 1) * upTo)); for (let i = 1; i <= m; i++) c.lineTo(pts[i][0], pts[i][1]); };
+    return { duration: END, draw(c, t) {
+      c.setTransform(c._dpr || 1, 0, 0, c._dpr || 1, 0, 0); c.clearRect(0, 0, W, H);
+      const out = t > END - 0.5 ? 1 - ease((t - (END - 0.5)) / 0.5) : 1; const inn = ease(t / 0.35); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * out * inn; };
+      const post = t - IMPACT; const shake = post > 0 ? Math.exp(-post * 6) * 16 : 0; if (shake > 0.2) c.translate(Math.sin(t * 90) * shake, Math.cos(t * 77) * shake);
+      A(1); const g = c.createRadialGradient(cx, cy - H * 0.05, 10, cx, cy, Math.max(W, H) * 0.78); g.addColorStop(0, V.core); g.addColorStop(0.3, V.royal); g.addColorStop(0.65, V.deep); g.addColorStop(1, V.ink); c.fillStyle = g; c.fillRect(-30, -30, W + 60, H + 60);
+      // the path it runs along, and bands of mist
+      A(0.4); c.fillStyle = V.vivid; c.beginPath(); c.moveTo(cx - W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.55, H + 30); c.lineTo(cx - W * 0.55, H + 30); c.fill();
+      for (let i = 0; i < 3; i++) { A(0.1); ell(c, cx + Math.sin(t * 0.5 + i * 2) * W * 0.12, cy + i * H * 0.07, W * (0.45 + i * 0.12), H * 0.035, V.pale); }
+      // trees rushing past on both sides
+      const run = t * (post > 0 ? 0.15 : 0.5); const order = trees.map((tr) => ({ tr, d: (tr.d + run) % 1 })).sort((a, b) => a.d - b.d);
+      for (const { tr, d } of order) { const px = cx + tr.side * (W * 0.07 + d * d * W * 0.66); const baseY = cy - H * 0.03 + d * d * H * 0.62; const th = H * (0.2 + d * 1.25); A(0.35 + d * 0.65); tree(c, px, baseY, th, d > 0.7 ? V.ink : d > 0.4 ? V.night : V.deep, Math.sin(t * 1.3 + tr.p) * 0.4, tr.kind); }
+      for (const m of motes) { A(0.3 + 0.4 * Math.sin(t * 3 + m.p)); ell(c, m.x + Math.sin(t + m.p) * 12, m.y + Math.cos(t * 0.7 + m.p) * 8, m.r, m.r, V.mist); }
+      // the jaguar: the same sleek runner, charging out of the forest and smashing the glass paw-first.
+      // Depth comes from exponential growth, motion ghosts, converging speed lines, a slow-motion hang
+      // and a final snap into the glass, so the crack is clearly ITS doing.
+      const LEAP = IMPACT - 0.55; const k0 = Math.min(W, H) / 400; const CAD = 2.3; // strides per second
+      const e1 = { s: k0 * 1.5 }; e1.x = cx - 12 * e1.s; e1.y = cy + H * 0.27;
+      // the charge: it gallops on its own rhythm while it grows towards you; then it leaps with the front paw reaching for the glass
+      const at = (tt) => {
+        if (tt < LEAP) { const k = easeIn(tt / LEAP); const s = k0 * lerp(0.26, 1.5, k); const ps = S.rig.pose({ t: tt, cyc: tt * CAD, amp: smooth(span(tt, 0, 0.3)), stride: 96 });
+          return { s, x: lerp(cx - W * 0.06, e1.x, tt / LEAP) + Math.sin(tt * 2.1) * W * 0.045 * (1 - k), y: lerp(cy + H * 0.005, e1.y, k), ps }; }
+        const u = clamp((tt - LEAP) / (IMPACT - LEAP), 0, 1); const k = u < 0.8 ? easeOut(u / 0.8) * 0.93 : 0.93 + 0.07 * (u - 0.8) / 0.2; // hang, then the snap
+        const s = k0 * lerp(1.5, 2.7, k);
+        const ps = S.rig.pose({ t: tt, cyc: LEAP * CAD, amp: 1, stride: 96, jump: { w: smooth(span(u, 0, 0.3)), u: lerp(0.06, 0.4, smooth(u)) } });
+        const start = at(LEAP - 1e-6); const p0 = S.rig.frontPaw(start.ps); const startPaw = [start.x - p0[0] * start.s, start.y + p0[1] * start.s];
+        const paw = S.rig.frontPaw(ps); const target = [lerp(startPaw[0], ix, k), lerp(startPaw[1], iy, k) - Math.sin(u * Math.PI) * H * 0.1];
+        return { s, x: target[0] + paw[0] * s, y: target[1] - paw[1] * s, ps };
+      };
+      let P0;
+      if (post >= 0) { const b = at(IMPACT); const fall = easeIn(post / 1.1); P0 = { ...b, x: b.x - fall * W * 0.22, y: b.y + fall * H * 1.6, ps: S.rig.pose({ t, cyc: LEAP * CAD, amp: 1, stride: 96, jump: { w: 1, u: 0.4 }, extraTilt: -post * 0.3 }) }; }
+      else P0 = at(t);
+      // converging speed lines while it charges, streaking harder through the leap
+      if (t > 0.9 && post < 0) { const k = ease((t - 0.9) / (LEAP - 0.9)) + (t > LEAP ? 0.5 * ease((t - LEAP) / 0.3) : 0); A(0.22 * Math.min(1.4, k)); c.strokeStyle = V.pale; c.lineCap = "round"; for (let i = 0; i < 12; i++) { const a2 = (i / 12) * TAU + 0.3; const R1 = Math.max(W, H) * (0.78 - ((t * 1.7 + i * 0.17) % 1) * 0.36); c.lineWidth = 1 + (i % 3); c.beginPath(); c.moveTo(cx + Math.cos(a2) * R1, cy + Math.sin(a2) * R1 * 0.8); c.lineTo(cx + Math.cos(a2) * (R1 + 70 + 50 * k), cy + Math.sin(a2) * (R1 + 70 + 50 * k) * 0.8); c.stroke(); } }
+      // a soft shadow on the path while it is still on the ground
+      if (t < LEAP + 0.2) { A(0.35 * (1 - smooth(span(t, LEAP - 0.1, LEAP + 0.2)))); ell(c, P0.x, P0.y + 2, 56 * P0.s, 3.5 * P0.s, V.ink); }
+      // the jaguar itself, facing right, in one colour
+      if (post < 1.3) { c.save(); c.globalAlpha = 1; c.translate(P0.x, P0.y); c.scale(-P0.s, P0.s); S.rig.draw(c, P0.ps, S.rig.fur(c), out * inn); c.restore(); }
+      if (t < LEAP) { A(0.45); for (let i = 0; i < 4; i++) { const k = (t * 2.8 + i * 0.25) % 1; ell(c, P0.x - (60 + k * 46) * P0.s, P0.y - 2 - k * 9 * P0.s, (3 + k * 9) * P0.s, (2 + k * 5) * P0.s, `rgba(196,181,253,${0.4 * (1 - k)})`); } }
+      if (post >= 0) {
+        // the paw that did it, pressed flat on the glass, and the shock running out of it
+        const pw = Math.min(W, H) * 0.15; const pa = clamp(1 - post / 0.55, 0, 1);
+        if (pa > 0) { A(pa * 0.95); c.save(); c.translate(ix, iy); c.rotate(-0.1); const pg = c.createRadialGradient(0, 0, pw * 0.2, 0, 0, pw * 1.5); pg.addColorStop(0, V.plum); pg.addColorStop(1, V.deep);
+          ell(c, 0, pw * 0.3, pw, pw * 0.82, pg); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.27, pw * 0.31, pg);
+          A(pa * 0.85); ell(c, 0, pw * 0.3, pw * 0.52, pw * 0.4, V.soft); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.13, pw * 0.15, V.soft); c.restore(); }
+        for (const d of [0, 0.14]) { const w = post - d; if (w > 0 && w < 0.55) { A((1 - w / 0.55) * 0.6); c.strokeStyle = V.glow; c.lineWidth = Math.max(1, 4 - w * 6); c.beginPath(); c.arc(ix, iy, easeOut(w / 0.55) * Math.min(W, H) * (0.5 + d * 1.6), 0, TAU); c.stroke(); } }
+      }
+      // leaves torn loose by the charge
+      if (t > 0.6 && post < 0.6) for (const l of leaves) { const k = ((t * 0.9 + l.d) % 1); const px = cx + Math.cos(l.a) * k * k * W * 0.6, py = cy + Math.sin(l.a) * k * k * H * 0.6; A(k * (1 - k) * 2.6); c.save(); c.translate(px, py); c.rotate(t * l.sp); ell(c, 0, 0, l.r * (0.5 + k), l.r * 0.4 * (0.5 + k), V.soft); c.restore(); }
+      // glass
+      if (post >= 0) {
+        const grow = easeOut(post / 0.28); const flash = Math.max(0, 1 - post / 0.16); if (flash > 0) { c.globalAlpha = out * flash * 0.9; c.fillStyle = V.glow; c.fillRect(-40, -40, W + 80, H + 80); }
+        c.globalAlpha = out * 0.5; const sheen = c.createLinearGradient(0, 0, W, H); sheen.addColorStop(0, "rgba(237,233,254,.12)"); sheen.addColorStop(0.5, "rgba(237,233,254,0)"); sheen.addColorStop(1, "rgba(237,233,254,.07)"); c.fillStyle = sheen; c.fillRect(0, 0, W, H);
+        for (const s of shards) { c.globalAlpha = out * grow * s.al * 4; c.fillStyle = "rgba(221,214,254,.3)"; c.beginPath(); c.moveTo(s.pts[0][0], s.pts[0][1]); c.lineTo(s.pts[1][0], s.pts[1][1]); c.lineTo(s.pts[2][0], s.pts[2][1]); c.fill(); }
+        const strokeAll = (dx, dy, col, w) => { c.save(); c.translate(dx, dy); c.strokeStyle = col; c.lineWidth = w; c.lineJoin = "miter"; c.lineCap = "round";
+          for (const ray of rays) { path(c, ray.pts, grow); c.stroke(); } for (const b of branches) { path(c, b, grow); c.stroke(); }
+          rings.forEach((ring, ri) => { if (grow < (ri + 1) / 4) return; for (let i = 0; i < ring.length; i++) { const a = ring[i], b = ring[(i + 1) % ring.length]; if (!a[2]) continue; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); } }); c.restore(); };
+        c.globalAlpha = out * 0.5; strokeAll(1.5, 1.5, V.ink, 2.2); c.globalAlpha = out * 0.95; strokeAll(0, 0, V.glow, 1.5); c.globalAlpha = out * 0.55; strokeAll(-0.8, -0.8, V.soft, 0.7);
+        c.globalAlpha = out * grow; const hole = c.createRadialGradient(ix, iy, 0, ix, iy, Math.min(W, H) * 0.06); hole.addColorStop(0, "rgba(245,243,255,.9)"); hole.addColorStop(1, "rgba(245,243,255,0)"); c.fillStyle = hole; c.fillRect(ix - 80, iy - 80, 160, 160);
+      }
+      if (t > IMPACT + 0.7) { const k = easeOut((t - IMPACT - 0.7) / 0.5); c.globalAlpha = out * k; c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 26; c.fillStyle = V.glow; c.font = `800 ${Math.round(clamp(W * 0.075, 30, 76))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillText("Sprint complete", cx, H * 0.86 + (1 - k) * 14); c.font = `600 ${Math.round(clamp(W * 0.026, 14, 22))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(title || "Every task for today is done.", cx, H * 0.86 + clamp(W * 0.045, 24, 44)); c.shadowBlur = 0; c.textAlign = "start"; }
+      c.globalAlpha = 1;
+    } };
+  };
+})();
+
+/* =====================================================================
+   Tempo · celebration animations · player
+   TempoScenes.play(canvas, { kind: "task" | "day" | "chill", title, stage, onFrame, onDone })
+   Plays any of the three scenes on a canvas at the screen's pixel density.
+   "stage" (task scene only) draws it on a centred card, the way Tempo
+   shows it after a task is ticked off; otherwise it fills the canvas.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const S = window.TempoScenes; const { clamp } = window.TempoChill.util;
+
+  S.make = (kind, W, H, title) => (kind === "day" ? S.day(W, H, title) : kind === "chill" ? window.TempoChill.scene(W, H) : S.task(W, H, title));
+
+  S.play = function (canvas, opts = {}) {
+    const ctx = canvas.getContext("2d"); let kind = opts.kind || "task", title = opts.title || "Quarterly report for the client";
+    let scene = null, W = 0, H = 0, dpr = 1, t = 0, last = 0, playing = true, speed = 1, raf = 0, stopped = false, box = null;
+    const build = () => {
+      const r = canvas.getBoundingClientRect(); const CW = Math.max(1, Math.round(r.width)), CH = Math.max(1, Math.round(r.height));
+      dpr = Math.min(2, window.devicePixelRatio || 1); if (CW * CH * dpr * dpr > 3200000) dpr = Math.max(1, Math.sqrt(3200000 / (CW * CH)));
+      canvas.width = Math.round(CW * dpr); canvas.height = Math.round(CH * dpr);
+      // the task scene plays on a card, like in the app; the others fill the screen
+      box = kind === "task" && opts.stage !== false ? { w: Math.min(760, CW - 32), h: Math.round(Math.max(210, Math.min(340, CH * 0.42))) } : { w: CW, h: CH };
+      box.x = Math.round((CW - box.w) / 2); box.y = Math.round((CH - box.h) / 2); W = CW; H = CH;
+      scene = S.make(kind, box.w, box.h, title);
+    };
+    const frame = (now) => {
+      if (stopped) return; const dt = last ? Math.min(0.1, (now - last) / 1000) : 0; last = now;
+      if (playing) t += dt * speed; if (t >= scene.duration) { t = scene.duration; playing = false; if (opts.onDone) opts.onDone(); }
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#0B0418"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save(); ctx.translate(box.x * dpr, box.y * dpr); ctx.beginPath(); ctx.rect(0, 0, box.w * dpr, box.h * dpr); ctx.clip();
+      // scenes set their own transform from c._dpr, so give them a context whose origin is the box
+      const off = ctx; off._dpr = dpr; const st = off.setTransform.bind(off); const bx = box.x * dpr, by = box.y * dpr;
+      off.setTransform = (a, b, c2, d, e, f) => st(a, b, c2, d, e + bx, f + by);
+      try { scene.draw(off, t); } finally { off.setTransform = st; ctx.restore(); }
+      if (opts.onFrame) opts.onFrame(t, scene.duration); raf = requestAnimationFrame(frame);
+    };
+    build(); const onResize = () => build(); window.addEventListener("resize", onResize); raf = requestAnimationFrame(frame);
+    return {
+      pause() { playing = false; }, resume() { if (t >= scene.duration) t = 0; playing = true; }, toggle() { if (playing) this.pause(); else this.resume(); return playing; },
+      seek(x) { t = clamp(x, 0, scene.duration); }, setSpeed(x) { speed = x; }, time() { return t; }, duration() { return scene.duration; }, playing() { return playing; },
+      setKind(k) { kind = k; t = 0; playing = true; build(); }, setTitle(x) { title = x || "Done"; t = 0; build(); },
       stop() { stopped = true; cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); },
     };
   };
@@ -3781,212 +4125,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   /* One hue. Shades from near-black violet to pale lilac. */
   const V = { ink: "#0B0418", night: "#150A2E", deep: "#1E0F45", dusk: "#2A1563", plum: "#3B1D80", royal: "#4C1D95", core: "#6D28D9", vivid: "#7C3AED", bright: "#8B5CF6", soft: "#A78BFA", pale: "#C4B5FD", mist: "#DDD6FE", glow: "#F5F3FF" };
 
-  /* A tapered limb: joint, knee, paw. Angles are measured from straight down, positive towards the head. */
-  function limb(c, x0, y0, a1, l1, a2, l2, w0, w1, w2, col) {
-    const kx = x0 + Math.sin(a1) * l1, ky = y0 + Math.cos(a1) * l1; const fx = kx + Math.sin(a2) * l2, fy = ky + Math.cos(a2) * l2;
-    const seg = (ax, ay, bx, by, wa, wb) => { const dx = bx - ax, dy = by - ay; const d = Math.hypot(dx, dy) || 1; const nx = -dy / d, ny = dx / d; c.beginPath(); c.moveTo(ax + nx * wa, ay + ny * wa); c.lineTo(bx + nx * wb, by + ny * wb); c.lineTo(bx - nx * wb, by - ny * wb); c.lineTo(ax - nx * wa, ay - ny * wa); c.closePath(); c.fill(); };
-    c.fillStyle = col; seg(x0, y0, kx, ky, w0, w1); seg(kx, ky, fx, fy, w1, w2); ell(c, x0, y0, w0, w0, col); ell(c, kx, ky, w1, w1, col);
-    c.save(); c.translate(fx, fy); c.rotate(-a2 * 0.35); ell(c, w2 * 1.1, 0, w2 * 2.1, w2 * 1.05, col); c.restore();
-  }
-
-  /* The jaguar from the side: one flowing silhouette, long tail, no markings. (x, y) is where the paws touch the ground. */
-  function drawJaguar(c, o) {
-    const { x, y, s, phase } = o; const leap = o.leap || 0; const P = phase * TAU;
-    const g = leap ? 1 : (1 - Math.cos(P)) / 2; // 0 = gathered under the body, 1 = fully stretched
-    const air = leap ? 0 : (1 - Math.cos(P)) * 2.5; // smooth: no kink at take-off and landing
-    c.save(); c.translate(x, y); c.scale(s, s);
-    if (!leap) { c.globalAlpha *= 0.3; ell(c, 4, 1, 46 + g * 10, 3.2, V.ink); c.globalAlpha /= 0.3; }
-    c.rotate(o.tilt || 0); c.translate(0, -35 - air);
-    const arch = (1 - g) * 7, tuck = (1 - g) * 4; const far = o.far || V.core, near = o.near || V.bright;
-    const fill = c.createLinearGradient(0, -30, 0, 14); fill.addColorStop(0, o.top || V.pale); fill.addColorStop(0.55, near); fill.addColorStop(1, o.belly || V.vivid);
-    const fa = lerp(-0.8, 1.05, g), fb = lerp(0.6, 1.25, g), ha = lerp(0.95, -1.0, g), hb = lerp(-0.25, -1.35, g);
-    // far legs
-    limb(c, 27, 2, fa - 0.2, 17, fb - 0.22, 17, 5.4, 3.8, 2.5, far); limb(c, -33, 0, ha + 0.2, 18, hb + 0.22, 19, 7.5, 4.4, 2.7, far);
-    // tail: long, tapering, with a lazy wave and an upturned tip
-    { const bx = -45, by = -7; const c1x = -64, c1y = -1 + Math.sin(P) * 3, c2x = -84, c2y = 2 + Math.sin(P + 1) * 5, ex = -98 - g * 4, ey = -16 + Math.sin(P + 2) * 7 - leap * 6; c.lineCap = "round"; c.strokeStyle = fill; let px = bx, py = by; // the tail shares the body's colour: one animal, one shape
-      for (let i = 1; i <= 18; i++) { const t = i / 18, m = 1 - t; const qx = m * m * m * bx + 3 * m * m * t * c1x + 3 * m * t * t * c2x + t * t * t * ex, qy = m * m * m * by + 3 * m * m * t * c1y + 3 * m * t * t * c2y + t * t * t * ey; c.lineWidth = lerp(6, 1.8, t); c.beginPath(); c.moveTo(px, py); c.lineTo(qx, qy); c.stroke(); px = qx; py = qy; } }
-    // body, neck and head as one shape
-    c.beginPath(); c.moveTo(-46, -6);
-    c.bezierCurveTo(-27, -18 - arch, -6, -19 - arch, 17, -16);
-    c.bezierCurveTo(29, -15, 38, -19, 46, -23);
-    c.lineTo(48.5, -30.5); c.quadraticCurveTo(51, -27, 54.5, -25.5);
-    c.bezierCurveTo(61, -26, 68, -21.5, 72.5, -15.5);
-    c.quadraticCurveTo(74.5, -13, 73.5, -10.5);
-    c.bezierCurveTo(70, -6.5, 64, -5.5, 58, -6.5);
-    c.bezierCurveTo(52, -4, 46, 3, 40, 8.5);
-    c.bezierCurveTo(30, 14, 10, 8 - tuck, -8, 6 - tuck);
-    c.bezierCurveTo(-22, 5, -34, 11, -42, 6.5);
-    c.bezierCurveTo(-50, 2.5, -50.5, -3.5, -46, -6); c.closePath(); c.fillStyle = fill; c.fill();
-    // a line of light along the back, and a single slit of an eye
-    c.strokeStyle = o.rim || V.glow; c.globalAlpha *= 0.55; c.lineWidth = 1.1; c.beginPath(); c.moveTo(-42, -8); c.bezierCurveTo(-26, -19 - arch, -6, -20 - arch, 17, -17); c.bezierCurveTo(29, -16, 38, -20, 46, -24); c.stroke(); c.globalAlpha /= 0.55;
-    ell(c, 62.5, -17.5, 2.4, 0.9, V.night, -0.25);
-    // near legs
-    limb(c, 30, 3, fa, 17, fb, 17, 6, 4.2, 2.8, near); limb(c, -30, 1, ha, 18, hb, 19, 8.6, 5, 3, near);
-    c.restore();
-  }
-
-  /* Trees that look like trees: a tapering trunk with roots and branches under a layered crown, or a palm. */
-  function tree(c, x, base, h, col, sway, kind) {
-    c.save(); c.translate(x, base); c.fillStyle = col; c.strokeStyle = col; c.lineCap = "round"; c.lineJoin = "round";
-    if (kind === 1) { // palm
-      const tx = h * 0.1 + sway * 14, ty = -h; c.lineWidth = Math.max(2, h * 0.045); c.beginPath(); c.moveTo(0, 2); c.quadraticCurveTo(h * 0.16, -h * 0.5, tx, ty); c.stroke();
-      for (let i = 0; i < 9; i++) { const a = -Math.PI + (i / 8) * Math.PI + sway * 0.35; const len = h * (0.36 + (i % 3) * 0.05); const ex = tx + Math.cos(a) * len, ey = ty + Math.sin(a) * len * 0.55 + len * 0.42; const mx = tx + Math.cos(a) * len * 0.55, my = ty + Math.sin(a) * len * 0.75 - len * 0.12;
-        c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(mx, my - len * 0.09, ex, ey); c.quadraticCurveTo(mx, my + len * 0.1, tx, ty); c.fill(); }
-      ell(c, tx, ty, h * 0.035, h * 0.035, col);
-    } else { // broadleaf
-      const w = Math.max(3, h * 0.07); c.beginPath(); c.moveTo(-w * 1.5, 2); c.quadraticCurveTo(-w * 0.55, -h * 0.08, -w * 0.42, -h * 0.5); c.lineTo(-w * 0.22, -h * 0.82); c.lineTo(w * 0.22, -h * 0.82); c.lineTo(w * 0.42, -h * 0.5); c.quadraticCurveTo(w * 0.55, -h * 0.08, w * 1.5, 2); c.closePath(); c.fill();
-      c.lineWidth = w * 0.42; c.beginPath(); c.moveTo(-w * 0.2, -h * 0.5); c.quadraticCurveTo(-h * 0.12, -h * 0.62, -h * 0.2, -h * 0.74); c.moveTo(w * 0.2, -h * 0.58); c.quadraticCurveTo(h * 0.13, -h * 0.68, h * 0.2, -h * 0.8); c.stroke();
-      for (const [dx, dy, r] of [[0, -0.92, 0.2], [-0.2, -0.82, 0.17], [0.21, -0.85, 0.17], [-0.1, -1.04, 0.15], [0.12, -1.06, 0.14], [-0.31, -0.72, 0.11], [0.32, -0.74, 0.11]]) ell(c, dx * h + sway * 10 * (-dy), dy * h, r * h * 1.15, r * h, col);
-    }
-    c.restore();
-  }
-  function vine(c, x, len, col, sway) { c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 1.4; c.lineCap = "round"; c.beginPath(); c.moveTo(x, -2); c.quadraticCurveTo(x + sway * 16, len * 0.5, x + sway * 26, len); c.stroke(); for (let i = 1; i <= 5; i++) { const t = i / 5.5; const px = x + sway * 26 * t * t + sway * 16 * 2 * t * (1 - t) * 0.5, py = len * t; ell(c, px + (i % 2 ? 4 : -4), py, 4.2, 1.9, col, i % 2 ? 0.5 : -0.5); } }
-  function plant(c, x, base, h, kind, sway, col) {
-    c.save(); c.translate(x, base); c.strokeStyle = col; c.fillStyle = col; c.lineCap = "round";
-    if (kind === 0) { c.lineWidth = 1.6; for (let k = -2; k <= 2; k++) { const a = k * 0.34 + sway; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(Math.sin(a) * h * 0.5, -h * 0.6, Math.sin(a) * h * 0.9, -h * (1 - Math.abs(k) * 0.14)); c.stroke(); } }
-    else if (kind === 1) { for (let k = -1; k <= 1; k++) { c.save(); c.rotate(k * 0.5 + sway); c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(h * 0.28, -h * 0.35, h * 0.18, -h * 0.85, 0, -h); c.bezierCurveTo(-h * 0.18, -h * 0.85, -h * 0.28, -h * 0.35, 0, 0); c.fill(); c.restore(); } }
-    else if (kind === 2) { c.lineWidth = 2; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(sway * 30, -h * 0.6, h * 0.25 + sway * 40, -h); c.stroke(); c.lineWidth = 1.3; for (let i = 1; i <= 7; i++) { const t = i / 8; const px = lerp(0, h * 0.25 + sway * 40, t * t), py = -h * t; c.beginPath(); c.moveTo(px, py); c.lineTo(px + h * 0.22 * (1 - t * 0.5), py + h * 0.1); c.moveTo(px, py); c.lineTo(px - h * 0.2 * (1 - t * 0.5), py + h * 0.12); c.stroke(); } }
-    else { c.lineWidth = 1.4; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo((k - 2) * 2, 0); c.quadraticCurveTo((k - 2) * 5 + sway * 14, -h * 0.6, (k - 2) * 8 + sway * 26, -h * (0.7 + (k % 2) * 0.3)); c.stroke(); } }
-    c.restore();
-  }
-
-  /* Scene A (one task done): the task's letters grow into a jungle and the jaguar runs through it and leaps. */
-  function taskScene(W, H, title) {
-    const R = rng(T.hash(title) || 7); const ground = H - 24; const text = String(title || "Done").slice(0, 46); let letters = null;
-    const font = `700 ${Math.round(clamp(H * 0.085, 15, 26))}px "Plus Jakarta Sans", system-ui, sans-serif`; const sc = clamp(Math.min(H / 150, W / 300), 0.9, 2);
-    const span = W * 2.6; const wrap = (v) => ((v % span) + span) % span - W * 0.3;
-    const farTrees = Array.from({ length: 11 }, (_, i) => ({ x: (i / 11) * span + R() * 40, h: H * (0.7 + R() * 0.35), kind: R() > 0.72 ? 1 : 0, p: R() * TAU }));
-    const midTrees = Array.from({ length: 8 }, (_, i) => ({ x: (i / 8) * span + R() * 60, h: H * (0.95 + R() * 0.4), kind: R() > 0.6 ? 1 : 0, p: R() * TAU }));
-    const vines = Array.from({ length: 7 }, (_, i) => ({ x: (i / 7) * span + R() * 50, len: H * (0.25 + R() * 0.3), p: R() * TAU }));
-    const front = Array.from({ length: 13 }, (_, i) => ({ x: (i / 13) * span + R() * 30, h: 30 + R() * 36, k: Math.floor(R() * 4), p: R() * TAU }));
-    const motes = Array.from({ length: 22 }, () => ({ x: R() * W, y: R() * H * 0.8, p: R() * TAU, r: 0.8 + R() * 1.4 }));
-    const burst = Array.from({ length: 30 }, () => ({ a: -Math.PI * R(), v: 50 + R() * 150, r: 2 + R() * 3.5, sp: (R() - 0.5) * 9, col: R() > 0.5 ? V.soft : R() > 0.5 ? V.pale : V.bright }));
-    const T_IN = 1.0, T_LEAP = 2.3, T_LAND = 2.95, T_END = 4.3;
-    const cam = (t) => (t < T_IN ? 0 : (t - T_IN) * W * 0.42);
-    const jagX = (t) => (t < T_IN + 0.75 ? lerp(-110 * sc, W * 0.36, easeOut((t - T_IN) / 0.75)) : t < T_LAND ? W * 0.36 + (t - T_IN - 0.75) * W * 0.07 : W * 0.36 + (T_LAND - T_IN - 0.75) * W * 0.07 + easeIn((t - T_LAND) / 0.7) * W * 0.9);
-    const logX = jagX((T_LEAP + T_LAND) / 2) + cam((T_LEAP + T_LAND) / 2); // world position of the fallen trunk it clears
-    return { duration: T_END, draw(c, t) {
-      c.clearRect(0, 0, W, H);
-      const j = ease(t / 0.75); const fade = t > T_END - 0.5 ? 1 - ease((t - (T_END - 0.5)) / 0.5) : 1; const cm = cam(t); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * fade; };
-      A(j); const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.plum); bg.addColorStop(0.55, V.dusk); bg.addColorStop(1, V.night); c.fillStyle = bg; c.fillRect(0, 0, W, H);
-      A(j * 0.5); const moon = c.createRadialGradient(W * 0.74, H * 0.2, 2, W * 0.74, H * 0.2, H * 0.75); moon.addColorStop(0, V.soft); moon.addColorStop(1, "rgba(167,139,250,0)"); c.fillStyle = moon; c.fillRect(0, 0, W, H);
-      // shafts of light, drifting
-      A(j * 0.13); c.fillStyle = V.mist; for (let i = 0; i < 5; i++) { const sx = (((i * 0.27 + 0.05) * W - cm * 0.12 + Math.sin(t * 0.6 + i) * 8) % (W * 1.3) + W * 1.3) % (W * 1.3); c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx + 34, 0); c.lineTo(sx - 70, H); c.lineTo(sx - 120, H); c.fill(); }
-      A(j * 0.9); for (const tr of farTrees) tree(c, wrap(tr.x - cm * 0.22), ground + 4, tr.h, V.royal, Math.sin(t * 1.1 + tr.p) * 0.35, tr.kind);
-      A(j * 0.4); const haze = c.createLinearGradient(0, H * 0.35, 0, H); haze.addColorStop(0, "rgba(124,58,237,0)"); haze.addColorStop(1, V.vivid); c.fillStyle = haze; c.fillRect(0, H * 0.35, W, H);
-      A(j); for (const tr of midTrees) tree(c, wrap(tr.x - cm * 0.5), ground + 6, tr.h, V.deep, Math.sin(t * 1.4 + tr.p) * 0.5, tr.kind);
-      for (const v of vines) vine(c, wrap(v.x - cm * 0.5), v.len, V.dusk, Math.sin(t * 1.6 + v.p));
-      c.fillStyle = V.night; c.fillRect(0, ground + 6, W, H - ground);
-      A(j * 0.55); c.fillStyle = V.royal; c.fillRect(0, ground + 5, W, 1.5);
-      // the fallen trunk it leaps over
-      { const lx = logX - cm; if (lx > -120 && lx < W + 120) { A(j); c.fillStyle = V.ink; c.beginPath(); c.moveTo(lx - 46 * sc, ground + 6); c.quadraticCurveTo(lx - 40 * sc, ground - 15 * sc, lx, ground - 16 * sc); c.quadraticCurveTo(lx + 40 * sc, ground - 15 * sc, lx + 48 * sc, ground + 6); c.fill(); c.strokeStyle = V.ink; c.lineWidth = 4 * sc; c.lineCap = "round"; c.beginPath(); c.moveTo(lx + 14 * sc, ground - 14 * sc); c.lineTo(lx + 30 * sc, ground - 34 * sc); c.moveTo(lx - 20 * sc, ground - 14 * sc); c.lineTo(lx - 28 * sc, ground - 27 * sc); c.stroke(); A(j * 0.5); c.strokeStyle = V.core; c.lineWidth = 1; c.beginPath(); c.moveTo(lx - 38 * sc, ground - 12 * sc); c.quadraticCurveTo(lx, ground - 18.5 * sc, lx + 40 * sc, ground - 12 * sc); c.stroke(); } }
-      // the letters of the task turn into plants
-      c.font = font; c.textBaseline = "alphabetic";
-      if (!letters) { letters = []; let x = Math.max(18, (W - c.measureText(text).width) / 2); for (const ch of text) { const w = c.measureText(ch).width; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: 24 + R() * (H * 0.4), tone: R(), p: R() * TAU }); x += w; } }
-      const baseY = Math.min(ground - 8, H * 0.46);
-      letters.forEach((L, i) => {
-        // the title holds for a beat, then a wave runs through it: each letter lifts, sways and
-        // dissolves into light while its plant grows out of the same spot and roots itself in the ground
-        const grow = easeBack((t - 0.5 - i * 0.04) / 0.9); const lw = 1 - ease((t - 0.4 - i * 0.045) / 0.95);
-        if (L.ch.trim() && grow > 0) { const y0 = lerp(baseY, ground + 6, ease((t - 0.4) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3) , y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
-        if (lw > 0 && L.ch.trim()) {
-          const rise = (1 - lw) * (1 - lw) * -26; const wob = Math.sin(t * 2.6 + L.p) * 3 * (1 - lw);
-          A(lw); c.fillStyle = V.glow; c.fillText(L.ch, L.x + wob, baseY + rise);
-          A(lw * 0.45); c.fillStyle = V.soft; c.fillText(L.ch, L.x + wob * 1.6, baseY + rise + 4); // a soft echo trailing behind
-          if (lw < 0.55) { A((0.55 - lw) * 1.1); ell(c, L.x + L.w / 2 + wob, baseY + rise - 7, 1.6 + (1 - lw) * 2, 1.6 + (1 - lw) * 2, V.mist); } // and it ends as a mote of light
-        }
-      });
-      A(1);
-      // the jaguar
-      if (t > T_IN && t < T_END - 0.3) {
-        const x = jagX(t); const gy = ground + 5;
-        if (t >= T_LEAP && t < T_LAND) { const u = (t - T_LEAP) / (T_LAND - T_LEAP); drawJaguar(c, { x, y: gy - Math.sin(u * Math.PI) * 46 * sc, s: sc, phase: 0, leap: 1, tilt: lerp(-0.34, 0.3, ease(u)) }); A(0.3 * (1 - Math.abs(u - 0.5) * 2)); ell(c, x, gy + 1, 30 * sc, 2.6, V.ink); A(1); }
-        else drawJaguar(c, { x, y: gy, s: sc, phase: t * 2.7 });
-        // dust at the paws and a trail of speed
-        A(0.5); for (let i = 0; i < 4; i++) { const k = ((t * 2.7 + i * 0.25) % 1); ell(c, x - 40 * sc - k * 46 * sc, gy - 2 - k * 9, (3 + k * 9) * sc, (2 + k * 5) * sc, `rgba(196,181,253,${0.4 * (1 - k)})`); }
-        A(0.45); c.strokeStyle = V.pale; c.lineWidth = 1.2; c.lineCap = "round"; for (let i = 0; i < 4; i++) { const sy = gy - (20 + i * 9) * sc; const sx = x - (70 + i * 10 + ((t * 300 + i * 40) % 30)) * sc; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - (18 + i * 6) * sc, sy); c.stroke(); }
-      }
-      // leaves kicked up on landing
-      if (t >= T_LAND) { const u = t - T_LAND; const cx = jagX(T_LAND) - (cam(t) - cam(T_LAND)), cy = ground + 2; for (const p of burst) { const d = p.v * (1 - Math.exp(-u * 3)); A(1 - u / 1.0); c.save(); c.translate(cx + Math.cos(p.a) * d, cy + Math.sin(p.a) * d * 0.7 + u * u * 70); c.rotate(u * p.sp); ell(c, 0, 0, p.r * 1.7, p.r * 0.7, p.col); c.restore(); } }
-      // foreground: dark leaves rushing past
-      A(j); for (const f of front) plant(c, wrap(f.x - cm * 1.7), H + 6, f.h * 1.6 * sc, f.k, Math.sin(t * 2.6 + f.p) * 0.12, V.ink);
-      for (const m of motes) { A(j * (0.35 + 0.4 * Math.sin(t * 3 + m.p))); ell(c, ((m.x - cm * 0.3 + Math.sin(t + m.p) * 8) % W + W) % W, m.y + Math.cos(t * 0.8 + m.p) * 6, m.r, m.r, V.mist); }
-      if (t > T_LAND + 0.25) { const u = easeOut((t - T_LAND - 0.25) / 0.45); A(u); c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 14; const fs = Math.round(clamp(H * 0.16, 22, 46)); c.font = `800 ${fs}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillStyle = V.glow; c.fillText("Done", W / 2, H * 0.4 + (1 - u) * 8); c.font = `600 ${Math.round(clamp(H * 0.065, 13, 18))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(text, W / 2, H * 0.4 + fs * 0.72); c.shadowBlur = 0; c.textAlign = "start"; }
-      c.globalAlpha = 1;
-    } };
-  }
-
-  /* Scene B (everything done): the jaguar charges straight at you, leaps, and the screen cracks. */
-  function dayScene(W, H, title) {
-    const R = rng(4242); const cx = W / 2, cy = H * 0.52; const base = Math.min(W, H) * 0.2; const IMPACT = 3.05, END = 5.8; const ix = cx, iy = H * 0.42;
-    const trees = Array.from({ length: 16 }, (_, i) => ({ side: i % 2 ? 1 : -1, d: R(), kind: R() > 0.65 ? 1 : 0, p: R() * TAU }));
-    const motes = Array.from({ length: 34 }, () => ({ x: R() * W, y: R() * H, p: R() * TAU, r: 0.8 + R() * 1.6 }));
-    const leaves = Array.from({ length: 26 }, () => ({ a: R() * TAU, d: 0.2 + R() * 0.8, sp: (R() - 0.5) * 8, r: 3 + R() * 6 }));
-    // cracks: jagged rays from the point of impact, joined by broken rings
-    const reach = Math.hypot(W, H); const rays = []; const n = 15;
-    for (let i = 0; i < n; i++) { const a = (i / n) * TAU + (R() - 0.5) * 0.3; const pts = [[ix, iy]]; let r = 0, ang = a; while (r < reach) { r += 26 + R() * 70; ang += (R() - 0.5) * 0.22; pts.push([ix + Math.cos(ang) * r, iy + Math.sin(ang) * r]); } rays.push({ a, pts }); }
-    const branches = []; for (const ray of rays) for (let k = 2; k < ray.pts.length - 1; k += 2) { if (R() > 0.55) continue; const [bx, by] = ray.pts[k]; let ang = ray.a + (R() > 0.5 ? 1 : -1) * (0.5 + R() * 0.6); const pts = [[bx, by]]; let r = 0; const len = 40 + R() * 150; while (r < len) { r += 18 + R() * 34; ang += (R() - 0.5) * 0.3; pts.push([bx + Math.cos(ang) * r, by + Math.sin(ang) * r]); } branches.push(pts); }
-    const rings = [0.07, 0.16, 0.3].map((f) => { const rr = Math.min(W, H) * f; return rays.map((ray) => { const jr = rr * (0.85 + R() * 0.3); return [ix + Math.cos(ray.a) * jr, iy + Math.sin(ray.a) * jr, R() > 0.22]; }); });
-    const shards = Array.from({ length: 9 }, () => { const i = Math.floor(R() * n); const a = rings[1][i], b = rings[1][(i + 1) % n], c2 = rings[R() > 0.5 ? 0 : 2][i]; return { pts: [a, b, c2], al: 0.05 + R() * 0.1 }; });
-    const path = (c, pts, upTo) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); const m = Math.max(1, Math.floor((pts.length - 1) * upTo)); for (let i = 1; i <= m; i++) c.lineTo(pts[i][0], pts[i][1]); };
-    return { duration: END, draw(c, t) {
-      c.setTransform(c._dpr || 1, 0, 0, c._dpr || 1, 0, 0); c.clearRect(0, 0, W, H);
-      const out = t > END - 0.5 ? 1 - ease((t - (END - 0.5)) / 0.5) : 1; const inn = ease(t / 0.35); const A = (a) => { c.globalAlpha = clamp(a, 0, 1) * out * inn; };
-      const post = t - IMPACT; const shake = post > 0 ? Math.exp(-post * 6) * 16 : 0; if (shake > 0.2) c.translate(Math.sin(t * 90) * shake, Math.cos(t * 77) * shake);
-      A(1); const g = c.createRadialGradient(cx, cy - H * 0.05, 10, cx, cy, Math.max(W, H) * 0.78); g.addColorStop(0, V.core); g.addColorStop(0.3, V.royal); g.addColorStop(0.65, V.deep); g.addColorStop(1, V.ink); c.fillStyle = g; c.fillRect(-30, -30, W + 60, H + 60);
-      // the path it runs along, and bands of mist
-      A(0.4); c.fillStyle = V.vivid; c.beginPath(); c.moveTo(cx - W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.025, cy - H * 0.04); c.lineTo(cx + W * 0.55, H + 30); c.lineTo(cx - W * 0.55, H + 30); c.fill();
-      for (let i = 0; i < 3; i++) { A(0.1); ell(c, cx + Math.sin(t * 0.5 + i * 2) * W * 0.12, cy + i * H * 0.07, W * (0.45 + i * 0.12), H * 0.035, V.pale); }
-      // trees rushing past on both sides
-      const run = t * (post > 0 ? 0.15 : 0.5); const order = trees.map((tr) => ({ tr, d: (tr.d + run) % 1 })).sort((a, b) => a.d - b.d);
-      for (const { tr, d } of order) { const px = cx + tr.side * (W * 0.07 + d * d * W * 0.66); const baseY = cy - H * 0.03 + d * d * H * 0.62; const th = H * (0.2 + d * 1.25); A(0.35 + d * 0.65); tree(c, px, baseY, th, d > 0.7 ? V.ink : d > 0.4 ? V.night : V.deep, Math.sin(t * 1.3 + tr.p) * 0.4, tr.kind); }
-      for (const m of motes) { A(0.3 + 0.4 * Math.sin(t * 3 + m.p)); ell(c, m.x + Math.sin(t + m.p) * 12, m.y + Math.cos(t * 0.7 + m.p) * 8, m.r, m.r, V.mist); }
-      // the jaguar: the same sleek runner, charging out of the forest and smashing the glass paw-first.
-      // Depth comes from exponential growth, motion ghosts, converging speed lines, a slow-motion hang
-      // and a final snap into the glass, so the crack is clearly ITS doing.
-      const LEAP = IMPACT - 0.55; const k0 = Math.min(W, H) / 400;
-      const e1 = { s: k0 * 1.5 }; const PAWX = 62, PAWY = 18; /* the leading front paw, relative to the ground point */ e1.x = cx - 12 * e1.s; e1.y = cy + H * 0.27;
-      const pose = (tt) => {
-        if (tt < LEAP) { const k = easeIn(tt / LEAP); const s = k0 * lerp(0.26, 1.5, k); return { s, x: lerp(cx - W * 0.06, e1.x, tt / LEAP) + Math.sin(tt * 2.1) * W * 0.045 * (1 - k), y: lerp(cy + H * 0.005, e1.y, k), tilt: Math.sin(tt * 6.2) * 0.02, lp: 0, gp: tt * 3.1 };
-        }
-        const u = clamp((tt - LEAP) / (IMPACT - LEAP), 0, 1); const k = u < 0.8 ? easeOut(u / 0.8) * 0.93 : 0.93 + 0.07 * (u - 0.8) / 0.2; // hang, then the snap
-        const s = k0 * lerp(1.5, 2.7, k); const hx = lerp(e1.x + PAWX * e1.s, ix, k); const hy = lerp(e1.y - PAWY * e1.s, iy, k) - Math.sin(u * Math.PI) * H * 0.1;
-        return { s, x: hx - PAWX * s, y: hy + PAWY * s, tilt: lerp(-0.3, 0, k), lp: 1, gp: 0 }; // the paw, not the nose, is what reaches the glass
-      };
-      let P0;
-      if (post >= 0) { const b = pose(IMPACT); P0 = { ...b, x: b.x - easeIn(post / 1.1) * W * 0.22, y: b.y + easeIn(post / 1.1) * H * 1.6, tilt: post * 0.3 }; }
-      else P0 = pose(t);
-      // converging speed lines while it charges
-      if (t > 0.9 && post < 0) { const k = ease((t - 0.9) / (LEAP - 0.9)); A(0.22 * k); c.strokeStyle = V.pale; c.lineCap = "round"; for (let i = 0; i < 10; i++) { const a2 = (i / 10) * TAU + 0.3; const R1 = Math.max(W, H) * (0.78 - ((t * 1.7 + i * 0.17) % 1) * 0.36); c.lineWidth = 1 + (i % 3); c.beginPath(); c.moveTo(cx + Math.cos(a2) * R1, cy + Math.sin(a2) * R1 * 0.8); c.lineTo(cx + Math.cos(a2) * (R1 + 70 + 50 * k), cy + Math.sin(a2) * (R1 + 70 + 50 * k) * 0.8); c.stroke(); } }
-      // motion ghosts through the leap, then the jaguar itself
-      if (t >= LEAP + 0.04 && t < IMPACT) for (let g2 = 3; g2 >= 1; g2--) { const p = pose(Math.max(LEAP, t - g2 * 0.045)); A(0.12 / g2 + 0.02); drawJaguar(c, { x: p.x, y: p.y, s: p.s, phase: p.gp, leap: p.lp, tilt: p.tilt }); }
-      A(1); if (post < 1.3) drawJaguar(c, { x: P0.x, y: P0.y, s: P0.s, phase: P0.gp, leap: P0.lp, tilt: P0.tilt });
-      if (t < LEAP) { A(0.45); for (let i = 0; i < 4; i++) { const k = (t * 2.8 + i * 0.25) % 1; ell(c, P0.x - (40 + k * 46) * P0.s, P0.y - 2 - k * 9 * P0.s, (3 + k * 9) * P0.s, (2 + k * 5) * P0.s, `rgba(196,181,253,${0.4 * (1 - k)})`); } }
-      if (post >= 0) {
-        // the paw that did it, pressed flat on the glass, and the shock running out of it
-        const pw = Math.min(W, H) * 0.15; const pa = clamp(1 - post / 0.55, 0, 1);
-        if (pa > 0) { A(pa * 0.95); c.save(); c.translate(ix, iy); c.rotate(-0.1); const pg = c.createRadialGradient(0, 0, pw * 0.2, 0, 0, pw * 1.5); pg.addColorStop(0, V.plum); pg.addColorStop(1, V.deep);
-          ell(c, 0, pw * 0.3, pw, pw * 0.82, pg); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.27, pw * 0.31, pg);
-          A(pa * 0.85); ell(c, 0, pw * 0.3, pw * 0.52, pw * 0.4, V.soft); for (let i2 = -1.5; i2 <= 1.5; i2++) ell(c, i2 * pw * 0.56, -pw * (0.58 + (Math.abs(i2) < 1 ? 0.14 : 0)), pw * 0.13, pw * 0.15, V.soft); c.restore(); }
-        for (const d of [0, 0.14]) { const w = post - d; if (w > 0 && w < 0.55) { A((1 - w / 0.55) * 0.6); c.strokeStyle = V.glow; c.lineWidth = Math.max(1, 4 - w * 6); c.beginPath(); c.arc(ix, iy, easeOut(w / 0.55) * Math.min(W, H) * (0.5 + d * 1.6), 0, TAU); c.stroke(); } }
-      }
-      // leaves torn loose by the charge
-      if (t > 0.6 && post < 0.6) for (const l of leaves) { const k = ((t * 0.9 + l.d) % 1); const px = cx + Math.cos(l.a) * k * k * W * 0.6, py = cy + Math.sin(l.a) * k * k * H * 0.6; A(k * (1 - k) * 2.6); c.save(); c.translate(px, py); c.rotate(t * l.sp); ell(c, 0, 0, l.r * (0.5 + k), l.r * 0.4 * (0.5 + k), V.soft); c.restore(); }
-      // glass
-      if (post >= 0) {
-        const grow = easeOut(post / 0.28); const flash = Math.max(0, 1 - post / 0.16); if (flash > 0) { c.globalAlpha = out * flash * 0.9; c.fillStyle = V.glow; c.fillRect(-40, -40, W + 80, H + 80); }
-        c.globalAlpha = out * 0.5; const sheen = c.createLinearGradient(0, 0, W, H); sheen.addColorStop(0, "rgba(237,233,254,.12)"); sheen.addColorStop(0.5, "rgba(237,233,254,0)"); sheen.addColorStop(1, "rgba(237,233,254,.07)"); c.fillStyle = sheen; c.fillRect(0, 0, W, H);
-        for (const s of shards) { c.globalAlpha = out * grow * s.al * 4; c.fillStyle = "rgba(221,214,254,.3)"; c.beginPath(); c.moveTo(s.pts[0][0], s.pts[0][1]); c.lineTo(s.pts[1][0], s.pts[1][1]); c.lineTo(s.pts[2][0], s.pts[2][1]); c.fill(); }
-        const strokeAll = (dx, dy, col, w) => { c.save(); c.translate(dx, dy); c.strokeStyle = col; c.lineWidth = w; c.lineJoin = "miter"; c.lineCap = "round";
-          for (const ray of rays) { path(c, ray.pts, grow); c.stroke(); } for (const b of branches) { path(c, b, grow); c.stroke(); }
-          rings.forEach((ring, ri) => { if (grow < (ri + 1) / 4) return; for (let i = 0; i < ring.length; i++) { const a = ring[i], b = ring[(i + 1) % ring.length]; if (!a[2]) continue; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); } }); c.restore(); };
-        c.globalAlpha = out * 0.5; strokeAll(1.5, 1.5, V.ink, 2.2); c.globalAlpha = out * 0.95; strokeAll(0, 0, V.glow, 1.5); c.globalAlpha = out * 0.55; strokeAll(-0.8, -0.8, V.soft, 0.7);
-        c.globalAlpha = out * grow; const hole = c.createRadialGradient(ix, iy, 0, ix, iy, Math.min(W, H) * 0.06); hole.addColorStop(0, "rgba(245,243,255,.9)"); hole.addColorStop(1, "rgba(245,243,255,0)"); c.fillStyle = hole; c.fillRect(ix - 80, iy - 80, 160, 160);
-      }
-      if (t > IMPACT + 0.7) { const k = easeOut((t - IMPACT - 0.7) / 0.5); c.globalAlpha = out * k; c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 26; c.fillStyle = V.glow; c.font = `800 ${Math.round(clamp(W * 0.075, 30, 76))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillText("Sprint complete", cx, H * 0.86 + (1 - k) * 14); c.font = `600 ${Math.round(clamp(W * 0.026, 14, 22))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText(title || "Every task for today is done.", cx, H * 0.86 + clamp(W * 0.045, 24, 44)); c.shadowBlur = 0; c.textAlign = "start"; }
-      c.globalAlpha = 1;
-    } };
-  }
+  /* The scenes themselves live in their own folders now, built with the same jaguar:
+     celebration-animations/ (window.TempoScenes.task, .day) and chill-animation/ (window.TempoChill.scene). */
 
   /* Scene C (Chill) lives in its own folder now: chill-animation/ (window.TempoChill.scene). */
 
@@ -4003,7 +4143,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
       cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
       const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const scene = kind === "day" ? dayScene(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : taskScene(box.width, box.height, title);
+      const scene = kind === "day" ? window.TempoScenes.day(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : window.TempoScenes.task(box.width, box.height, title);
       let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
       const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
       const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
@@ -4059,7 +4199,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </div>`;
   }
 
-  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene, dayScene, chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
+  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene: (W, H, t) => window.TempoScenes.task(W, H, t), dayScene: (W, H, t) => window.TempoScenes.day(W, H, t), chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
 })();
 </script>
 <script>
