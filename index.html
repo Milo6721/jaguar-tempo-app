@@ -858,12 +858,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .dock .chip { background: var(--card); border: 1px solid var(--line); font-size: 12.5px; padding: 5px 11px; }
 .cbar { display: flex; align-items: flex-end; gap: 6px; padding: 6px; border-radius: 24px; background: var(--surface); border: 1.5px solid transparent; transition: border-color .15s, background .15s, box-shadow .15s; }
 .cbar:focus-within { border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 4px var(--accent-softer); }
-.cbar.rec { border-color: var(--bad); }
+.cbar.rec { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .cbar textarea { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; resize: none; font: inherit; color: var(--fg); padding: 8px 6px; line-height: 1.45; max-height: 150px; font-size: 16px; }
 .cbar textarea::placeholder { color: var(--muted); }
 .cmic, .csend { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; transition: transform .12s, background .15s, opacity .15s; }
 .cmic { color: var(--fg-2); } .cmic:hover { background: var(--line-2); } .cmic svg { width: 19px; height: 19px; }
-.cmic.rec { background: var(--bad); color: #fff; animation: pulse 1.4s infinite; }
+.cmic.rec { background: var(--fg); color: var(--card); animation: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--fg) 10%, transparent); }
 .csend { background: var(--accent); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); } .csend svg { width: 18px; height: 18px; }
 .csend:hover:not(:disabled) { transform: scale(1.06); background: var(--accent-deep); } .csend:active:not(:disabled) { transform: scale(.94); }
 .csend:disabled { background: var(--line-2); color: var(--muted); box-shadow: none; }
@@ -1002,8 +1002,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .sw.tint { display: grid; place-items: center; } .sw.tint i { width: 9px; height: 9px; border-radius: 3px; background: currentColor; }
 .fx-task.inline { inset: 0; display: block; pointer-events: none; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; animation: none; }
 .fx-task.inline .fx-stage { position: fixed; pointer-events: auto; cursor: pointer; border-radius: 20px; overflow: hidden; background: transparent; box-shadow: none; animation: none; will-change: clip-path, top; }
-.jmark { display: block; flex-shrink: 0; cursor: default; }
+.jmark { display: block; flex-shrink: 0; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .nav .brand .b1, .topbar .b1 { gap: 9px; }
+.fx-clone { position: absolute; overflow: hidden; pointer-events: none; background: var(--card); border-radius: 14px; list-style: none; }
+.fx-clone > li { list-style: none; margin: 0; border: 0; } .fx-clone > .row-inner, .fx-clone > li > .row-inner { margin: 0; }
+.fx-clone.now > * { margin: 0 !important; height: 100%; box-sizing: border-box; }
+.vpill { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 999px; background: var(--accent-softer); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); animation: fade .2s ease-out; }
+.vpill canvas { flex: 1; min-width: 0; height: 26px; display: block; color: var(--accent); }
+.vpill .vlbl { font-size: 12.5px; font-weight: 700; color: var(--accent-text); letter-spacing: .01em; }
+.vpill .vt { font-size: 12.5px; font-weight: 600; color: var(--fg-2); min-width: 34px; text-align: right; }
+.cmic.rec svg { width: 15px; height: 15px; } .cmic.rec svg rect, .cmic.rec svg path { fill: currentColor; }
 </style>
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -1367,6 +1375,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const lie = leg.front ? ps.lieF : ps.lieH; // front paws slide forward under the chest, hind legs fold beneath the haunch
       const rel = lerp(off[0], leg.lie, lie), py = lerp(off[1], 0, lie);
       let target0 = [root[0] + rel + leg.dx, py];
+      if (ps.paws) { const p = ps.paws[C.LEGS.indexOf(leg)]; if (p) target0 = [target0[0] + p[0], target0[1] + p[1]]; } /* extra paw moves (the logo paws at the ground) */
       if (ps.jump && ps.jump.w > 0) { // a leap: hind legs push off, front legs reach ahead, hind legs trail, then front and hind come down to land
         const u = ps.jump.u; const land = smooth(span(u, leg.front ? 0.62 : 0.76, 1));
         const air = leg.front ? [root[0] - 24 + leg.dx, root[1] + 25] : [root[0] + 27 + leg.dx, root[1] + 17];
@@ -1639,12 +1648,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       arch = lerp(arch, airArch, jw); lift = lerp(lift, airLift, jw); tilt = lerp(tilt, airTilt, jw);
     }
     lift += q.extraLift || 0; tilt += q.extraTilt || 0;
-    const h = { arch, amp, bob, rest: 0, lookUp: 0, tailDown: 0, tailFlick: 0, t };
+    const h = { arch, amp, bob, rest: 0, lookUp: q.lookUp || 0, tailDown: q.tailDown || 0, tailFlick: q.tailFlick || 0, t };
     const raw = []; let px = 0, py = 0; const ds = B.L / B.N;
     for (let i = 0; i <= B.N; i++) { const u = i / B.N; let a = B.heading(u, h) + tilt; if (u > B.TAIL) a -= jw * Math.sin(Math.PI * clamp(ju, 0, 1)) * 0.35 * ((u - B.TAIL) / (1 - B.TAIL)); raw.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
     const mid = raw[Math.round(B.N * 0.42)]; const pts = raw.map(([x, y]) => [x - mid[0], y - mid[1] - 39 - lift]);
     const th = pts.map((_, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(B.N, i + 1)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); });
-    return { t, x: 0, lift, pts, th, k: 0, fold: 0, amp: amp * (1 - jw), cyc, stride: q.stride || 96, lieF: 0, lieH: 0, rest: 0, breath: 1, eyeShut: q.eyeShut || 0, earFlick: 0, center: [0, 0], seam: 0, jump: jw > 0 ? { w: jw, u: ju } : null };
+    return { t, x: 0, lift, pts, th, k: 0, fold: 0, amp: amp * (1 - jw), cyc, stride: q.stride || 96, lieF: 0, lieH: 0, rest: 0, breath: 1, eyeShut: q.eyeShut || 0, earFlick: q.earFlick || 0, paws: q.paws || null, center: [0, 0], seam: 0, jump: jw > 0 ? { w: jw, u: ju } : null };
   };
 
   /** the jaguar's colour: lit from above, deeper underneath (one fill for the whole animal) */
@@ -1688,7 +1697,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   S.task = function (W, H, title, opts) {
     const o = opts || {}; const inline = !!o.inline;
-    const R = rng(hashStr(title) || 7); const ground = H - (inline ? 20 : clamp(H * 0.25 - 56, 24, 220)); /* on a big screen the ground sits higher, with a dark foreground below */ const text = String(title || "Done").slice(0, 60); let letters = null;
+    const R = rng(hashStr(title) || 7); const ground = H - (inline ? 20 : clamp(H * 0.25 - 56, 24, 220)); /* on a big screen the ground sits higher, with a dark foreground below */ const text = String(title || "Done").slice(0, 60); let letters = null; let baseLine = null;
     const s = (inline ? clamp(Math.min(H / 160, W / 400), 0.68, 1.4) : clamp(Math.min(H / 150, W / 300), 0.9, 2.8)) * 0.86; // jaguar units → px (a little smaller on a narrow row)
     const span2 = W * 2.6; const wrap = (v) => ((v % span2) + span2) % span2 - W * 0.3;
     const farTrees = Array.from({ length: 11 }, (_, i) => ({ x: (i / 11) * span2 + R() * 40, h: H * (0.7 + R() * 0.35), kind: R() > 0.72 ? 1 : 0, p: R() * TAU }));
@@ -1746,10 +1755,12 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       // the letters of the task turn into plants
       c.font = font; c.textBaseline = "alphabetic";
       if (!letters) {
-        letters = []; let x = tx ? tx.x : Math.max(18, (W - c.measureText(text).width) / 2);
-        for (const ch of text) { const w = c.measureText(ch).width; if (x + w > W - 6) break; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: inline ? 12 + R() * H * 0.26 : Math.min(H * 0.4, (22 + R() * 96) * (s / 0.86)), tone: R(), p: R() * TAU }); x += w; }
+        letters = []; const x0 = tx ? tx.x : Math.max(18, (W - c.measureText(text).width) / 2); const chars = Array.from(text);
+        /* positions from the width of the whole prefix, so kerning matches the real title letter for letter */
+        for (let i = 0; i < chars.length; i++) { const ch = chars[i]; const x = x0 + c.measureText(chars.slice(0, i).join("")).width; const w = x0 + c.measureText(chars.slice(0, i + 1).join("")).width - x; if (x + w > W - 6) break; letters.push({ ch, x, w, k: Math.floor(R() * 4), h: inline ? 12 + R() * H * 0.26 : Math.min(H * 0.4, (22 + R() * 96) * (s / 0.86)), tone: R(), p: R() * TAU }); }
+        if (tx && tx.top != null) { const m = c.measureText("Hg"); const fa = m.fontBoundingBoxAscent ?? size * 0.92, fd = m.fontBoundingBoxDescent ?? size * 0.26; baseLine = tx.top + (tx.h - (fa + fd)) / 2 + fa; } /* the same baseline the page used */
       }
-      const baseY = tx ? tx.y : Math.min(ground - 8, H * 0.46); const n = Math.max(1, letters.length); const wave = Math.min(0.04, 0.6 / n); // long titles ripple faster
+      const baseY = baseLine != null ? baseLine : tx ? tx.y : Math.min(ground - 8, H * 0.46); const n = Math.max(1, letters.length); const wave = Math.min(0.04, 0.6 / n); // long titles ripple faster
       letters.forEach((L, i) => {
         const d = i * wave; const grow = easeOutBack((t - 0.5 - d) / 0.9, 1.70158); const lw = 1 - smooth((t - 0.4 - d) / 0.8);
         if (L.ch.trim() && t > 0.5 + d) { const y0 = lerp(baseY, ground + 6, smooth((t - 0.4 - d * 0.5) / 0.9)); A(1); plant(c, wrap(L.x + L.w / 2 - cm + W * 0.3), y0, L.h * grow, L.k, Math.sin(t * 2.2 + L.p) * 0.09, L.tone > 0.66 ? V.bright : L.tone > 0.33 ? V.core : V.soft); }
@@ -1889,71 +1900,79 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
 /* =====================================================================
    Tempo · celebration animations · the jaguar logo
-   The same jaguar, small, as Tempo's mark. It gallops in place when the
-   page opens, when you point at it and when a task is done, then eases
-   into its resting stride (the "flying" moment of the gallop) and holds.
-   TempoScenes.logo.draw(c, w, h, cyc, opts)  one frame, cyc = stride count
-   TempoScenes.logo.mount(canvas, opts)       a small player: run(), stop()
-   TempoScenes.logo.favicon(size)             a PNG data URL for the tab icon
+   The same jaguar, small, as Tempo's mark, alive all the time:
+   - at rest it stands tall like a lion, breathes, sways its tail, blinks,
+     and now and then paws at the ground, one front paw and then the other
+   - when you point at it, touch it, click it or finish a task it breaks
+     into a full gallop on the spot, then slows down and stands again
+   Every change is eased (no jumps): the gallop strength rises and falls
+   smoothly and the stride cadence follows it, so the legs never skip.
+   TempoScenes.logo.draw(c, w, h, q, opts)  one frame from a pose request
+   TempoScenes.logo.mount(canvas, opts)     the living mark: run(), stop()
+   TempoScenes.logo.favicon(size)           a PNG data URL for the tab icon
    ===================================================================== */
 (function () {
   "use strict";
-  const S = window.TempoScenes; const C = window.TempoChill; const { clamp, V } = C.util;
-  // bounds of the jaguar over a whole stride (facing right, paws on y = 0), measured from the renderer
-  const BX0 = -100, BX1 = 76, BY0 = -75, BY1 = 3; const REST = 0.4; // the resting frame: forelegs reaching far forward, a lunge
+  const S = window.TempoScenes; const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, V } = C.util;
+  // bounds of the jaguar (facing right, paws on y = 0) over a stride and the idle moves, measured from the renderer
+  const BX0 = -100, BX1 = 76, BY0 = -78, BY1 = 3;
+  const CAD = 2.8; // strides per second at full gallop, the same pace as the celebrations
+  const PERIOD = 4.6; // seconds in one idle loop
 
-  const shade = (c, h, a, b) => { const g = c.createLinearGradient(0, BY0, 0, BY1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+  /** the standing loop: t in seconds → pose fields */
+  const idle = (t) => {
+    const u = ((t % PERIOD) + PERIOD) % PERIOD / PERIOD;
+    // two strokes of pawing: the near front paw, then the far one, each lifts, reaches, presses down and draws back
+    const stroke = (a, b) => { const k = span(u, a, b); if (k <= 0 || k >= 1) return null; const lift = Math.sin(Math.PI * k); const reach = Math.sin(Math.PI * smooth(k)); return [-7 * reach + 3 * Math.sin(TAU * k), -8 * lift * lift]; };
+    const near = stroke(0.06, 0.24) || stroke(0.5, 0.66), far = stroke(0.26, 0.42) || stroke(0.7, 0.84);
+    const paws = [null, far, null, near]; // LEGS: 0 far hind, 1 far front, 2 near hind, 3 near front
+    const pawing = smooth(span(u, 0.02, 0.1)) * (1 - smooth(span(u, 0.86, 0.96)));
+    const breath = Math.sin(TAU * t / 2.3);
+    const blink = Math.max(0, 1 - Math.abs((u - 0.93) / 0.018)); // a quick blink at the end of the loop
+    return { paws, lookUp: -1.05 + 0.4 * pawing + 0.05 * breath, extraLift: 3.6 + 0.7 * breath, extraTilt: 0.11 - 0.04 * pawing, /* head high and chest up, like a lion; it glances down while pawing */ eyeShut: blink, earFlick: Math.max(0, Math.sin(TAU * (u - 0.45) * 3)) * (u > 0.45 && u < 0.62 ? 1 : 0) };
+  };
 
-  /** draws one frame centred in a w × h box (CSS pixels; the caller sets the device scale) */
-  const draw = (c, w, h, cyc, opts) => {
+  /** one frame. q: { cyc, amp, t, idle (0..1 weight), ... } */
+  const draw = (c, w, h, q, opts) => {
     const o = opts || {}; const pad = o.pad ?? 1; const k = Math.min((w - pad * 2) / (BX1 - BX0), (h - pad * 2) / (BY1 - BY0));
-    const amp = o.amp ?? 1; const ps = S.rig.pose({ t: o.t || 0, cyc, amp, stride: 96 });
+    const amp = clamp(q.amp ?? 0, 0, 1); const id = idle(q.t || 0); const wI = 1 - amp; // idle moves fade out as the gallop comes in
+    const paws = id.paws.map((p) => (p ? [p[0] * wI, p[1] * wI] : null));
+    const ps = S.rig.pose({ t: q.t || 0, cyc: q.cyc || 0, amp, stride: 96, lookUp: id.lookUp * wI, extraLift: id.extraLift * wI, extraTilt: id.extraTilt * wI, eyeShut: id.eyeShut * wI, earFlick: id.earFlick * wI, paws });
     c.save(); c.translate(w / 2 - ((BX0 + BX1) / 2) * k, h / 2 - ((BY0 + BY1) / 2) * k); c.scale(-k, k); // the rig faces left: mirror it
-    const fill = o.fill || shade(c, h, o.top || V.bright, o.bottom || V.royal);
-    S.rig.draw(c, ps, fill, 1); c.restore();
+    const g = c.createLinearGradient(0, BY0, 0, BY1); g.addColorStop(0, o.top || V.bright); g.addColorStop(1, o.bottom || V.royal);
+    S.rig.draw(c, ps, o.fill || g, 1); c.restore();
   };
 
   /**
-   * A tiny player for the mark. opts: { w, h, top, bottom, still } (still = reduced motion: never animates)
-   * run(seconds) gallops for a while and settles into the resting frame; the canvas is redrawn only while it moves.
+   * The living mark. opts: { w, h, top, bottom, still } (still = reduced motion: one quiet frame, no loop)
+   * run(seconds) gallops for a while; the strength eases in and out, the cadence follows the strength.
    */
   const mount = (canvas, opts) => {
-    const o = opts || {}; const ctx = canvas.getContext("2d"); let raf = 0, cyc = REST, live = true, plan = null;
-    const CAD = 2.6; // strides per second, the same pace as the celebrations
+    const o = opts || {}; const ctx = canvas.getContext("2d"); let raf = 0, live = true, last = 0, t = 0, cyc = 0, amp = 0, until = 0;
     const size = () => { const dpr = Math.min(3, window.devicePixelRatio || 1); const w = o.w || 46, h = o.h || 22; if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); } return { dpr, w, h }; };
-    const paint = () => { const { dpr, w, h } = size(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h); draw(ctx, w, h, cyc, o); };
-    // Stride count over time: speeds up (smoothstep), holds the cadence, then slows (smoothstep) so it lands exactly
-    // on a resting frame. Velocity is continuous throughout, so the legs never jump or stutter.
-    const I = (u) => (u <= 0 ? 0 : u >= 1 ? u - 0.5 : u * u * u - (u * u * u * u) / 2); // ∫ smoothstep
-    const pos = (p, t) => {
-      const { from, Ta, t1, Td } = p; if (t <= 0) return from;
-      if (t < Ta) return from + CAD * Ta * I(t / Ta);
-      const a = from + CAD * Ta * 0.5; if (t < Ta + t1) return a + CAD * (t - Ta);
-      const b = a + CAD * t1; const u = Math.min(1, (t - Ta - t1) / Td); return b + CAD * Td * (u - I(u));
+    const paint = () => { const { dpr, w, h } = size(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h); draw(ctx, w, h, { t, cyc, amp }, o); };
+    const tick = (now) => {
+      if (!live) return; const dt = last ? Math.min(0.05, (now - last) / 1000) : 0; last = now; t += dt;
+      const goal = t < until ? 1 : 0; amp += (goal - amp) * (1 - Math.exp(-dt * (goal > amp ? 5 : 3.2))); if (amp < 0.002 && !goal) amp = 0; // eases in quicker than it settles
+      cyc += dt * CAD * Math.pow(amp, 0.8); // the legs speed up and slow down with the gallop
+      paint(); raf = requestAnimationFrame(tick);
     };
-    const tick = (now) => { if (!live || !plan) return; const t = (now - plan.t0) / 1000; cyc = pos(plan, t); paint(); if (t < plan.end) raf = requestAnimationFrame(tick); else { cyc = plan.to; paint(); raf = 0; plan = null; } };
-    const run = (seconds) => {
-      if (o.still || !live) { paint(); return; }
-      const moving = !!plan; const s = Math.max(0.6, seconds || 1.6); const from = cyc; const Ta = moving ? 0 : 0.3, Td = 0.85;
-      // the next resting frame we can reach after about `s` seconds of running
-      const min = from + CAD * (Ta / 2 + Math.max(0, s - Ta - Td) + Td / 2); const to = Math.ceil(min - REST) + REST;
-      const t1 = (to - from) / CAD - Ta / 2 - Td / 2; plan = { from, to, Ta, t1, Td, end: Ta + t1 + Td, t0: performance.now() };
-      cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
-    };
-    paint();
+    const run = (seconds) => { if (o.still || !live) return; until = Math.max(until, t + Math.max(0.6, seconds || 1.6)); };
+    // keeps going while the page is visible; the browser pauses it in a background tab
+    if (o.still) paint(); else raf = requestAnimationFrame(tick);
     return { run, paint, stop() { live = false; cancelAnimationFrame(raf); } };
   };
 
-  /** the tab icon: the jaguar in pale lilac on a violet tile */
+  /** the tab icon: the jaguar standing in pale lilac on a violet tile */
   const favicon = (px) => {
     const n = px || 64; const cv = document.createElement("canvas"); cv.width = n; cv.height = n; const c = cv.getContext("2d"); if (!c) return null;
     const r = n * 0.22; c.beginPath(); c.moveTo(r, 0); c.arcTo(n, 0, n, n, r); c.arcTo(n, n, 0, n, r); c.arcTo(0, n, 0, 0, r); c.arcTo(0, 0, n, 0, r); c.closePath();
     const g = c.createLinearGradient(0, 0, n, n); g.addColorStop(0, V.vivid); g.addColorStop(1, V.royal); c.fillStyle = g; c.fill();
-    draw(c, n, n * 0.92, REST, { pad: n * 0.08, fill: V.glow });
+    draw(c, n, n * 0.92, { t: 3.4, cyc: 0, amp: 0 }, { pad: n * 0.08, fill: V.glow });
     try { return cv.toDataURL("image/png"); } catch (e) { return null; }
   };
 
-  S.logo = { draw, mount, favicon, REST };
+  S.logo = { draw, mount, favicon, idle };
 })();
 
 /* =====================================================================
@@ -2365,7 +2384,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         }
         sinceBreak = 0; // the commitment acted as a pause
       }
-      const placed = { ...t, start: s, end: s + dur, status: t.status === "in_progress" ? "in_progress" : "upcoming" };
+      const keepStart = t.status === "in_progress" && t.startedAt && t.start != null && t.start <= s; /* a running task stays where it began, so a re-plan never stops its timer */
+      const placed = { ...t, start: keepStart ? t.start : s, end: s + dur, status: t.status === "in_progress" ? "in_progress" : "upcoming" };
       out.push(placed); cursor = s + dur; last = t;
       if (t.dueBy != null && placed.end > t.dueBy) warnings.push(`“${t.title}” would end at ${fmtTime(placed.end, prefs.timeFormat)}, after its ${fmtTime(t.dueBy, prefs.timeFormat)} deadline.`);
       if (t.category === "break") { sinceBreak = 0; continue; }
@@ -2433,6 +2453,38 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     let cursor = roundUp(from, 5);
     for (const b of busy) { if (b.end <= cursor) continue; if (b.start - cursor >= dur) break; cursor = Math.max(cursor, roundUp(b.end, 5)); }
     return cursor + dur <= limit ? cursor : null;
+  };
+
+  /* Does ticking off task `id` finish the day (and earn the full-screen glass animation)? Yes when it completes the
+     day's flexible work, or when it is the last open item of the day of any kind (dinner, a break, a commitment).
+     Once per day: day.celebrated is set when it plays and cleared when something is un-ticked. */
+  T.finishesDay = function (dayTasks, id, day) {
+    if (day && day.celebrated) return false;
+    const items = dayTasks.filter((x) => x.status !== "protected" && x.status !== "postponed"); const me = items.find((x) => x.id === id); if (!me || items.length < 2) return false;
+    const done = (x) => x.id === id || x.status === "completed"; const work = items.filter((x) => isWork(x) && !x.fixed);
+    if (items.every(done)) return true;
+    return work.length > 0 && work.some((x) => x.id === id) && work.every(done);
+  };
+  /* Gives tasks that were moved onto a day a real time there: each one takes the first free gap after the day's
+     own blocks (and the ones placed before it), from `from` until the day's limit. Tasks that do not fit keep no time.
+     A moved task always arrives as a normal task, never marked "postponed". */
+  T.placeOnDay = function (dayTasks, movers, from, day, prefs) {
+    const placed = []; const ids = new Set(movers.map((m) => m.id)); const base = dayTasks.filter((t) => !ids.has(t.id));
+    for (const m of movers) {
+      const cur = base.concat(placed); const limit = T.dayLimit(cur, day, prefs, from);
+      const slot = m.status === "completed" ? null : T.findSlot(cur, m.estimatedMinutes, from, limit);
+      placed.push(slot != null ? { ...m, status: m.status === "postponed" ? "upcoming" : m.status, start: slot, end: slot + m.estimatedMinutes } : m);
+    }
+    return placed;
+  };
+  /* A running focus timer stops (its time is kept) when its task is moved to another time or day, or stops being in progress. */
+  T.pauseIfMoved = function (prev, next, now) {
+    if (!prev || !next || prev.status !== "in_progress" || !prev.startedAt) return next;
+    const moved = next.date !== prev.date || (next.start ?? null) !== (prev.start ?? null);
+    if (next.status === "in_progress" && next.startedAt && !moved) return next;
+    if (next.status === "completed") return next;
+    const t = now || Date.now();
+    return { ...next, status: next.status === "in_progress" ? "upcoming" : next.status, spentMs: (prev.spentMs || 0) + Math.max(0, t - prev.startedAt), startedAt: undefined };
   };
 
   /* The real end of the working window today: finish target, else protected time, else bedtime. */
@@ -3687,6 +3739,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const next = { ...prev, ...a.patch, updatedAt: Date.now() };
         if (next.start != null && (a.patch.start !== undefined || a.patch.estimatedMinutes !== undefined) && a.patch.end === undefined) next.end = next.start + next.estimatedMinutes;
         if (next.start == null) next.end = undefined;
+        Object.assign(next, T.pauseIfMoved(prev, next)); /* moving a running task stops its timer */
         if ("repeat" in a.patch) { if (!a.patch.repeat) { delete next.repeat; } else if (!next.sid) next.sid = next.id; }
         const tasks = { ...s.tasks, [a.id]: next };
         // changing how a task repeats speaks for its whole series, from this day on
@@ -3722,10 +3775,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
         const next = a.toDate
           ? { ...prev, date: a.toDate, start: a.start ?? undefined, end: a.start != null ? a.start + prev.estimatedMinutes : undefined, status: "upcoming", postponedFrom: prev.date, updatedAt: Date.now() }
           : { ...prev, status: "postponed", start: undefined, end: undefined, updatedAt: Date.now() };
-        return touch({ ...s, tasks: { ...s.tasks, [a.id]: next } });
+        return touch({ ...s, tasks: { ...s.tasks, [a.id]: T.pauseIfMoved(prev, next) } });
       }
       case "commit": {
-        const tasks = {}; for (const t of a.tasks) tasks[t.id] = t; let days = s.days;
+        const tasks = {}; for (const t of a.tasks) tasks[t.id] = T.pauseIfMoved(s.tasks[t.id], t, Date.now()); let days = s.days;
         if (a.dayMeta) { const d = s.days[a.dayMeta.date] || { date: a.dayMeta.date }; days = { ...s.days, [a.dayMeta.date]: { ...d, title: a.dayMeta.title === undefined ? d.title : a.dayMeta.title || undefined, targetFinish: a.dayMeta.targetFinish === undefined ? d.targetFinish : a.dayMeta.targetFinish ?? undefined } }; }
         return touch({ ...s, tasks, days, history: snap(s, a.note, a.source, a.revisionId), seeded: true });
       }
@@ -4299,51 +4352,71 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
   /* Scene C (Chill) lives in its own folder now: chill-animation/ (window.TempoChill.scene). */
 
-  /* Where the task animation plays: right on the task that was ticked off (its row, or the Now card), a little
-     taller than the row so the jaguar has room, and it follows the row if the page scrolls. */
-  const anchorBox = (sel) => {
-    const el = sel ? document.querySelector(sel) : null; if (!el) return null; const r = el.getBoundingClientRect(); if (!(r.width > 40 && r.height > 10)) return null;
-    const vw = window.innerWidth, vh = window.innerHeight; if (r.bottom < 0 || r.top > vh) return null;
-    const padX = vw < 520 ? 6 : 12; const left = Math.max(6, r.left - padX), right = Math.min(vw - 6, r.right + padX);
-    const h = Math.round(Math.min(vh * 0.6, Math.max(r.height + 28, vw < 520 ? 150 : 168)));
-    return { el, left: Math.round(left), width: Math.round(right - left), height: h, rowTop: r.top, rowH: r.height };
-  };
-  /* where the task's own title is drawn inside the stage, so the letters can lift off the real title */
-  const titleSpot = (el, stage) => {
-    const t = el && el.querySelector(".title, .nc-title, h2, h3"); if (!t) return null;
-    let node = null; for (const n of t.childNodes) if (n.nodeType === 3 && n.textContent.trim()) node = n; // the task name (after the time range)
+  /* ---------- the task box stays while its animation plays ----------
+     The moment a task is ticked off (button, swipe, Now card), before the list re-renders, Tempo takes a snapshot of
+     that task's box: where it is, a copy of how it looks, and where its title is written. The animation then plays in
+     exactly that box, even if the real list re-sorts or shrinks the row underneath, and fades away at the end. */
+  const scrollerOf = (el) => { for (let p = el && el.parentElement; p && p !== document.body; p = p.parentElement) { const s = getComputedStyle(p); if (/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight + 1) return p; } return document.scrollingElement || document.documentElement; };
+  const titleAt = (host) => {
+    const t = host && host.querySelector(".title, .nc-title, h2, h3"); if (!t) return null;
+    let node = null; for (const n of t.childNodes) if (n.nodeType === 3 && n.textContent.trim()) node = n; /* the task name, after the time range */
     const r = (() => { if (!node) return t.getBoundingClientRect(); const rg = document.createRange(); rg.selectNodeContents(node); const rs = rg.getClientRects(); return rs.length ? rs[0] : rg.getBoundingClientRect(); })();
     const cs = getComputedStyle(t); const size = parseFloat(cs.fontSize) || 16;
-    return { x: r.left - stage.left, y: r.top - stage.top + (r.height + size * 0.72) / 2, size, weight: cs.fontWeight || "700", color: cs.color, family: cs.fontFamily };
+    return { x: r.left, y: r.top + (r.height + size * 0.72) / 2, top: r.top, h: r.height, size, weight: cs.fontWeight || "700", color: cs.color, family: cs.fontFamily };
+  };
+  const snapTask = (id, from) => {
+    try {
+      const fromNow = from && from.closest && from.closest(".nowcard");
+      const li = document.querySelector(`li[data-id="${id}"]`); const host = fromNow || (li && li.querySelector(".row-inner")) || li; if (!host) return null;
+      const box = (fromNow || li).getBoundingClientRect(); const vw = window.innerWidth, vh = window.innerHeight;
+      if (!(box.width > 40 && box.height > 10) || box.bottom < 0 || box.top > vh) return null;
+      const clone = (fromNow || li).cloneNode(true); clone.removeAttribute("id"); clone.querySelectorAll(".swipe-bg, [id]").forEach((n) => (n.classList.contains("swipe-bg") ? n.remove() : n.removeAttribute("id")));
+      const inner = clone.matches(".row-inner") ? clone : clone.querySelector(".row-inner"); if (inner) { inner.style.transform = ""; inner.style.userSelect = ""; }
+      clone.classList.remove("leaving", "swiping", "dragging", "lift", "menu-open"); clone.setAttribute("aria-hidden", "true"); clone.style.margin = "0";
+      const sc = scrollerOf(fromNow || li);
+      return { clone, now: !!fromNow, rect: { left: box.left, top: box.top, width: box.width, height: box.height }, text: titleAt(fromNow || host), scroller: sc, scroll0: sc ? sc.scrollTop : 0, vw, vh };
+    } catch (e) { return null; }
+  };
+  /* the stage: the task box itself, opened a little taller when the row is short so the jaguar has room */
+  const stageFor = (snap) => {
+    const vw = window.innerWidth, vh = window.innerHeight; const r = snap.rect;
+    const padX = vw < 520 ? 4 : 8; const left = Math.max(4, r.left - padX), right = Math.min(vw - 4, r.left + r.width + padX);
+    const h = Math.round(Math.min(vh * 0.6, Math.max(r.height, vw < 520 ? 140 : 150)));
+    return { left: Math.round(left), width: Math.round(right - left), height: h, rowTop: r.top, rowH: r.height, rowLeft: r.left, rowW: r.width };
   };
 
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
-  function Celebration({ kind, title, onDone, full, anchor }) {
-    /* "Day done" and "Chill" fill the screen. "Task done" plays on the task itself; in Focus mode (or real full
-       screen) it fills the screen instead. If the task is not on screen it plays on a card in the middle. */
-    const ref = useRef(null); const stageRef = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
+  function Celebration({ kind, title, onDone, full, snap }) {
+    /* "Day done" and "Chill" fill the screen. "Task done" plays in the task's own box; in Focus mode (or real full
+       screen) it fills the screen instead. If the task was not on screen it plays on a card in the middle. */
+    const ref = useRef(null); const stageRef = useRef(null); const cloneRef = useRef(null); const doneRef = useRef(onDone); doneRef.current = onDone;
     const vw = window.innerWidth, vh = window.innerHeight;
     const big = kind === "day" || kind === "chill" || !!full;
-    const [spot] = useState(() => (big ? null : anchorBox(anchor)));
+    const [spot] = useState(() => (big || !snap ? null : stageFor(snap)));
     const box = big ? { width: vw, height: vh } : spot ? { width: spot.width, height: spot.height } : { width: Math.min(760, vw - 32), height: Math.round(Math.max(210, Math.min(340, vh * 0.42))) };
     useEffect(() => {
       const cv = ref.current; if (!cv) return;
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
       cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
       const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // on a row: the stage sits centred on the row; the letters start exactly where the real title is
-      const place = () => { if (!spot) return null; const r = spot.el.isConnected ? spot.el.getBoundingClientRect() : null; const top = r ? r.top + r.height / 2 - box.height / 2 : spot.rowTop + spot.rowH / 2 - box.height / 2; return { top: Math.round(top), left: spot.left, rowH: r ? r.height : spot.rowH }; };
-      let at = place(); const st = stageRef.current; if (at && st) { st.style.top = at.top + "px"; st.style.left = at.left + "px"; }
-      const text = spot && st ? titleSpot(spot.el, { left: at.left, top: at.top }) : null;
+      const st = stageRef.current; const holder = cloneRef.current;
+      // the copy of the task box sits exactly where the task was; the stage is centred on it and moves with the page
+      const dy = () => (spot && snap.scroller ? snap.scroller.scrollTop - snap.scroll0 : 0);
+      const topOf = () => Math.round(spot.rowTop - dy() + spot.rowH / 2 - box.height / 2);
+      if (spot && st) { st.style.top = topOf() + "px"; st.style.left = spot.left + "px"; }
+      if (spot && holder && snap.clone) { holder.appendChild(snap.clone); holder.style.left = (spot.rowLeft - spot.left) + "px"; holder.style.top = Math.round((box.height - spot.rowH) / 2) + "px"; holder.style.width = spot.rowW + "px"; holder.style.height = spot.rowH + "px"; }
+      const text = spot && snap.text ? { ...snap.text, x: snap.text.x - spot.left, y: snap.text.y - topOf(), top: snap.text.top - topOf() } : null;
       const scene = kind === "day" ? window.TempoScenes.day(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : window.TempoScenes.task(box.width, box.height, title, { text, inline: !!spot });
       let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
       const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
-      // the stage opens from the row's own height to its full height, and closes back onto the row at the end
+      // the box opens from the task's own height, the jungle comes up inside it, and at the end it closes back and fades
       const shape = (t) => {
-        if (!spot || !st) return; at = place() || at; st.style.top = at.top + "px";
+        if (!spot || !st) return; st.style.top = topOf() + "px";
         const open = 1 - Math.pow(1 - Math.min(1, t / 0.42), 3), close = Math.max(0, Math.min(1, (t - (scene.duration - 0.45)) / 0.45)); const k = open * (1 - close * close * (3 - 2 * close));
-        const inset = Math.max(0, (box.height - at.rowH) / 2) * (1 - k); st.style.clipPath = `inset(${inset.toFixed(1)}px 0px ${inset.toFixed(1)}px 0px round ${Math.round(16 + 4 * k)}px)`;
+        const inset = Math.max(0, (box.height - spot.rowH) / 2) * (1 - k); st.style.clipPath = `inset(${inset.toFixed(1)}px 0px ${inset.toFixed(1)}px 0px round ${Math.round(14 + 6 * k)}px)`;
         st.style.boxShadow = `0 ${Math.round(18 * k)}px ${Math.round(46 * k)}px rgba(11,4,24,${(0.45 * k).toFixed(2)})`;
+        if (holder) holder.style.opacity = String(Math.max(0, 1 - Math.max(0, t - 0.35) / 0.3)); // the copy hides once the jungle covers it
+        st.style.opacity = String(1 - close * close);
       };
       const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { shape(t); frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
       try { shape(0); frame(0); } catch (e) { /* the loop reports it */ }
@@ -4354,7 +4427,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const label = kind === "day" ? "All tasks done. Celebration animation." : kind === "chill" ? "Chill. A jaguar runs across the night sky, curls up and becomes the moon." : "Task done. Celebration animation.";
     const el = spot
       ? html`<div class="fx fx-task inline" role="img" aria-label=${label}>
-          <div class="fx-stage" ref=${stageRef} onClick=${() => doneRef.current()} title="Tap to skip" style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
+          <div class="fx-stage" ref=${stageRef} onClick=${() => doneRef.current()} title="Tap to skip" style=${{ width: box.width + "px", height: box.height + "px" }}>
+            <div class=${"fx-clone" + (snap.now ? " now" : "")} ref=${cloneRef}></div>
+            <canvas ref=${ref} style=${{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}></canvas>
+          </div>
         </div>`
       : html`<div class=${"fx fx-" + kind + (big && kind !== "day" ? " full" : "")} onClick=${() => doneRef.current()} role="img" aria-label=${label}>
           <div class="fx-stage" ref=${stageRef} style=${{ width: box.width + "px", height: box.height + "px" }}><canvas ref=${ref} style=${{ width: "100%", height: "100%", display: "block" }}></canvas></div>
@@ -4410,15 +4486,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const cv = ref.current; if (!cv || !window.TempoScenes || !window.TempoScenes.logo) return;
       let still = false; try { still = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { still = false; }
       const p = window.TempoScenes.logo.mount(cv, { w: w || 46, h: h || 22, still }); const start = setTimeout(() => p.run(1.8), 250);
-      const go = () => p.run(1.4); window.addEventListener("tempo:jaguar", go);
+      const go = () => p.run(1.6); window.addEventListener("tempo:jaguar", go);
       return () => { clearTimeout(start); window.removeEventListener("tempo:jaguar", go); p.stop(); };
     }, []);
-    return html`<canvas ref=${ref} class="jmark" style=${{ width: (w || 46) + "px", height: (h || 22) + "px" }} role=${label ? "img" : undefined} aria-label=${label || undefined} aria-hidden=${label ? undefined : "true"} onPointerEnter=${() => window.dispatchEvent(new Event("tempo:jaguar"))}></canvas>`;
+    return html`<canvas ref=${ref} class="jmark" style=${{ width: (w || 46) + "px", height: (h || 22) + "px" }} role=${label ? "img" : undefined} aria-label=${label || undefined} aria-hidden=${label ? undefined : "true"} onPointerEnter=${() => window.dispatchEvent(new Event("tempo:jaguar"))} onPointerDown=${() => window.dispatchEvent(new Event("tempo:jaguar"))} title="Tempo"></canvas>`;
   }
   /* the browser tab shows the jaguar too */
   const setFavicon = () => { try { const url = window.TempoScenes && window.TempoScenes.logo && window.TempoScenes.logo.favicon(64); if (!url) return; let l = document.querySelector('link[rel="icon"]'); if (!l) { l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); } l.type = "image/png"; l.href = url; } catch (e) { /* keep the static icon */ } };
 
-  Object.assign(UI, { Celebration, FocusMode, JaguarMark, setFavicon, fx: { taskScene: (W, H, t) => window.TempoScenes.task(W, H, t), dayScene: (W, H, t) => window.TempoScenes.day(W, H, t), chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
+  Object.assign(UI, { Celebration, FocusMode, JaguarMark, setFavicon, snapTask, fx: { taskScene: (W, H, t) => window.TempoScenes.task(W, H, t), dayScene: (W, H, t) => window.TempoScenes.day(W, H, t), chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
 })();
 </script>
 <script>
@@ -5036,8 +5112,34 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </div>`;
   }
 
+  /* While you dictate: a calm voice line in the accent colour (no red dot). The bars breathe gently and swell
+     whenever the browser hears words, with a running time beside them. */
+  function VoiceWave({ energy, since }) {
+    const ref = useRef(null); const [secs, setSecs] = useState(0);
+    useEffect(() => {
+      const cv = ref.current; if (!cv) return; const c = cv.getContext("2d"); if (!c) return; let raf = 0, last = 0; const lv = new Array(36).fill(0.08);
+      const loop = (now) => {
+        const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016; last = now; const r = cv.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height)); if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+        c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H); c.fillStyle = getComputedStyle(cv).color;
+        energy.current = Math.max(0, energy.current - dt * 0.9); const e = energy.current; const t = now / 1000; const n = lv.length; const gap = W / n; const bw = Math.max(2, gap * 0.48);
+        for (let i = 0; i < n; i++) {
+          const x = i / (n - 1); const shape = Math.sin(Math.PI * x) * 0.75 + 0.25; // fuller in the middle
+          const wave = 0.5 + 0.5 * Math.sin(t * 5.3 + i * 0.7) * Math.sin(t * 2.1 + i * 0.31);
+          const goal = 0.1 + shape * (0.12 + 0.78 * e * (0.45 + 0.55 * wave)) + 0.05 * Math.sin(t * 2 + i);
+          lv[i] += (goal - lv[i]) * (1 - Math.exp(-dt * 14)); const h = Math.max(3, lv[i] * H);
+          const bx = i * gap + (gap - bw) / 2, by = (H - h) / 2; c.beginPath(); if (c.roundRect) c.roundRect(bx, by, bw, h, bw / 2); else c.rect(bx, by, bw, h); c.fill();
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop); const tm = setInterval(() => setSecs(Math.floor((Date.now() - since) / 1000)), 250);
+      return () => { cancelAnimationFrame(raf); clearInterval(tm); };
+    }, []);
+    return html`<div class="vpill" role="status" aria-live="polite"><span class="vlbl">Listening</span><canvas ref=${ref} aria-hidden="true"></canvas><span class="vt num">${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</span></div>`;
+  }
+
   function Composer({ a, compact }) {
-    const [text, setText] = useState(""); const [rec, setRec] = useState(false); const [recNote, setRecNote] = useState(""); const ta = useRef(null); const recRef = useRef(null);
+    const [text, setText] = useState(""); const [rec, setRec] = useState(false); const energy = useRef(0); const recSince = useRef(0); const [recNote, setRecNote] = useState(""); const ta = useRef(null); const recRef = useRef(null);
     /* Dictation ends the moment a message is sent (or the composer goes away), and nothing it hears afterwards can land in the box. */
     const stopMic = (hard) => { const r = recRef.current; recRef.current = null; if (r) { if (hard) r.kill(); else r.stop(); } setRec(false); };
     useEffect(() => () => { if (recRef.current) recRef.current.kill(); }, []);
@@ -5047,9 +5149,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const toggleMic = () => {
       if (recRef.current) { stopMic(false); setRecNote("Review the text, then send."); return; }
       if (!T.speech.available()) { setRecNote("Voice input is not available in this browser. Type instead."); return; }
-      setRecNote("Listening… tap the microphone to stop, or just press Send."); const base = text;
+      setRecNote(""); recSince.current = Date.now(); energy.current = 0.6; const base = text;
       const h = T.speech.start({
-        onText: (t) => setText((base ? base + " " : "") + t),
+        onText: (t) => { energy.current = 1; setText((base ? base + " " : "") + t); },
         onEnd: () => { recRef.current = null; setRec(false); setRecNote("Review the text, then send."); },
         onError: (code) => { recRef.current = null; setRec(false); setRecNote(code === "not-allowed" || code === "service-not-allowed" ? "Microphone access was refused. Type instead." : "Voice input stopped (" + code + "). You can still type."); },
       });
@@ -5063,7 +5165,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     return html`<div class=${compact ? "pop-foot dock" : "dock"}>
       ${codeBox}
       <div class="chips scroll">${examples.map((ex, i) => html`<button key=${i} class="chip" onClick=${() => { setText(ex); ta.current && ta.current.focus(); }}>${ex}</button>`)}</div>
-      ${recNote ? html`<div class="engine">${recNote}</div>` : null}
+      ${rec ? html`<${VoiceWave} energy=${energy} since=${recSince.current} />` : recNote ? html`<div class="engine">${recNote}</div>` : null}
       <div class=${"cbar" + (rec ? " rec" : "")}>
         <button class=${"cmic " + (rec ? "rec" : "")} aria-label=${rec ? "Stop recording" : "Start voice input"} aria-pressed=${rec} onClick=${toggleMic} disabled=${a.busy} title=${T.speech.available() ? "Dictate" : "Voice input is not available in this browser"}><${Icon} name=${rec ? "stop" : "mic"} /></button>
         <textarea id=${compact ? "pop-composer" : "composer"} ref=${ta} rows="1" value=${text} onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey} placeholder=${compact ? "What changed?" : "Tell Tempo what changed…"} aria-label="Message to the planning assistant" autoFocus=${!!compact}></textarea>
@@ -5355,9 +5457,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       const st = stateRef.current; const names = res.summary.completed || []; if (!names.length) return; window.dispatchEvent(new Event("tempo:jaguar"));
       const prev = new Map(before.map((x) => [x.id, x.status])); const doneNow = res.tasks.find((x) => x.status === "completed" && prev.get(x.id) !== "completed");
       const day0 = T.dayKey(); const sprint = (list) => list.filter((x) => x.date === day0 && isWork(x) && !x.fixed && x.status !== "postponed");
-      const was = sprint(before), now = sprint(res.tasks); const allDone = now.length >= 2 && now.every((x) => x.status === "completed") && !was.every((x) => x.status === "completed");
+      const now = sprint(res.tasks); const allDone = !!doneNow && T.finishesDay(res.tasks.filter((x) => x.date === doneNow.date), doneNow.id, st.days[doneNow.date]);
+      if (allDone) dispatch({ type: "setDayMeta", date: doneNow.date, patch: { celebrated: true } });
       if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
-      if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${now.length} tasks for today are done.` : names[0], anchor: doneNow ? `li[data-id="${doneNow.id}"] .row-inner` : null, key: Date.now() });
+      if (st.prefs.animations !== false && !reducedMotion()) setFx({ kind: allDone ? "day" : "task", title: allDone ? `All ${now.length} tasks for today are done.` : names[0], snap: doneNow ? UI.snapTask(doneNow.id) : null, key: Date.now() });
     };
     const commitPlan = (plan, res, note) => { track("plan"); celebrate(Object.values(stateRef.current.tasks), res); return commit(res.tasks, "the assistant's change", "ai", { date: T.dayKey(), title: plan.dayTitle || undefined, targetFinish: plan.targetFinish ? T.parseHHMM(plan.targetFinish) : undefined }); };
 
@@ -5417,8 +5520,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       if (mutate) dayT = mutate(dayT, extra) || dayT;
       const an = T.analyzeDay(dayT, { now: T.minutesNow(), day: st.days[date] || {}, prefs: st.prefs, intel: st.intel, isToday: isT });
       const laid = T.layoutDay(dayT, { now: an.base, limit: an.limit, prefs: st.prefs, intel: st.intel, date, ...(typeof opts === "function" ? opts() : opts) });
-      const rev = commit([...all.filter((t) => t.date !== date), ...laid.tasks, ...extra], note, "manual");
-      return { laid, rev, an, extra };
+      // tasks moved to another day arrive there with a real time (the first free gaps), not as a list without times
+      const rest = all.filter((t) => t.date !== date); const placedExtra = [];
+      for (const d of [...new Set(extra.map((t) => t.date))]) { const there = rest.filter((t) => t.date === d); const from = d === T.dayKey() ? T.minutesNow() : st.prefs.workdayStart; placedExtra.push(...T.placeOnDay(there, extra.filter((t) => t.date === d), from, st.days[d], st.prefs)); }
+      const rev = commit([...rest, ...laid.tasks, ...placedExtra], note, "manual");
+      return { laid, rev, an, extra: placedExtra };
     };
     const parkedNote = (laid) => (laid.unscheduled.length ? ` ${laid.unscheduled.length} did not fit and ${laid.unscheduled.length > 1 ? "are" : "is"} parked.` : "");
 
@@ -5426,18 +5532,21 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     const actions = useMemo(() => ({
       onStatus: (id, status) => {
         const st = stateRef.current; const t = st.tasks[id]; if (!t) return;
-        // the task animation plays where the task was ticked off: on the Now card when the click came from there, otherwise on its row
-        const from = document.activeElement; const anchor = from && from.closest && from.closest(".nowcard") ? ".nowcard" : `li[data-id="${id}"] .row-inner`;
+        // the task animation plays in the box where the task was ticked off (its row, or the Now card): snapshot it before the list changes
+        const snap = status === "completed" ? UI.snapTask(id, document.activeElement) : null;
         let adjust = false, shiftMsg = ""; const newStart = new Map();
         if (status === "completed" && st.prefs.autoAdjust !== false && t.date === T.dayKey()) { const sh = T.shiftAfter(Object.values(st.tasks).filter((x) => x.date === t.date), t, T.minutesNow()); if (sh.moved) { adjust = true; for (const x of sh.tasks) newStart.set(x.id, x.start); shiftMsg = `. The next ${sh.moved > 1 ? sh.moved + " blocks" : "block"} moved ${sh.delta < 0 ? "up" : "back"} ${T.fmtShortDur(Math.abs(sh.delta))}`; track("autoslot"); } }
+        if (status !== "completed" && t.status === "completed" && st.days[t.date] && st.days[t.date].celebrated) dispatch({ type: "setDayMeta", date: t.date, patch: { celebrated: false } }); /* un-ticking reopens the day */
         dispatch({ type: "setStatus", id, status, adjust });
         if (status === "completed") window.dispatchEvent(new Event("tempo:jaguar"));
         if (status === "completed") {
           // the sprint is the flexible work of the day: commitments such as dinner do not hold the celebration back
           const dayWork = Object.values(st.tasks).filter((x) => x.date === t.date && isWork(x) && !x.fixed && x.status !== "postponed");
-          const allDone = dayWork.length >= 2 && dayWork.some((x) => x.id === id) && dayWork.every((x) => x.id === id || x.status === "completed");
+          // the last task of the day, or the last thing of the day (even dinner or a break), earns the full-screen glass scene
+          const allDone = T.finishesDay(Object.values(st.tasks).filter((x) => x.date === t.date), id, st.days[t.date]);
+          if (allDone) dispatch({ type: "setDayMeta", date: t.date, patch: { celebrated: true } });
           if (st.prefs.sound !== false) T.sound.play(allDone ? "all" : "done", st.prefs.volume);
-          if (st.prefs.animations !== false && !reducedMotion() && t.category !== "break") setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, anchor, key: Date.now() });
+          if (st.prefs.animations !== false && !reducedMotion() && (allDone || t.category !== "break")) setFx({ kind: allDone ? "day" : "task", full: !!focusRef.current || !!document.fullscreenElement, title: allDone ? `All ${dayWork.length} tasks for ${T.dayPhrase(t.date, T.dayKey())} are done.` : t.title, snap, key: Date.now() });
           const next = allDone ? null : dayWork.filter((x) => x.id !== id && isActive(x) && x.start != null && x.status !== "in_progress").sort((x, y) => x.start - y.start)[0];
           if (next && st.prefs.autoStartNext) { dispatch({ type: "setStatus", id: next.id, status: "in_progress" }); toast(`Done. Timer started for “${next.title}”` + shiftMsg, () => dispatch({ type: "undo" })); }
           else if (next) toast(`Done${shiftMsg}. Next: “${next.title}” at ${T.fmtTime(newStart.get(next.id) ?? next.start, st.prefs.timeFormat)}`, () => dispatch({ type: "undo" }), null, { label: "Start timer", fn: () => dispatch({ type: "setStatus", id: next.id, status: "in_progress" }) });
@@ -5473,7 +5582,13 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       openAssistant: () => setPop(true),
       onAsk: (date) => { setPop(true); const d0 = T.dayKey(); send(date === d0 ? "Review my day and propose the best order and timing for what is left." : `Review my plan for ${T.dayPhrase(date, d0)} and propose the best order and timing.`); },
       onDismissSuggestion: (s, date) => { if (s.action.type === "carry") dispatch({ type: "setDayMeta", date, patch: { carryDismissed: true } }); dispatch({ type: "dismissSuggestion", date, id: s.id }); },
-      onCarry: (ids) => { const st = stateRef.current; const set = new Set(ids); const day0 = T.dayKey(); const rev = commit(Object.values(st.tasks).map((t) => (set.has(t.id) ? { ...t, date: day0, start: undefined, end: undefined, status: "upcoming", postponedFrom: t.date, updatedAt: Date.now() } : t)), "bringing tasks into today", "manual"); track("carry"); toast(`${ids.length} task${ids.length > 1 ? "s" : ""} moved to today`, () => undo(rev)); },
+      onCarry: (ids) => {
+        const st = stateRef.current; const set = new Set(ids); const day0 = T.dayKey(); const all = Object.values(st.tasks);
+        const movers = all.filter((t) => set.has(t.id)).map((t) => ({ ...t, date: day0, start: undefined, end: undefined, status: "upcoming", postponedFrom: t.date, updatedAt: Date.now() }));
+        const placed = T.placeOnDay(all.filter((t) => t.date === day0), movers, T.minutesNow(), st.days[day0], st.prefs); const byId = new Map(placed.map((t) => [t.id, t])); const timed = placed.filter((t) => t.start != null).length;
+        const rev = commit(all.map((t) => byId.get(t.id) || t), "bringing tasks into today", "manual"); track("carry");
+        toast(`${ids.length} task${ids.length > 1 ? "s" : ""} moved to today${timed < ids.length ? ` (${ids.length - timed} without a free slot)` : ""}`, () => undo(rev));
+      },
       onDeletePriority: (id) => { const st = stateRef.current; if (Object.values(st.tasks).some((t) => t.priority === id)) commit(Object.values(st.tasks).map((t) => (t.priority === id ? { ...t, priority: "medium" } : t)), "removing a priority", "manual"); dispatch({ type: "setPrefs", patch: { priorities: (st.prefs.priorities || []).filter((x) => x.id !== id) } }); toast("Priority deleted. Its tasks are now Medium."); },
       onQuick: (text, date0) => {
         const st = stateRef.current; const q = T.parseQuick(text, T.dayKey(), st.prefs.learnFromHistory === false ? null : st.intel); if (!q) return; const date = q.date || date0; const day0 = T.dayKey(); const isT = date === day0;
@@ -5591,7 +5706,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       ${focusTask ? html`<${UI.FocusMode} task=${focusTask} next=${focusNext} prefs=${state.prefs} onStatus=${actions.onStatus} onToggleBullet=${actions.onToggleBullet} onNotes=${(id, notes) => dispatch({ type: "setNotes", id, notes })} onExtend=${(id, m) => dispatch({ type: "updateTask", id, patch: { estimatedMinutes: state.tasks[id].estimatedMinutes + m }, note: "adding focus time" })} onClose=${() => setFocusId(null)} />` : null}
       ${editing ? html`<${TaskEditor} task=${editing} date=${viewDate} prefs=${state.prefs} icons=${state.icons} onSave=${onSave} onClose=${() => setEditing(null)} onDelete=${actions.onDelete} />` : null}
       ${sheet ? html`<${ImpactSheet} ...${sheet} onClose=${() => setSheet(null)} />` : null}
-      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} anchor=${fx.anchor} onDone=${() => setFx(null)} />` : null}
+      ${fx ? html`<${UI.Celebration} key=${fx.key} kind=${fx.kind} full=${fx.full} title=${fx.title} snap=${fx.snap} onDone=${() => setFx(null)} />` : null}
       ${toastMsg ? html`<div class=${"toast" + (toastMsg.extra ? " wide" : "")} role="status"><span>${toastMsg.text}</span>${toastMsg.extra ? html`<button class="tx-main" onClick=${() => { toastMsg.extra.fn(); setToastMsg(null); }}><${Icon} name="play" size=${14} />${toastMsg.extra.label}</button>` : null}${toastMsg.undo ? html`<button onClick=${() => { toastMsg.undo(); setToastMsg(null); }}>${toastMsg.label || "Undo"}</button>` : null}</div>` : null}
     </div>`;
   }
