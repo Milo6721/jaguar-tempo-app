@@ -1006,6 +1006,550 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.min.js"></script>
 <script>if (!window.htm) document.write('<script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"><\/script>');</script>
 <script>
+/* Tempo · Chill animation · built from chill-animation/src by build.sh. Edit the sources, not this file. */
+/* =====================================================================
+   Tempo · Chill animation · core
+   Shared maths, easing, splines, the purple palette and small drawing
+   helpers. Everything else in this folder builds on window.TempoChill.util.
+   No dependencies, no build step: plain browser JavaScript.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = (window.TempoChill = window.TempoChill || {});
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const lerp2 = (p, q, t) => [lerp(p[0], q[0], t), lerp(p[1], q[1], t)];
+  /** progress of t through [a, b], clamped to 0..1 */
+  const span = (t, a, b) => (b === a ? (t >= b ? 1 : 0) : clamp((t - a) / (b - a), 0, 1));
+
+  /* ---------- easing: all take 0..1 and return 0..1 ---------- */
+  const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }; // smoothstep
+  const smoother = (t) => { t = clamp(t, 0, 1); return t * t * t * (t * (t * 6 - 15) + 10); }; // zero velocity and acceleration at both ends
+  const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+  const easeIn = (t) => Math.pow(clamp(t, 0, 1), 2.2);
+  const easeInOut = (t) => { t = clamp(t, 0, 1); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+  const easeOutBack = (t, k = 1.4) => { t = clamp(t, 0, 1); const c3 = k + 1; return 1 + c3 * Math.pow(t - 1, 3) + k * Math.pow(t - 1, 2); };
+  /** a single smooth hump: 0 at a, 1 at the middle, 0 at b */
+  const hump = (t, a, b) => { const u = span(t, a, b); return Math.sin(Math.PI * u) ** 2; };
+
+  /* ---------- noise and randomness (deterministic, so every replay looks the same) ---------- */
+  const rng = (seed) => () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const hash1 = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  /** smooth 1D value noise in 0..1 */
+  const noise1 = (x) => { const i = Math.floor(x), f = x - i; const u = f * f * (3 - 2 * f); return lerp(hash1(i), hash1(i + 1), u); };
+  /** a few octaves of noise, for hills and mist */
+  const fbm = (x, oct = 4) => { let a = 0.5, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * noise1(x); n += a; x *= 2.03; a *= 0.5; } return s / n; };
+
+  /* ---------- splines ---------- */
+  const cr = (a, b, c, d, t) => { const t2 = t * t, t3 = t2 * t; return 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3); };
+  /** Catmull-Rom through a list of [x, y] keys, w in 0..1 across the whole list */
+  const spline = (keys, w) => {
+    const n = keys.length - 1; const f = Math.min(n - 1e-9, Math.max(0, w) * n); const i = Math.floor(f); const t = f - i;
+    const k = (j) => keys[Math.max(0, Math.min(n, j))];
+    return [cr(k(i - 1)[0], k(i)[0], k(i + 1)[0], k(i + 2)[0], t), cr(k(i - 1)[1], k(i)[1], k(i + 1)[1], k(i + 2)[1], t)];
+  };
+
+  /* ---------- the palette: one hue, many shades ---------- */
+  const V = { ink: "#0B0418", night: "#150A2E", deep: "#1E0F45", dusk: "#2A1563", plum: "#3B1D80", royal: "#4C1D95", core: "#6D28D9", vivid: "#7C3AED", bright: "#8B5CF6", soft: "#A78BFA", pale: "#C4B5FD", mist: "#DDD6FE", glow: "#F5F3FF" };
+  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+
+  /* ---------- drawing helpers ---------- */
+  const ell = (c, x, y, rx, ry, fill, rot) => { c.beginPath(); c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot || 0, 0, TAU); if (fill) { c.fillStyle = fill; c.fill(); } };
+  /** a tapered limb segment from A (half width wa) to B (half width wb) */
+  const bone = (c, A, B, wa, wb) => {
+    const dx = B[0] - A[0], dy = B[1] - A[1]; const d = Math.hypot(dx, dy) || 1; const nx = -dy / d, ny = dx / d;
+    c.beginPath(); c.moveTo(A[0] + nx * wa, A[1] + ny * wa); c.lineTo(B[0] + nx * wb, B[1] + ny * wb); c.lineTo(B[0] - nx * wb, B[1] - ny * wb); c.lineTo(A[0] - nx * wa, A[1] - ny * wa); c.closePath(); c.fill();
+  };
+  /** a smooth path through points (quadratic midpoints) */
+  const smoothPath = (c, list) => {
+    if (!list.length) return; c.moveTo(list[0][0], list[0][1]);
+    for (let i = 1; i < list.length - 1; i++) { const mx = (list[i][0] + list[i + 1][0]) / 2, my = (list[i][1] + list[i + 1][1]) / 2; c.quadraticCurveTo(list[i][0], list[i][1], mx, my); }
+    if (list.length > 1) c.lineTo(list[list.length - 1][0], list[list.length - 1][1]);
+  };
+  const glowDot = (c, x, y, r, color, alpha) => {
+    const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, rgba(color, alpha)); g.addColorStop(1, rgba(color, 0)); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+
+  C.util = { TAU, clamp, lerp, lerp2, span, smooth, smoother, easeOut, easeIn, easeInOut, easeOutBack, hump, rng, hash1, noise1, fbm, cr, spline, V, rgba, ell, bone, smoothPath, glowDot };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · timeline
+   Every beat of the film in seconds. The whole scene reads these numbers,
+   so speeding the animation up or down is one multiplier.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill;
+
+  /* The story, at speed 1 (about 9 seconds):
+     sky fades in → the jaguar gallops in from the right → slows and stops → looks round → lies down,
+     front first, then the hindquarters → rests and blinks → folds its legs in and curls up → sleeps →
+     the ball it has become rises into the sky and lights up as the moon → a quiet line of text. */
+  const BASE = {
+    SKY: 0.45, // sky fade-in
+    RUN0: 0.25, // first stride
+    STOP: 3.15, // last stride lands
+    LOOK0: 3.1, LOOK1: 3.75, // lifts its head and looks round
+    LIE0: 3.55, // front goes down, hindquarters follow 0.35 s later
+    REST: 4.65, // lying still: breathing, a blink, an ear flick
+    CURL0: 4.95, CURL1: 6.15, // folds its legs in and curls into a ball
+    SLEEP: 6.15, // eyes shut, slow breath
+    MOON0: 6.45, MOON1: 8.0, // the ball rises and becomes the moon
+    STAR: 1.4, // a shooting star crosses the sky while it runs
+    TEXT: 7.55,
+    END: 9.0,
+  };
+
+  /** the timeline at a given speed (2 = twice as fast) */
+  C.timeline = (speed = 1) => { const k = 1 / Math.max(0.1, speed); const T = {}; for (const key of Object.keys(BASE)) T[key] = BASE[key] * k; T.speed = speed; return T; };
+  C.TIMELINE_BASE = BASE;
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · the night
+   Sky gradient, drifting nebula, three layers of twinkling stars, a
+   shooting star, two ranges of distant hills, slow mist and the ground
+   the jaguar runs on. Nothing here depends on the jaguar.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, easeOut, rng, fbm, V, rgba, ell, glowDot } = C.util;
+
+  C.makeNight = function (W, H, groundY, T) {
+    const R = rng(90210);
+    const layers = [
+      Array.from({ length: Math.round((W * H) / 9000) }, () => ({ x: R() * W, y: R() * groundY, r: 0.35 + R() * 0.7, p: R() * TAU, sp: 0.6 + R() * 1.4, a: 0.25 + R() * 0.3 })),
+      Array.from({ length: Math.round((W * H) / 26000) }, () => ({ x: R() * W, y: R() * groundY * 0.95, r: 0.7 + R() * 0.9, p: R() * TAU, sp: 0.8 + R() * 2.2, a: 0.4 + R() * 0.35 })),
+      Array.from({ length: 7 + Math.round(W / 260) }, () => ({ x: R() * W, y: R() * groundY * 0.7, r: 1.1 + R() * 0.9, p: R() * TAU, sp: 0.5 + R() * 1.2, a: 0.6 + R() * 0.3, glow: true })),
+    ];
+    const nebula = Array.from({ length: 4 }, (_, i) => ({ x: (0.15 + i * 0.25 + R() * 0.1) * W, y: (0.15 + R() * 0.35) * H, r: (0.25 + R() * 0.2) * Math.max(W, H), p: R() * TAU, col: i % 2 ? V.core : V.royal }));
+    // two ranges of hills: sampled once, drawn as filled silhouettes
+    const hill = (seed, base, amp, freq) => { const pts = []; const n = 64; for (let i = 0; i <= n; i++) { const x = (i / n) * W; pts.push([x, base - amp * fbm(seed + (x / W) * freq, 4)]); } return pts; };
+    const farHills = hill(13.7, groundY - H * 0.035, H * 0.16, 3.2), nearHills = hill(71.3, groundY + 2, H * 0.085, 5.1);
+    const mist = Array.from({ length: 5 }, (_, i) => ({ y: groundY - H * (0.02 + i * 0.03), w: W * (0.5 + R() * 0.5), p: R() * TAU, sp: 0.04 + R() * 0.05 }));
+    const star0 = [W * (0.92 - R() * 0.1), H * (0.08 + R() * 0.06)], star1 = [W * (0.45 - R() * 0.1), H * (0.32 + R() * 0.05)];
+
+    const fillHills = (c, pts, color) => { c.beginPath(); c.moveTo(0, H); for (const [x, y] of pts) c.lineTo(x, y); c.lineTo(W, H); c.closePath(); c.fillStyle = color; c.fill(); };
+
+    return {
+      /** draw everything behind the jaguar. `alpha` is the scene's fade in/out */
+      back(c, t, alpha) {
+        // the sky itself
+        c.globalAlpha = alpha; const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.ink); bg.addColorStop(0.55, V.night); bg.addColorStop(1, V.deep); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+        // nebula clouds drifting very slowly
+        for (const n of nebula) { c.globalAlpha = alpha * 0.16; const nx = n.x + Math.sin(t * 0.07 + n.p) * W * 0.03, ny = n.y + Math.cos(t * 0.05 + n.p) * H * 0.02; const g = c.createRadialGradient(nx, ny, 0, nx, ny, n.r); g.addColorStop(0, rgba(n.col, 0.55)); g.addColorStop(1, rgba(n.col, 0)); c.fillStyle = g; c.fillRect(nx - n.r, ny - n.r, n.r * 2, n.r * 2); }
+        // a low glow over the horizon
+        c.globalAlpha = alpha; const hz = c.createRadialGradient(W * 0.5, groundY + H * 0.1, 10, W * 0.5, groundY + H * 0.1, Math.max(W, H) * 0.75); hz.addColorStop(0, "rgba(124,58,237,.32)"); hz.addColorStop(1, "rgba(124,58,237,0)"); c.fillStyle = hz; c.fillRect(0, 0, W, H);
+        // stars: far ones barely flicker, near ones twinkle and glow
+        layers.forEach((layer, li) => { for (const st of layer) { const tw = 0.55 + 0.45 * Math.sin(t * st.sp + st.p); c.globalAlpha = alpha * st.a * (li === 0 ? 0.8 + 0.2 * tw : tw); if (st.glow) glowDot(c, st.x, st.y, st.r * 5, V.mist, 0.35 * tw); ell(c, st.x, st.y, st.r, st.r, V.mist); } });
+        // a shooting star while it runs
+        { const u = span(t, T.STAR, T.STAR + 0.9); if (u > 0 && u < 1) { const e = easeOut(u); const hx = lerp(star0[0], star1[0], e), hy = lerp(star0[1], star1[1], e); const tail = 0.22; const tx = lerp(star0[0], star1[0], Math.max(0, e - tail)), ty = lerp(star0[1], star1[1], Math.max(0, e - tail));
+          c.globalAlpha = alpha * Math.sin(Math.PI * u); const g = c.createLinearGradient(tx, ty, hx, hy); g.addColorStop(0, rgba(V.mist, 0)); g.addColorStop(1, rgba(V.glow, 0.9)); c.strokeStyle = g; c.lineWidth = 1.6; c.lineCap = "round"; c.beginPath(); c.moveTo(tx, ty); c.lineTo(hx, hy); c.stroke(); glowDot(c, hx, hy, 7, V.glow, 0.8); } }
+        // the hills, the mist between them and the ground
+        c.globalAlpha = alpha; fillHills(c, farHills, V.deep);
+        for (const m of mist) { const x = W * 0.5 + Math.sin(t * m.sp * TAU * 0.25 + m.p) * W * 0.25; c.globalAlpha = alpha * 0.08; ell(c, x, m.y, m.w * 0.5, H * 0.018, V.pale); }
+        c.globalAlpha = alpha; fillHills(c, nearHills, V.night);
+        const gr = c.createLinearGradient(0, groundY, 0, H); gr.addColorStop(0, V.night); gr.addColorStop(1, V.ink); c.fillStyle = gr; c.fillRect(0, groundY + 1, W, H - groundY);
+        c.globalAlpha = alpha * 0.45; const rim = c.createLinearGradient(0, 0, W, 0); rim.addColorStop(0, rgba(V.soft, 0)); rim.addColorStop(0.5, rgba(V.soft, 0.6)); rim.addColorStop(1, rgba(V.soft, 0)); c.fillStyle = rim; c.fillRect(0, groundY, W, 1.2);
+        c.globalAlpha = 1;
+      },
+    };
+  };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · the body
+   The jaguar is one bendable spine with a thickness profile, so muzzle,
+   head, neck, chest, belly, haunch and tail are a single outline in a
+   single colour. This file knows the shape; 50-pose.js knows the motion.
+   Units are "jaguar units": the body is 178 long, paws stand on y = 0.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { lerp, smooth } = C.util;
+
+  const L = 178; // spine length, nose to tail tip
+  const N = 72; // spine samples
+  const TAIL = 0.62; // where the tail starts along the spine
+  const BALL = 46, RX = 27, RY = 27; // the curled ball
+
+  /** half thickness along the spine: u = 0 at the nose, 1 at the tail tip */
+  const profile = (u) =>
+    u < 0.05 ? lerp(4.2, 8.2, u / 0.05)
+      : u < 0.13 ? lerp(8.2, 9.4, (u - 0.05) / 0.08) // the head
+      : u < 0.19 ? lerp(9.4, 7.4, (u - 0.13) / 0.06) // the neck
+      : u < 0.31 ? lerp(7.4, 13.2, (u - 0.19) / 0.12) // shoulders and chest
+      : u < 0.47 ? lerp(13.2, 11.6, (u - 0.31) / 0.16) // the waist
+      : u < 0.55 ? lerp(11.6, 12.6, (u - 0.47) / 0.08) // the haunch
+      : u < 0.63 ? lerp(12.6, 4.6, smooth((u - 0.55) / 0.08)) // into the tail
+      : lerp(4.6, 1.5, (u - 0.63) / 0.37); // the tail, tapering
+
+  /** the spine's direction at u while running, standing and lying (radians; 0 = towards the tail, the jaguar faces left) */
+  const heading = (u, q) => {
+    const { arch, amp, bob, rest, lookUp, tailDown, t } = q;
+    if (u < 0.2) return -0.3 + (u / 0.2) * 0.22 + bob - rest * 0.28 - lookUp * 0.32; // head and neck
+    if (u < TAIL) return -arch * (0.42 - u) / 0.2; // the back gathers and stretches
+    const v = (u - TAIL) / (1 - TAIL);
+    const running = lerp(0.55, -0.85, v) + Math.sin(t * 3 + u * 7) * 0.22 * (0.4 + amp) - amp * 0.25 * v; // streams out behind at speed
+    const lying = lerp(0.42, -0.12, v) + Math.sin(t * 1.6 + u * 5) * 0.06 + q.tailFlick * Math.sin(Math.PI * v) * 0.5 * v; // lies along the ground, tip twitching now and then
+    return lerp(running, lying, tailDown);
+  };
+
+  /** where each point of the spine sits once curled up the way cats curl, seen from the side:
+      the back is the top arc, the head rests low at the front with the nose tucked in, the haunch rounds
+      off at the back and the tail runs along the bottom until its tip meets the nose */
+  const curlPoint = (u, x0, y0) => {
+    const ph = u < 0.375 ? lerp(Math.PI - 0.55, 1.5 * Math.PI, u / 0.375)
+      : u < TAIL ? lerp(1.5 * Math.PI, 2 * Math.PI + 0.35, (u - 0.375) / (TAIL - 0.375))
+      : lerp(2 * Math.PI + 0.35, 3 * Math.PI - 0.8, (u - TAIL) / (1 - TAIL));
+    const sc = (u < TAIL ? 1 : lerp(1, 1.42, Math.min(1, (u - TAIL) / 0.12))) * (u < 0.1 ? lerp(0.72, 1, u / 0.1) : 1);
+    return [x0 + Math.cos(ph) * RX * sc, y0 + Math.sin(ph) * RY * sc];
+  };
+
+  /** the two edges of the body around the spine (top = back, bottom = belly) */
+  const outline = (pose) => {
+    const up = [], dn = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N; const a = pose.th[i]; const fill = lerp(1, u < TAIL ? 1.45 : 1.2, pose.k);
+      const w = profile(u) * fill * (u > 0.2 && u < 0.6 ? pose.breath : 1); const nx = Math.sin(a), ny = -Math.cos(a); const belly = u > 0.2 && u < 0.6 ? 0.92 : 1;
+      up.push([pose.pts[i][0] + nx * w, pose.pts[i][1] + ny * w]); dn.push([pose.pts[i][0] - nx * w * belly, pose.pts[i][1] - ny * w * belly]);
+    }
+    return { up, dn };
+  };
+
+  C.body = { L, N, TAIL, BALL, RX, RY, profile, heading, curlPoint, outline };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · the gallop
+   Distance follows an eased cadence, the run ends exactly on a stride,
+   and each paw is planted while the body passes over it, then flies
+   through a spline arc to its next footfall. Joints come from two-bone
+   inverse kinematics, so knees and elbows bend by themselves.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { clamp, lerp, smooth, spline } = C.util;
+
+  /** the run across the screen: how far, how fast, and which stride we are in */
+  C.makeRun = function (W, s, T) {
+    const startX = W + 120 * s, endX = 88 * s + 30; const dist = startX - endX;
+    const strides = Math.max(2, Math.round(dist / (96 * s))); // long bounds
+    const ramp = 0.35 / T.speed, brake = 1.3 / T.speed;
+    const env = (t) => (t <= T.RUN0 || t >= T.STOP ? 0 : Math.min(smooth((t - T.RUN0) / ramp), smooth((T.STOP - t) / brake)));
+    const TBL = 600; const cum = new Float64Array(TBL + 1);
+    for (let i = 1; i <= TBL; i++) cum[i] = cum[i - 1] + env(T.RUN0 + ((i - 0.5) / TBL) * (T.STOP - T.RUN0));
+    const prog = (t) => { if (t <= T.RUN0) return 0; if (t >= T.STOP) return 1; const f = ((t - T.RUN0) / (T.STOP - T.RUN0)) * TBL; const i = Math.floor(f); return (cum[i] + (cum[Math.min(TBL, i + 1)] - cum[i]) * (f - i)) / cum[TBL]; };
+    /** the moment the gallop reached a given stride count (for footfall dust) */
+    const timeAtCycle = (cyc) => { const target = clamp(cyc / strides, 0, 1) * cum[TBL]; let lo = 0, hi = TBL; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] < target) lo = mid; else hi = mid; } const f = lo + (target - cum[lo]) / Math.max(1e-9, cum[hi] - cum[lo]); return T.RUN0 + (f / TBL) * (T.STOP - T.RUN0); };
+    return { startX, endX, dist, strides, stride: dist / strides / s, env, prog, x: (t) => lerp(startX, endX, prog(t)), cyc: (t) => strides * prog(t), timeAtCycle };
+  };
+
+  /** the four legs: far hind, far front, near hind, near front, with the footfall order of a transverse gallop */
+  C.LEGS = [
+    { u: 0.56, l1: 20, l2: 22, w: [7.6, 4.5, 2.8], off: 0.0, front: false, dx: 3, lie: -6, near: false },
+    { u: 0.27, l1: 19, l2: 20, w: [5.6, 3.9, 2.6], off: 0.45, front: true, dx: -2, lie: -17, near: false },
+    { u: 0.54, l1: 20, l2: 22, w: [8.4, 5, 3], off: 0.1, front: false, dx: 3, lie: -9, near: true },
+    { u: 0.29, l1: 19, l2: 20, w: [6, 4.2, 2.8], off: 0.55, front: true, dx: -2, lie: -21, near: true },
+  ];
+  C.DUTY = 0.3; // share of each stride a paw spends on the ground
+  /** the flight of a paw between footfalls (relative to its shoulder or hip):
+      front: lift off behind, fold, swing through, reach far forward, land
+      hind:  push back, fold, swing under the belly, reach, land */
+  const SWING = { front: [[14, -13], [-8, -17], [-25, -9]], hind: [[22, -9], [6, -16], [-12, -11]] };
+
+  /** where a paw is, relative to its root, at stride phase `cyc` with gallop strength `amp` */
+  C.pawOffset = function (leg, cyc, amp, stride) {
+    const S = stride * C.DUTY * amp; if (amp <= 0.001) return [0, 0];
+    const ph = (((cyc + leg.off) % 1) + 1) % 1;
+    if (ph < C.DUTY) return [lerp(-S / 2, S / 2, ph / C.DUTY), 0]; // planted: the body travels over it, it does not slide
+    const keys = [[S / 2, 0], ...SWING[leg.front ? "front" : "hind"].map(([a, b]) => [a * amp, b * amp]), [-S / 2, 0]];
+    return spline(keys, (ph - C.DUTY) / (1 - C.DUTY));
+  };
+
+  /** two-bone inverse kinematics: root, target, bone lengths → [joint, paw]; the joint bends back towards the tail like a cat's elbow and hock */
+  C.solveLeg = function (root, target, l1, l2) {
+    let dx = target[0] - root[0], dy = target[1] - root[1]; let d = Math.hypot(dx, dy); const reach = l1 + l2 - 0.01;
+    if (d > reach) { dx *= reach / d; dy *= reach / d; d = reach; }
+    d = Math.max(d, Math.abs(l1 - l2) + 0.01, 0.01);
+    const paw = [root[0] + dx, root[1] + dy]; const base = Math.atan2(dy, dx);
+    const A = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
+    const k1 = [root[0] + Math.cos(base + A) * l1, root[1] + Math.sin(base + A) * l1], k2 = [root[0] + Math.cos(base - A) * l1, root[1] + Math.sin(base - A) * l1];
+    return [k1[0] > k2[0] ? k1 : k2, paw];
+  };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · the pose at any moment
+   pose(t) is a pure function of time: the spine, its directions and every
+   small life sign (breath, blink, ear flick, tail twitch) for frame t.
+   Nothing is stored between frames, so scrubbing and replays are exact.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, smoother, hump } = C.util; const B = C.body;
+
+  C.makePose = function (run, s, T) {
+    return function pose(t) {
+      const p = run.prog(t); const x = run.x(t); const amp = run.env(t); const cyc = run.strides * p;
+      // the gallop: the back gathers while the hind legs swing under and stretches while they push off;
+      // the body rides highest in the suspension after the front paws leave the ground
+      const arch = 0.05 + amp * 0.34 * Math.cos(TAU * (cyc - 0.88));
+      const lift = amp * 9 * (1 - Math.cos(TAU * (cyc - 0.4))) / 2;
+      const tilt = amp * 0.06 * Math.sin(TAU * (cyc - 0.2));
+      const bob = amp * 0.07 * Math.sin(TAU * (cyc - 0.05));
+      // after stopping it lifts its head and looks round, then lies down like a cat: front first, then the hindquarters
+      const lookUp = hump(t, T.LOOK0, T.LOOK1);
+      const lieF = smooth(span(t, T.LIE0, T.LIE0 + 0.75 / T.speed));
+      const lieH = smooth(span(t, T.LIE0 + 0.35 / T.speed, T.LIE0 + 1.25 / T.speed));
+      const rest = smooth(span(t, T.LIE0 + 0.6 / T.speed, T.LIE0 + 1.4 / T.speed));
+      const tailDown = smooth(span(t, T.LIE0 + 0.5 / T.speed, T.LIE0 + 1.4 / T.speed));
+      // small signs of life while it rests
+      const settle = smooth(span(t, T.REST - 0.2 / T.speed, T.REST + 0.3 / T.speed));
+      const breath = 1 + settle * 0.022 * Math.sin((t - T.REST) * 2.4 * Math.min(1.4, T.speed));
+      const blink = hump(t, T.REST + 0.25 / T.speed, T.REST + 0.45 / T.speed);
+      const sleepy = smooth(span(t, T.CURL0 + 0.45 / T.speed, T.CURL1 + 0.1 / T.speed));
+      const eyeShut = Math.max(blink, sleepy);
+      const earFlick = Math.sin(span(t, T.REST + 0.05 / T.speed, T.REST + 0.4 / T.speed) * Math.PI * 3) * hump(t, T.REST + 0.05 / T.speed, T.REST + 0.4 / T.speed);
+      const tailFlick = hump(t, T.REST + 0.45 / T.speed, T.REST + 0.95 / T.speed);
+      // the curl
+      const k = smoother(span(t, T.CURL0, T.CURL1));
+      const fold = smooth(span(k, 0.02, 0.44)); // legs fold up under the body
+
+      // build the spine for the running/lying body
+      const q = { arch, amp, bob, rest, lookUp, tailDown, tailFlick, t };
+      const run0 = []; let px = 0, py = 0; const ds = B.L / B.N;
+      for (let i = 0; i <= B.N; i++) { const a = B.heading(i / B.N, q) + tilt; run0.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
+      const mid = run0[Math.round(B.N * 0.42)]; const dx = x / s - mid[0], dy = -39 - lift - mid[1];
+      const X0 = x / s + 2, Y0 = -B.BALL + 1; // where the ball will rest
+
+      const pts = [];
+      for (let i = 0; i <= B.N; i++) {
+        const u = i / B.N;
+        const down = 16 * (u < 0.33 ? lieF : u > 0.5 ? lieH : lerp(lieF, lieH, (u - 0.33) / 0.17)) + 9 * fold; // front down first, belly settles as the legs fold
+        const lead = 0.2 * Math.max(0, 1 - Math.abs(u - 0.375) * 2.6); // head and tail come round first, the shoulders last
+        const kk = smoother(clamp((k - lead * 0.5) / (1 - lead * 0.5), 0, 1));
+        const r = [run0[i][0] + dx, run0[i][1] + dy + down]; const c2 = B.curlPoint(u, X0, Y0);
+        pts.push([lerp(r[0], c2[0], kk), lerp(r[1], c2[1], kk)]);
+      }
+      const th = pts.map((_, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(B.N, i + 1)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); });
+      return { t, x, lift, pts, th, k, fold, amp, cyc, stride: run.stride, lieF, lieH, rest, breath, eyeShut, earFlick, center: [X0, Y0] };
+    };
+  };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · drawing
+   Turns a pose into pixels: legs (solved joints), the one-piece body,
+   ears, eye, the faint seams of the curl, dust kicked up at every
+   footfall, the ball, the moon and the closing words.
+   All drawing here happens in jaguar units (scaled by the scene).
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, hump, hash1, V, rgba, ell, bone, smoothPath } = C.util; const B = C.body;
+
+  C.makeRenderer = function (run, T) {
+    const legRoot = (ps, leg) => { const i = Math.round(leg.u * B.N); const a = ps.th[i]; return [ps.pts[i][0] - Math.sin(a) * 3.5, ps.pts[i][1] + Math.cos(a) * 3.5]; };
+
+    /** one leg: where its paw should be (gallop, lying down, folding away) and the bones that reach it */
+    const drawLeg = (c, ps, leg, fill) => {
+      const keep = 1 - ps.fold; if (keep < 0.03) return null;
+      const root = legRoot(ps, leg); const off = C.pawOffset(leg, ps.cyc, ps.amp, ps.stride);
+      const lie = leg.front ? ps.lieF : ps.lieH; // front paws slide forward under the chest, hind legs fold beneath the haunch
+      const rel = lerp(off[0], leg.lie, lie), py = lerp(off[1], 0, lie);
+      const target0 = [root[0] + rel + leg.dx, py]; const target = [lerp(root[0], target0[0], keep), lerp(root[1], target0[1], keep)]; // folding: the whole leg draws up into the body
+      const [knee, paw] = C.solveLeg(root, target, leg.l1 * keep, leg.l2 * keep);
+      const ws = lerp(0.55, 1, keep); const [w0, w1, w2] = leg.w.map((w) => w * ws);
+      c.fillStyle = fill; bone(c, root, knee, w0, w1); bone(c, knee, paw, w1, w2);
+      ell(c, root[0], root[1], w0, w0, fill); ell(c, knee[0], knee[1], w1, w1, fill);
+      ell(c, paw[0] - w2 * 0.9, paw[1] - w2 * 0.55, w2 * 2.1, w2 * 1.05, fill);
+      return { root, knee, paw };
+    };
+
+    /** the whole animal in one fill: legs, then the body outline, then the ears */
+    const jaguar = (c, ps, fill, alpha) => {
+      const { up, dn } = B.outline(ps); c.globalAlpha = alpha; c.fillStyle = fill;
+      const joints = C.LEGS.map((leg) => drawLeg(c, ps, leg, fill));
+      // the paws folded in under the chest fill the middle of the curl
+      const tuck = smooth(span(ps.k, 0.45, 0.9));
+      if (tuck > 0) { const [bx, by] = ps.center; c.fillStyle = fill; c.beginPath(); c.ellipse(bx + 2, by + 5, 27 * tuck, 19 * tuck, 0, 0, TAU); c.fill(); }
+      // body, head and tail as one outline
+      c.fillStyle = fill; c.beginPath(); smoothPath(c, up); for (let i = dn.length - 1; i >= 0; i--) c.lineTo(dn[i][0], dn[i][1]); c.closePath(); c.fill();
+      // the ear: flicks once while it rests, lies flat as it curls up
+      { const a = Math.round(0.075 * B.N), b = Math.round(0.125 * B.N), m = Math.round(0.1 * B.N); const ang = ps.th[m] - ps.earFlick * 0.35; const nx = Math.sin(ang), ny = -Math.cos(ang); const h = 7.5 * (1 - smooth(Math.min(1, ps.k * 1.4)));
+        c.beginPath(); c.moveTo(up[a][0], up[a][1]); c.quadraticCurveTo(up[m][0] + nx * h * 1.1 - Math.cos(ang) * 1.5, up[m][1] + ny * h * 1.1 - Math.sin(ang) * 1.5, up[b][0], up[b][1]); c.closePath(); c.fill(); }
+      // once curled, a faint line shows where the head rests and where the tail wraps round
+      const seam = smooth(span(ps.k, 0.55, 1)) * (ps.seam ?? 1);
+      if (seam > 0.01) { c.save(); c.globalAlpha = alpha * seam * 0.55; c.strokeStyle = V.core; c.lineWidth = 1.1; c.lineCap = "round";
+        const tail = Math.round(B.N * 0.64); c.beginPath(); smoothPath(c, up.slice(tail)); c.stroke(); c.beginPath(); smoothPath(c, dn.slice(tail)); c.stroke();
+        c.beginPath(); smoothPath(c, dn.slice(0, Math.round(B.N * 0.16))); c.stroke(); c.restore(); }
+      return { up, dn, joints };
+    };
+
+    /** the eye: open while it runs, a blink while it rests, slowly closing as it falls asleep */
+    const eye = (c, ps, alpha) => {
+      if (alpha <= 0) return; const i = Math.round(0.045 * B.N); const a = ps.th[i]; const nx = Math.sin(a), ny = -Math.cos(a); const ex = ps.pts[i][0] + nx * 3.4, ey = ps.pts[i][1] + ny * 3.4;
+      const shut = ps.eyeShut; c.globalAlpha = alpha;
+      if (shut < 0.97) ell(c, ex, ey, 2.3, Math.max(0.25, 0.95 * (1 - shut)), V.night, a);
+      if (shut > 0.3) { c.globalAlpha = alpha * smooth(span(shut, 0.3, 0.8)); c.strokeStyle = V.night; c.lineWidth = 0.9; c.lineCap = "round"; c.beginPath(); c.arc(ex, ey - 0.6, 2.2, a + 0.35, a + Math.PI - 0.35); c.stroke(); }
+    };
+
+    /** a line of light along the back */
+    const backLight = (c, up, alpha) => { if (alpha <= 0) return; c.globalAlpha = alpha * 0.5; c.strokeStyle = V.glow; c.lineWidth = 1.1; c.beginPath(); smoothPath(c, up.slice(Math.round(B.N * 0.15), Math.round(B.N * 0.6))); c.stroke(); };
+
+    /** star dust kicked up wherever a paw lands, a few motes per footfall, gone in under a second */
+    const dust = (c, t, cyc, alpha, s) => {
+      const LIFE = 0.75 / T.speed;
+      C.LEGS.forEach((leg, li) => {
+        for (let n = Math.floor(cyc) - 2; n <= Math.floor(cyc) + 1; n++) {
+          const c0 = n - leg.off; if (c0 < 0 || c0 > cyc) continue; const tk = run.timeAtCycle(c0); const age = t - tk; if (age < 0 || age > LIFE) continue;
+          const amp = run.env(tk); if (amp < 0.15) continue;
+          const footX = run.x(tk) / s + (leg.u - 0.42) * B.L - (run.stride * C.DUTY * amp) / 2 + leg.dx; const life = age / LIFE;
+          for (let j = 0; j < 5; j++) { const h = hash1(n * 31 + li * 7 + j); const h2 = hash1(n * 17 + li * 13 + j * 3);
+            const px = footX + (h - 0.3) * 10 + life * (8 + h2 * 14), py = -life * (4 + h * 12) + life * life * 6; c.globalAlpha = alpha * amp * 0.75 * (1 - life) * (0.5 + h2 * 0.5);
+            ell(c, px, py, 0.8 + h * 1.4, 0.8 + h * 1.4, h2 > 0.5 ? V.pale : V.mist); }
+        }
+      });
+    };
+
+    /** the moon's face: soft seas, a few craters and a rim of light */
+    const CRATERS = [[-0.3, 0.1, 0.18], [0.25, -0.2, 0.12], [0.15, 0.35, 0.1], [-0.05, -0.4, 0.07], [0.42, 0.12, 0.06], [-0.45, -0.18, 0.05], [-0.18, 0.48, 0.05]];
+    const SEAS = [[-0.2, -0.05, 0.42, 0.3, 0.3], [0.22, 0.25, 0.3, 0.22, -0.5], [0.1, -0.35, 0.25, 0.16, 0.2]];
+    const moonFace = (c, cx, cy, r, alpha) => {
+      if (alpha <= 0) return;
+      for (const [dx, dy, rx, ry, rot] of SEAS) { c.globalAlpha = alpha * 0.1; ell(c, cx + dx * r, cy + dy * r, rx * r, ry * r, V.soft, rot); }
+      for (const [dx, dy, cr] of CRATERS) { const x = cx + dx * r, y = cy + dy * r, rr = cr * r; c.globalAlpha = alpha * 0.16; ell(c, x, y, rr, rr, V.soft); c.globalAlpha = alpha * 0.22; c.strokeStyle = V.glow; c.lineWidth = Math.max(0.5, rr * 0.12); c.beginPath(); c.arc(x, y, rr * 0.92, Math.PI * 0.95, Math.PI * 1.85); c.stroke(); }
+      c.globalAlpha = alpha * 0.35; c.strokeStyle = V.glow; c.lineWidth = Math.max(0.8, r * 0.035); c.beginPath(); c.arc(cx, cy, r * 0.985, Math.PI * 1.05, Math.PI * 1.75); c.stroke();
+    };
+
+    return { jaguar, eye, backLight, dust, moonFace, legRoot };
+  };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · the scene
+   TempoChill.scene(W, H, { speed, debug }) → { duration, draw(c, t), at(t) }
+   Puts the night, the jaguar, the dust, the ball, the moon and the words
+   together, in that order, for any moment t (seconds).
+   The canvas context may carry `c._dpr` (device pixel ratio).
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { TAU, clamp, lerp, span, smooth, smoother, easeOut, easeInOut, hump, V, rgba, ell, glowDot } = C.util; const B = C.body;
+
+  C.scene = function (W, H, opts = {}) {
+    const T = C.timeline(opts.speed || 1);
+    const s = clamp(Math.min(W * 0.8, H) / 320, 0.75, 2.4); // jaguar units → pixels
+    const groundY = H * 0.58;
+    const run = C.makeRun(W, s, T); const pose = C.makePose(run, s, T); const night = C.makeNight(W, H, groundY, T); const draw = C.makeRenderer(run, T);
+    // how far the ball has to rise to hang in the sky as the moon
+    const ballScreenY = groundY + (-B.BALL + 1) * s; const risePx = Math.max(0, ballScreenY - H * 0.3);
+
+    return {
+      duration: T.END, T, s, groundY,
+      /** where the jaguar is at time t: [x px, ground y px, scale] */
+      at: (t) => [run.x(t), groundY, s],
+      draw(c, t) {
+        const dpr = c._dpr || 1; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+        const out = 1 - smooth(span(t, T.END - 0.7 / T.speed, T.END)); const inn = smooth(span(t, 0, T.SKY)); const A = inn * out;
+        night.back(c, t, A);
+
+        const ps = pose(t);
+        const m = smoother(span(t, T.MOON0, T.MOON1)); // the ball becoming the moon
+        const rise = easeInOut(span(t, T.MOON0 - 0.1 / T.speed, T.MOON1 + 0.15 / T.speed)) * risePx;
+
+        c.save(); c.translate(0, groundY); c.scale(s, s);
+        // a soft shadow under the body: smaller while it is in the air, gone as the moon rises
+        { const sx = ps.x / s + 2; const air = ps.lift / 9; const shade = (1 - smooth(span(rise, 0, risePx * 0.35))) * out; c.globalAlpha = shade * 0.5 * (1 - air * 0.5); ell(c, sx, 1.5, lerp(64, 50, ps.k) * (1 - air * 0.25), 3.2, V.ink); }
+        draw.dust(c, t, ps.cyc, A, s);
+        c.translate(0, -rise / s);
+
+        const cen = ps.center; const ballR = (B.BALL - 1.5) * lerp(1, 1.03, m);
+        // the glow gathers as it turns into the moon, and keeps breathing once it is up
+        if (m > 0) { const pulse = 1 + 0.04 * Math.sin((t - T.MOON1) * 1.8); const hr = ballR * 3.4 * pulse; c.globalAlpha = A * m * 0.85; const halo = c.createRadialGradient(cen[0], cen[1], ballR * 0.6, cen[0], cen[1], hr); halo.addColorStop(0, "rgba(196,181,253,.5)"); halo.addColorStop(1, "rgba(196,181,253,0)"); c.fillStyle = halo; c.fillRect(cen[0] - hr, cen[1] - hr, hr * 2, hr * 2); }
+
+        // one colour for the whole animal: lit from above, deeper underneath
+        const fur = c.createLinearGradient(0, cen[1] - 50, 0, cen[1] + 40); fur.addColorStop(0, V.pale); fur.addColorStop(0.5, V.bright); fur.addColorStop(1, V.vivid);
+        // the curl closes into a round ball: the fill grows from inside, so its edge never shows early
+        const fill = smooth(span(ps.k, 0.86, 1));
+        if (fill > 0) { const br = 1 + (1 - m) * fill * 0.02 * Math.sin((t - T.SLEEP) * 2.2); c.globalAlpha = out * fill; c.fillStyle = fur; c.beginPath(); c.arc(cen[0], cen[1], ballR * br * lerp(0.82, 1, fill), 0, TAU); c.fill(); }
+        ps.seam = 1 - m; const body = draw.jaguar(c, ps, fur, out);
+        draw.eye(c, ps, out * (1 - m)); draw.backLight(c, body.up, out * (1 - m));
+
+        // moonlight over the same round shape: the ball lights up evenly, no ghost of the shapes underneath
+        if (m > 0) {
+          const lunar = c.createRadialGradient(cen[0] - ballR * 0.3, cen[1] - ballR * 0.35, ballR * 0.1, cen[0], cen[1], ballR * 1.05); lunar.addColorStop(0, "#FFFFFF"); lunar.addColorStop(0.55, V.glow); lunar.addColorStop(1, V.pale);
+          c.globalAlpha = out * m; c.fillStyle = lunar; c.beginPath(); c.arc(cen[0], cen[1], ballR * 1.01, 0, TAU); c.fill();
+          draw.moonFace(c, cen[0], cen[1], ballR, out * smooth(span(m, 0.55, 1)));
+          const w = (t - T.MOON1 + 0.25 / T.speed) * T.speed; if (w > 0 && w < 1.2) { c.globalAlpha = out * (1 - w / 1.2) * 0.55; c.strokeStyle = V.glow; c.lineWidth = Math.max(0.6, 1.6 - w); c.beginPath(); c.arc(cen[0], cen[1], ballR * (1.05 + easeOut(w / 1.2) * 0.9), 0, TAU); c.stroke(); }
+        }
+
+        if (opts.debug) { // the skeleton: spine, roots, joints, paws
+          c.globalAlpha = 0.9; c.strokeStyle = "#FDE68A"; c.lineWidth = 0.6; c.beginPath(); for (let i = 0; i <= B.N; i++) { const q = ps.pts[i]; if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); } c.stroke();
+          for (const j of body.joints) if (j) { c.strokeStyle = "#F472B6"; c.beginPath(); c.moveTo(j.root[0], j.root[1]); c.lineTo(j.knee[0], j.knee[1]); c.lineTo(j.paw[0], j.paw[1]); c.stroke(); for (const p of [j.root, j.knee, j.paw]) ell(c, p[0], p[1], 1.2, 1.2, "#FDE68A"); }
+        }
+        c.restore();
+
+        // a few words, quietly
+        if (t > T.TEXT) {
+          const k = easeOut(span(t, T.TEXT, T.TEXT + 0.7 / T.speed)); c.globalAlpha = out * k; c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 18; c.fillStyle = V.glow;
+          c.font = `800 ${Math.round(clamp(Math.min(W, H) * 0.09, 30, 64))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillText("Chill", W / 2, H * 0.8 + (1 - k) * 10);
+          c.font = `600 ${Math.round(clamp(Math.min(W, H) * 0.035, 14, 20))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText("Slow down. You earned it.", W / 2, H * 0.8 + clamp(Math.min(W, H) * 0.06, 26, 44));
+          c.shadowBlur = 0; c.textAlign = "start";
+        }
+        c.globalAlpha = 1;
+      },
+    };
+  };
+})();
+
+/* =====================================================================
+   Tempo · Chill animation · player
+   TempoChill.play(canvas, { speed, debug, onDone, loop }) runs the scene on a
+   canvas at the screen's pixel density and returns a small controller:
+   { pause(), resume(), seek(t), setSpeed(x), setDebug(b), stop(), time() }.
+   Tempo itself only needs scene(); the viewer page uses this player.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const C = window.TempoChill; const { clamp } = C.util;
+
+  C.play = function (canvas, opts = {}) {
+    let speed = opts.speed || 1, debug = !!opts.debug, scene = null, W = 0, H = 0, dpr = 1;
+    let t = 0, last = 0, playing = true, raf = 0, stopped = false;
+    const ctx = canvas.getContext("2d");
+    const build = () => {
+      const r = canvas.getBoundingClientRect(); W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+      dpr = Math.min(2, window.devicePixelRatio || 1); if (W * H * dpr * dpr > 3200000) dpr = Math.max(1, Math.sqrt(3200000 / (W * H)));
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); ctx._dpr = dpr;
+      scene = C.scene(W, H, { speed: 1, debug }); // the timeline stays at 1×; playback speed scales the clock instead
+    };
+    const frame = (now) => {
+      if (stopped) return;
+      const dt = last ? Math.min(0.1, (now - last) / 1000) : 0; last = now;
+      if (playing) t += dt * speed;
+      if (t >= scene.duration) { if (opts.loop) t = 0; else { t = scene.duration; playing = false; if (opts.onDone) opts.onDone(); } }
+      ctx.save(); scene.draw(ctx, t); ctx.restore();
+      if (opts.onFrame) opts.onFrame(t, scene.duration);
+      raf = requestAnimationFrame(frame);
+    };
+    build(); const onResize = () => build(); window.addEventListener("resize", onResize);
+    raf = requestAnimationFrame(frame);
+    return {
+      pause() { playing = false; }, resume() { if (t >= scene.duration) t = 0; playing = true; }, toggle() { if (playing) this.pause(); else this.resume(); return playing; },
+      seek(x) { t = clamp(x, 0, scene.duration); }, setSpeed(x) { speed = x; }, setDebug(b) { debug = !!b; build(); },
+      time() { return t; }, duration() { return scene.duration; }, playing() { return playing; },
+      stop() { stopped = true; cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); },
+    };
+  };
+})();
+
+</script>
+<script>
 /* =====================================================================
    Tempo core: data model, dates, scheduler, planners, persistence.
    Framework-free. The UI layer follows in the next script block.
@@ -3444,175 +3988,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     } };
   }
 
-  /* Scene C (Chill): one jaguar, one shape, one colour, from first stride to the moon.
-     The body is a bendable spine with a thickness profile (muzzle, head, neck, chest, belly, haunch and tail are
-     the same outline), so the run, the lying down and the curl are one continuous movement: the spine simply bends
-     until the animal is a round ball, the legs fold in, the head drops and the eye slowly closes. The ball is
-     already round, so it does not change shape: it lifts, and its fur turns to moonlight. Every frame is a pure
-     function of time; the gallop keeps an even rhythm and eases out so the run ends exactly on a stride. */
-  function chillScene(W, H) {
-    const R = rng(4711); const s = clamp(Math.min(W * 0.8, H) / 320, 0.75, 2.4);
-    const T_RUN = 0.4, T_STOP = 3.9, T_LIE0 = 3.95, T_CURL0 = 5.5, T_CURL1 = 7.1, T_MOON0 = 7.6, T_MOON1 = 9.6, END = 11.2;
-    const groundY = H * 0.54; const startX = W + 120 * s; const endX = 88 * s + 30;
-    const dist = startX - endX; const strides = Math.max(2, Math.round(dist / (96 * s))); // long bounds
-    // an even gallop: the cadence ramps up, holds, then eases to a stop; the distance follows the cadence
-    const env = (t) => (t <= T_RUN || t >= T_STOP ? 0 : Math.min(ease((t - T_RUN) / 0.4), ease((T_STOP - t) / 1.5)));
-    const TBL = 480; const cum = new Float64Array(TBL + 1); for (let i = 1; i <= TBL; i++) { const ta = T_RUN + ((i - 0.5) / TBL) * (T_STOP - T_RUN); cum[i] = cum[i - 1] + env(ta); }
-    const prog = (t) => { if (t <= T_RUN) return 0; if (t >= T_STOP) return 1; const f = ((t - T_RUN) / (T_STOP - T_RUN)) * TBL; const i = Math.floor(f); return (cum[i] + (cum[Math.min(TBL, i + 1)] - cum[i]) * (f - i)) / cum[TBL]; };
-    const sky = Array.from({ length: 120 }, () => ({ x: R() * W, y: R() * H, r: 0.4 + R() * 1.3, p: R() * TAU, sp: 0.7 + R() * 1.9 }));
-    // the body: half thickness along the spine, u = 0 at the nose, 1 at the tip of the tail
-    const L = 178, N = 72;
-    const prof = (u) => u < 0.05 ? lerp(4.2, 8.2, u / 0.05) : u < 0.13 ? lerp(8.2, 9.4, (u - 0.05) / 0.08) : u < 0.19 ? lerp(9.4, 7.4, (u - 0.13) / 0.06) : u < 0.31 ? lerp(7.4, 13.2, (u - 0.19) / 0.12)
-      : u < 0.47 ? lerp(13.2, 11.6, (u - 0.31) / 0.16) : u < 0.55 ? lerp(11.6, 12.6, (u - 0.47) / 0.08) : u < 0.63 ? lerp(12.6, 4.6, ease((u - 0.55) / 0.08)) : lerp(4.6, 1.5, (u - 0.63) / 0.37);
-    const headingRun = (u, arch, t, amp, bob, rest, tailDown) => {
-      if (u < 0.2) return -0.3 + (u / 0.2) * 0.22 + bob - rest * 0.28; // the head: steady while it runs, lowered once it rests
-      if (u < 0.62) return -arch * (0.42 - u) / 0.2; // the back gathers and stretches with every bound
-      const v = (u - 0.62) / 0.38; const run = lerp(0.55, -0.85, v) + Math.sin(t * 3 + u * 7) * 0.22 * (0.4 + amp) - amp * 0.25 * v; // streams out behind at speed
-      const lying = lerp(0.42, -0.12, v) + Math.sin(t * 1.6 + u * 5) * 0.06; // then lies along the ground
-      return lerp(run, lying, tailDown);
-    };
-    // curled the way cats curl, seen from the side: the back is the top arc, the head rests at the front low down with
-    // the nose tucked in, the haunch rounds off at the back and the tail runs along the bottom until its tip meets the nose
-    const LEGS = [ // far hind, far front, near hind, near front: footfalls of a transverse gallop
-      { u: 0.56, l1: 20, l2: 22, w: [7.6, 4.5, 2.8], off: 0.0, front: false, dx: 3, lie: -6 },
-      { u: 0.27, l1: 19, l2: 20, w: [5.6, 3.9, 2.6], off: 0.45, front: true, dx: -2, lie: -17 },
-      { u: 0.54, l1: 20, l2: 22, w: [8.4, 5, 3], off: 0.1, front: false, dx: 3, lie: -9 },
-      { u: 0.29, l1: 19, l2: 20, w: [6, 4.2, 2.8], off: 0.55, front: true, dx: -2, lie: -21 },
-    ];
-    // the flight of a paw between steps: lift off behind, fold, swing through, reach far forward, land (front) / push back, tuck, reach (hind)
-    const SWING = { front: [[14, -13], [-8, -17], [-25, -9]], hind: [[22, -9], [6, -16], [-12, -11]] };
-    const cr = (a, b, c2, d, t2) => { const t3 = t2 * t2 * t2, tt = t2 * t2; return 0.5 * (2 * b + (-a + c2) * t2 + (2 * a - 5 * b + 4 * c2 - d) * tt + (-a + 3 * b - 3 * c2 + d) * t3); };
-    const swingAt = (keys, w) => { const n = keys.length - 1; const f = Math.min(n - 1e-6, w * n); const i = Math.floor(f); const t2 = f - i; const g2 = (j) => keys[Math.max(0, Math.min(n, j))];
-      return [cr(g2(i - 1)[0], g2(i)[0], g2(i + 1)[0], g2(i + 2)[0], t2), cr(g2(i - 1)[1], g2(i)[1], g2(i + 1)[1], g2(i + 2)[1], t2)]; };
-    const bone = (c, A, B, wa, wb) => { const dx = B[0] - A[0], dy = B[1] - A[1]; const d = Math.hypot(dx, dy) || 1; const nx = -dy / d, ny = dx / d; c.beginPath(); c.moveTo(A[0] + nx * wa, A[1] + ny * wa); c.lineTo(B[0] + nx * wb, B[1] + ny * wb); c.lineTo(B[0] - nx * wb, B[1] - ny * wb); c.lineTo(A[0] - nx * wa, A[1] - ny * wa); c.closePath(); c.fill(); };
-    const RX = 27, RY = 27, BALL = 46; // round: the curled outline is a circle of radius BALL
-    const curlPt = (u, x0, y0) => {
-      const ph = u < 0.375 ? lerp(Math.PI - 0.55, 1.5 * Math.PI, u / 0.375) : u < 0.62 ? lerp(1.5 * Math.PI, 2 * Math.PI + 0.35, (u - 0.375) / 0.245) : lerp(2 * Math.PI + 0.35, 3 * Math.PI - 0.8, (u - 0.62) / 0.38);
-      const sc = (u < 0.62 ? 1 : lerp(1, 1.42, Math.min(1, (u - 0.62) / 0.12))) * (u < 0.1 ? lerp(0.72, 1, u / 0.1) : 1);
-      return [x0 + Math.cos(ph) * RX * sc, y0 + Math.sin(ph) * RY * sc];
-    };
-    const pose = (t) => {
-      const p = prog(t); const x = lerp(startX, endX, p); const amp = env(t); const cyc = strides * p; const P = TAU * cyc;
-      // gallop: the back gathers (arches) while the hind legs swing under, and stretches while they push; the body
-      // rides highest in the suspension after the front paws push off
-      const arch = 0.05 + amp * 0.34 * Math.cos(TAU * (cyc - 0.88)); const lift = amp * 9 * (1 - Math.cos(TAU * (cyc - 0.4))) / 2;
-      const tilt = amp * 0.06 * Math.sin(TAU * (cyc - 0.2)); const bob = amp * 0.07 * Math.sin(TAU * (cyc - 0.05));
-      // lying down like a cat: the front goes down first (elbows to the ground), then the hindquarters, then the tail and head settle
-      const lieF = ease((t - T_LIE0) / 0.75), lieH = ease((t - T_LIE0 - 0.4) / 0.9), rest = ease((t - T_LIE0 - 0.7) / 0.8), tailDown = ease((t - T_LIE0 - 0.6) / 0.9);
-      const k = ease((t - T_CURL0) / (T_CURL1 - T_CURL0)); // the curl
-      const run = []; let px = 0, py = 0; const ds = L / N;
-      for (let i = 0; i <= N; i++) { const a = headingRun(i / N, arch, t, amp, bob, rest, tailDown) + tilt; run.push([px, py]); px += Math.cos(a) * ds; py += Math.sin(a) * ds; }
-      const mid = run[Math.round(N * 0.42)]; const dx = x / s - mid[0], dy = -39 - lift - mid[1];
-      const X0 = x / s + 2, Y0 = -BALL + 1; // where the ball will rest
-      const pts = []; for (let i = 0; i <= N; i++) {
-        const u = i / N; const down = 16 * (u < 0.33 ? lieF : u > 0.5 ? lieH : lerp(lieF, lieH, (u - 0.33) / 0.17)) + 9 * ease((k - 0.02) / 0.42); /* the belly settles as the legs fold in */
-        const lead = 0.2 * Math.max(0, 1 - Math.abs(u - 0.375) * 2.6); // head and tail come round first, the shoulders last
-        const kk = ease(clamp((k - lead * 0.5) / (1 - lead * 0.5), 0, 1));
-        const r = [run[i][0] + dx, run[i][1] + dy + down]; const c2 = curlPt(u, X0, Y0);
-        pts.push([lerp(r[0], c2[0], kk), lerp(r[1], c2[1], kk)]);
-      }
-      const th = pts.map((q, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(N, i + 1)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); });
-      return { pts, th, g: 0.5, k, amp, P, cyc, stride: dist / strides / s, lieF, lieH, center: [X0, Y0] };
-    };
-    const outline = (ps) => {
-      const up = [], dn = [];
-      for (let i = 0; i <= N; i++) { const u = i / N; const a = ps.th[i]; const w = prof(u) * lerp(1, u < 0.62 ? 1.45 : 1.2, ps.k); /* the body fills out into a full ball */ const nx = Math.sin(a), ny = -Math.cos(a);
-        up.push([ps.pts[i][0] + nx * w, ps.pts[i][1] + ny * w]); dn.push([ps.pts[i][0] - nx * w * (u > 0.2 && u < 0.6 ? 0.92 : 1), ps.pts[i][1] - ny * w * (u > 0.2 && u < 0.6 ? 0.92 : 1)]); }
-      return { up, dn };
-    };
-    const smoothPath = (c, list) => { c.moveTo(list[0][0], list[0][1]); for (let i = 1; i < list.length - 1; i++) { const mxp = (list[i][0] + list[i + 1][0]) / 2, myp = (list[i][1] + list[i + 1][1]) / 2; c.quadraticCurveTo(list[i][0], list[i][1], mxp, myp); } c.lineTo(list[list.length - 1][0], list[list.length - 1][1]); };
-    const drawCat = (c, ps, fill, alpha) => {
-      const { up, dn } = outline(ps);
-      c.globalAlpha = alpha; c.fillStyle = fill;
-      // Legs like a filmed animal: each paw is planted while the body passes over it (no sliding), then lifts in an arc and
-      // lands ahead; the four legs keep a gallop order; the joints are solved from where the paw is, so they bend by themselves.
-      const la = 1 - ease((ps.k - 0.02) / 0.42); // the legs fold up under the body as it curls
-      if (la > 0.01) {
-        for (const Lg of LEGS) {
-          const i = Math.round(Lg.u * N); const a = ps.th[i]; const root = [ps.pts[i][0] - Math.sin(a) * 3.5, ps.pts[i][1] + Math.cos(a) * 3.5];
-          const duty = 0.3; const S = ps.stride * duty * ps.amp; let rel = 0, py = 0;
-          if (ps.amp > 0.001) {
-            const ph = (((ps.cyc + Lg.off) % 1) + 1) % 1;
-            if (ph < duty) rel = lerp(-S / 2, S / 2, ph / duty); // planted: the body travels over the paw, the paw does not slide
-            else { const w = (ph - duty) / (1 - duty); const keys = [[S / 2, 0], ...SWING[Lg.front ? "front" : "hind"].map(([a, b]) => [a * ps.amp, b * ps.amp]), [-S / 2, 0]]; [rel, py] = swingAt(keys, w); }
-          }
-          const lie = Lg.front ? ps.lieF : ps.lieH; rel = lerp(rel, Lg.lie, lie); py = lerp(py, 0, lie); // front paws slide forward under the chest, hind legs fold
-          const sc = la; const T0 = [root[0] + rel + Lg.dx, py]; const T = [lerp(root[0], T0[0], sc), lerp(root[1], T0[1], sc)]; // folding in: the whole leg draws up into the body
-          // two-bone IK, the joint bending back towards the tail like a cat's elbow and hock
-          let dxv = T[0] - root[0], dyv = T[1] - root[1]; let d = Math.hypot(dxv, dyv); const l1 = Lg.l1 * sc, l2 = Lg.l2 * sc; const reach = l1 + l2 - 0.5 * sc;
-          if (d > reach) { dxv *= reach / d; dyv *= reach / d; d = reach; } d = Math.max(d, Math.abs(l1 - l2) + 0.5 * sc, 0.01);
-          const P2 = [root[0] + dxv, root[1] + dyv]; const base = Math.atan2(dyv, dxv);
-          const cosA = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1); const A = Math.acos(cosA);
-          const k1 = [root[0] + Math.cos(base + A) * l1, root[1] + Math.sin(base + A) * l1], k2 = [root[0] + Math.cos(base - A) * l1, root[1] + Math.sin(base - A) * l1];
-          const K = k1[0] > k2[0] ? k1 : k2;
-          c.globalAlpha = alpha; const ws = lerp(0.55, 1, sc); const w0 = Lg.w[0] * ws, w1 = Lg.w[1] * ws, w2 = Lg.w[2] * ws; // full colour while folding: no ghost legs
-          bone(c, root, K, w0, w1); bone(c, K, P2, w1, w2); ell(c, root[0], root[1], w0, w0, fill); ell(c, K[0], K[1], w1, w1, fill);
-          ell(c, P2[0] - w2 * 0.9, P2[1] - w2 * 0.55, w2 * 2.1, w2 * 1.05, fill); c.fillStyle = fill;
-        }
-        c.globalAlpha = alpha;
-      }
-      // the paws folded in under the chest fill the middle of the curl
-      const tuck = ease((ps.k - 0.45) / 0.45);
-      if (tuck > 0) { const [bx, by] = ps.center; c.beginPath(); c.ellipse(bx + 2, by + 5, 27 * tuck, 19 * tuck, 0, 0, TAU); c.fill(); }
-      // the body, head and tail as a single outline
-      c.beginPath(); smoothPath(c, up); const back = dn.slice().reverse(); for (const q of back) c.lineTo(q[0], q[1]); c.closePath(); c.fill();
-      // ears, folding flat as it settles
-      const ear = (u0, u1, h) => { const a = Math.round(u0 * N), b = Math.round(u1 * N), m = Math.round(((u0 + u1) / 2) * N); const nx = Math.sin(ps.th[m]), ny = -Math.cos(ps.th[m]); const hh = h * (1 - ease(Math.min(1, ps.k * 1.4))); // the ear lies flat against the head
-        c.beginPath(); c.moveTo(up[a][0], up[a][1]); c.quadraticCurveTo(up[m][0] + nx * hh * 1.1 - Math.cos(ps.th[m]) * 1.5, up[m][1] + ny * hh * 1.1 - Math.sin(ps.th[m]) * 1.5, up[b][0], up[b][1]); c.closePath(); c.fill(); };
-      ear(0.075, 0.125, 7.5);
-      // once curled, a faint line shows where the head rests and where the tail wraps round, so it reads as an animal and not a ball
-      const seam = ease((ps.k - 0.55) / 0.45) * (ps.seam ?? 1);
-      if (seam > 0.01) { c.save(); c.globalAlpha = alpha * seam * 0.55; c.strokeStyle = V.core; c.lineWidth = 1.1; c.lineCap = "round";
-        c.beginPath(); smoothPath(c, up.slice(Math.round(N * 0.64), N + 1)); c.stroke(); c.beginPath(); smoothPath(c, dn.slice(Math.round(N * 0.64), N + 1)); c.stroke();
-        c.beginPath(); smoothPath(c, dn.slice(0, Math.round(N * 0.16))); c.stroke(); c.restore(); }
-      return { up, dn };
-    };
-    return { duration: END, at: (t) => [lerp(startX, endX, prog(t)), groundY, s], draw(c, t) {
-      c.setTransform(c._dpr || 1, 0, 0, c._dpr || 1, 0, 0); c.clearRect(0, 0, W, H);
-      const out = t > END - 0.7 ? 1 - ease((t - (END - 0.7)) / 0.7) : 1; const inn = ease(t / 0.5);
-      // the night sky
-      c.globalAlpha = inn * out; const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, V.ink); bg.addColorStop(0.6, V.night); bg.addColorStop(1, V.deep); c.fillStyle = bg; c.fillRect(0, 0, W, H);
-      const hz = c.createRadialGradient(W * 0.5, H * 1.1, 10, W * 0.5, H * 1.1, Math.max(W, H) * 0.8); hz.addColorStop(0, "rgba(124,58,237,.35)"); hz.addColorStop(1, "rgba(124,58,237,0)"); c.fillStyle = hz; c.fillRect(0, 0, W, H);
-      for (const st of sky) { c.globalAlpha = inn * out * (0.25 + 0.45 * (0.5 + 0.5 * Math.sin(t * st.sp + st.p))); ell(c, st.x, st.y, st.r, st.r, V.mist); }
-      const ps = pose(t); const m = ease((t - T_MOON0) / (T_MOON1 - T_MOON0)); const rise = ease((t - T_MOON0 + 0.2) / (T_MOON1 - T_MOON0 + 0.4)) * 34;
-      // star dust kicked up behind the paws
-      if (ps.amp > 0.05) for (let j = 1; j <= 10; j++) { const tp = t - j * 0.035; if (tp < T_RUN) break; const xp = lerp(startX, endX, prog(tp)); c.globalAlpha = out * ps.amp * 0.6 * (1 - j / 11); ell(c, xp + 62 * s + Math.sin(j * 1.7) * 6 * s, groundY - 3 * s - (j % 3) * 5 * s, 1.4 + (j % 2), 1.4 + (j % 2), V.pale); }
-      c.save(); c.translate(0, groundY - rise * s); c.scale(s, s);
-      // the ball: its own outer edge defines the circle, so filling it in never changes the shape you see
-      const cen = ps.center; let ballR = BALL - 1.5;
-      ballR *= lerp(1, 1.03, m);
-      // the glow gathers as it becomes the moon
-      if (m > 0) { c.globalAlpha = out * m * 0.8; const halo = c.createRadialGradient(cen[0], cen[1], ballR * 0.6, cen[0], cen[1], ballR * 3.2); halo.addColorStop(0, "rgba(196,181,253,.5)"); halo.addColorStop(1, "rgba(196,181,253,0)"); c.fillStyle = halo; c.fillRect(cen[0] - ballR * 3.2, cen[1] - ballR * 3.2, ballR * 6.4, ballR * 6.4); }
-      // one colour for the whole animal: lit from above, deeper underneath
-      const fur = c.createLinearGradient(0, cen[1] - 50, 0, cen[1] + 40); fur.addColorStop(0, V.pale); fur.addColorStop(0.5, V.bright); fur.addColorStop(1, V.vivid);
-      const fill = ease((ps.k - 0.86) / 0.14); // only once the curl has closed: the last gaps fill in, no ghost circle before
-      const breath = 1 + (1 - m) * fill * 0.02 * Math.sin((t - T_CURL1) * 2.2);
-      if (fill > 0) { c.globalAlpha = out * fill; c.fillStyle = fur; c.beginPath(); c.arc(cen[0], cen[1], ballR * breath * lerp(0.82, 1, fill), 0, TAU); c.fill(); } /* grows from inside the curl, so its edge never shows early */
-      ps.seam = 1 - m; const { up } = drawCat(c, ps, fur, out);
-      // the eye, open while it runs, slowly closing as it falls asleep
-      { const i = Math.round(0.045 * N); const nx = Math.sin(ps.th[i]), ny = -Math.cos(ps.th[i]); const ex = ps.pts[i][0] + nx * 3.4, ey = ps.pts[i][1] + ny * 3.4; const shut = ease((t - T_CURL0 - 0.9) / 1.0);
-        c.globalAlpha = out * (1 - m); if (shut < 1) ell(c, ex, ey, 2.3, Math.max(0.25, 0.95 * (1 - shut)), V.night, ps.th[i]);
-        if (shut > 0.3) { c.globalAlpha = out * (1 - m) * shut; c.strokeStyle = V.night; c.lineWidth = 0.9; c.beginPath(); c.arc(ex, ey - 0.6, 2.2, ps.th[i] + 0.35, ps.th[i] + Math.PI - 0.35); c.stroke(); } }
-      // a line of light along the back
-      c.globalAlpha = out * (1 - m) * 0.5; c.strokeStyle = V.glow; c.lineWidth = 1.1; c.beginPath(); smoothPath(c, up.slice(Math.round(N * 0.15), Math.round(N * 0.6))); c.stroke();
-      // sleeping breath, then moonlight over the same round shape
-      if (m > 0) {
-        const lunar = c.createRadialGradient(cen[0] - ballR * 0.3, cen[1] - ballR * 0.35, ballR * 0.1, cen[0], cen[1], ballR * 1.05); lunar.addColorStop(0, "#FFFFFF"); lunar.addColorStop(0.55, V.glow); lunar.addColorStop(1, V.pale);
-        c.globalAlpha = out * m; c.fillStyle = lunar; c.beginPath(); c.arc(cen[0], cen[1], ballR * 1.01, 0, TAU); c.fill(); // the whole ball lights up evenly: no ghost of the shapes underneath
-        if (m > 0.55) { c.globalAlpha = out * (m - 0.55) / 0.45 * 0.14; for (const [dx, dy, r] of [[-0.3, 0.1, 0.18], [0.25, -0.2, 0.12], [0.15, 0.35, 0.1], [-0.05, -0.4, 0.07]]) ell(c, cen[0] + dx * ballR, cen[1] + dy * ballR, r * ballR, r * ballR, V.soft); }
-        const w = t - T_MOON1 + 0.25; if (w > 0 && w < 1.2) { c.globalAlpha = out * (1 - w / 1.2) * 0.55; c.strokeStyle = V.glow; c.lineWidth = Math.max(0.6, 1.6 - w); c.beginPath(); c.arc(cen[0], cen[1], ballR * (1.05 + easeOut(w / 1.2) * 0.9), 0, TAU); c.stroke(); }
-      }
-      c.restore();
-      // a few words, quietly
-      if (t > T_MOON1 - 0.4) {
-        const k = easeOut((t - T_MOON1 + 0.4) / 0.7); c.globalAlpha = out * k; c.textAlign = "center"; c.shadowColor = V.ink; c.shadowBlur = 18; c.fillStyle = V.glow;
-        c.font = `800 ${Math.round(clamp(Math.min(W, H) * 0.09, 30, 64))}px "Plus Jakarta Sans", system-ui, sans-serif`; c.fillText("Chill", W / 2, H * 0.82 + (1 - k) * 10);
-        c.font = `600 ${Math.round(clamp(Math.min(W, H) * 0.035, 14, 20))}px "Instrument Sans", system-ui, sans-serif`; c.fillStyle = V.pale; c.fillText("Slow down. You earned it.", W / 2, H * 0.82 + clamp(Math.min(W, H) * 0.06, 26, 44));
-        c.shadowBlur = 0; c.textAlign = "start";
-      }
-      c.globalAlpha = 1;
-    } };
-  }
+  /* Scene C (Chill) lives in its own folder now: chill-animation/ (window.TempoChill.scene). */
 
   /* Canvas overlay that plays one scene and removes itself. Click or Escape skips it. */
   function Celebration({ kind, title, onDone, full }) {
@@ -3627,7 +4003,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
       let dpr = Math.min(2, window.devicePixelRatio || 1); if (box.width * box.height * dpr * dpr > 2600000) dpr = Math.max(1, Math.sqrt(2600000 / (box.width * box.height))); // keep big screens smooth
       cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr);
       const c = cv.getContext("2d"); if (!c) { doneRef.current(); return; } c._dpr = dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const scene = kind === "day" ? dayScene(box.width, box.height, title) : kind === "chill" ? chillScene(box.width, box.height) : taskScene(box.width, box.height, title);
+      const scene = kind === "day" ? dayScene(box.width, box.height, title) : kind === "chill" ? window.TempoChill.scene(box.width, box.height) : taskScene(box.width, box.height, title);
       let raf = 0, finished = false; const t0 = performance.now(); const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); doneRef.current(); };
       const frame = (t) => { c.save(); try { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.globalAlpha = 1; c.shadowBlur = 0; scene.draw(c, t); } finally { c.restore(); } };
       const loop = (now) => { const t = Math.max(0, (now - t0) / 1000); try { frame(t); } catch (e) { finish(); return; } if (t >= scene.duration) finish(); else raf = requestAnimationFrame(loop); };
@@ -3683,7 +4059,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
     </div>`;
   }
 
-  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene, dayScene, chillScene } });
+  Object.assign(UI, { Celebration, FocusMode, fx: { taskScene, dayScene, chillScene: (W, H, o) => window.TempoChill.scene(W, H, o) } });
 })();
 </script>
 <script>
